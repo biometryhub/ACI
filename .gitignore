@@ -1,0 +1,8 @@
+# external reference (re-clonable: github.com/marandmath/ACI_code)
+matlab_reference/
+# R build scratch
+*.tar.gz
+*.Rcheck/
+.Rhistory
+.RData
+.Rproj.user/
