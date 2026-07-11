@@ -1,0 +1,32 @@
+Package: aciR
+Title: Assimilative Causal Inference for Conditional Gaussian Nonlinear
+    Systems
+Version: 0.0.0.9000
+Authors@R:
+    person(given = "Max",
+           family = "Moldovan",
+           role = c("aut", "cre"),
+           email = "max.moldovan@gmail.com",
+           comment = c(ORCID = "0000-0001-9680-8474"))
+Description: Implements assimilative causal inference (ACI) for conditional
+    Gaussian nonlinear systems (CGNS). Provides the closed-form forward
+    filter and backward smoother for the conditional Gaussian statistics of
+    an unobserved component given an observed signal, together with the
+    relative-entropy causal-information metric that contrasts the smoother
+    posterior against the filter posterior. The method reimplements the
+    approach of Andreou, Chen and Bollt (2026)
+    <doi:10.1038/s41467-026-68568-0>.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Language: en-GB
+Imports:
+    stats
+Suggests:
+    testthat (>= 3.0.0),
+    knitr,
+    rmarkdown,
+    ggplot2
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3

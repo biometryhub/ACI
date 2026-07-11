@@ -1,0 +1,46 @@
+url: ~
+
+template:
+  bootstrap: 5
+
+reference:
+- title: Model layer
+  desc: >
+    High-level entry points. Build a conditional Gaussian nonlinear system as a
+    model object, simulate a realisation of it, and run the whole assimilative
+    causal inference workflow in a single call.
+  contents:
+  - aci
+  - aci_cgns_model
+  - aci_dyad_model
+  - aci_simulate
+- title: Conditional Gaussian core
+  desc: >
+    The numerical core. The forward filter, the backward smoother and the
+    causal-information metric, each written against a general components list so
+    they apply to any conditional Gaussian nonlinear system.
+  contents:
+  - aci_filter
+  - aci_smoother
+  - aci_metric
+- title: The nonlinear dyad model
+  desc: >
+    The worked-example dyad model with intermittent extreme events, at the
+    components level.
+  contents:
+  - aci_dyad_components
+  - aci_simulate_dyad
+- title: Methods
+  desc: Print methods for the model and result objects.
+  contents:
+  - print.aci
+  - print.aci_model
+- title: Package
+  contents:
+  - aciR-package
+
+articles:
+- title: Get started
+  navbar: ~
+  contents:
+  - aciR
