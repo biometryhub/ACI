@@ -49,10 +49,14 @@ jobs:
           cov <- covr::package_coverage(quiet = FALSE)
           print(cov)
 
-          zero <- covr::zero_coverage(cov)
-          if (nrow(zero) > 0L) {
+          # tally_coverage() returns a plain data frame. zero_coverage() is the
+          # obvious call here, but it reaches for rstudioapi to populate the IDE
+          # marker pane, which a headless runner does not have.
+          tally <- covr::tally_coverage(cov)
+          uncovered <- unique(tally[tally$value == 0, c("filename", "line")])
+          if (nrow(uncovered) > 0L) {
             cat("\nUncovered lines:\n")
-            print(unique(zero[, c("filename", "line")]))
+            print(uncovered)
           }
 
           pct <- covr::percent_coverage(cov)
