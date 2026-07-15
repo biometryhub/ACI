@@ -1,23 +1,31 @@
+
+<!-- README.md is generated from README.Rmd. Edit README.Rmd, then run devtools::build_readme(). Do not hand-edit README.md. -->
+
+<!-- Every number below is produced by running the code, not typed. A hand-pasted output block is a claim about an execution that nothing checks: it can be invented, and it goes stale silently the moment the code changes. Generating it makes both impossible. -->
+
 # aciR
 
 <!-- badges: start -->
-[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+
+[![Lifecycle:
+experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![R-CMD-check](https://github.com/max578/aciR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/max578/aciR/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-`aciR` implements assimilative causal inference (ACI) for conditional Gaussian
-nonlinear systems. A conditional Gaussian nonlinear system (CGNS) pairs an
-observed signal with an unobserved component whose statistics, conditional on
-the observed path, are Gaussian and available in closed form. ACI measures,
-step by step, how strongly the observed signal carries information about that
-unobserved component -- and so where the two are causally coupled under the
-model.
+`aciR` implements assimilative causal inference (ACI) for conditional
+Gaussian nonlinear systems. A conditional Gaussian nonlinear system
+(CGNS) pairs an observed signal with an unobserved component whose
+statistics, conditional on the observed path, are Gaussian and available
+in closed form. ACI measures, step by step, how strongly the observed
+signal carries information about that unobserved component -- and so
+where the two are causally coupled under the model.
 
-The workflow rests on data assimilation. A forward filter estimates the hidden
-component from the observed path seen so far, a backward smoother estimates it
-from the whole observed path, and the causal-information metric -- the relative
-entropy of the smoother posterior from the filter posterior -- reads off how
-much the future of the observed signal sharpens the estimate at each step.
+The workflow rests on data assimilation. A forward filter estimates the
+hidden component from the observed path seen so far, a backward smoother
+estimates it from the whole observed path, and the causal-information
+metric -- the relative entropy of the smoother posterior from the filter
+posterior -- reads off how much the future of the observed signal
+sharpens the estimate at each step.
 
 The method reimplemented here is due to Andreou, Chen and Bollt (2026).
 
@@ -25,22 +33,22 @@ The method reimplemented here is due to Andreou, Chen and Bollt (2026).
 
 Install the development version from GitHub with:
 
-```r
+``` r
 # install.packages("remotes")
 remotes::install_github("max578/aciR", subdir = "aciR")
 ```
 
-The package lives in the `aciR/` subdirectory of its repository, alongside the
-MATLAB oracle harnesses that generate its validation fixtures, hence the
-`subdir` argument.
+The package lives in the `aciR/` subdirectory of its repository,
+alongside the MATLAB oracle harnesses that generate its validation
+fixtures, hence the `subdir` argument.
 
 ## Usage
 
-The flagship example is the nonlinear dyad model with intermittent extreme
-events. Build the model, simulate a realisation, then run the whole ACI
-workflow in a single call to `aci()`.
+The flagship example is the nonlinear dyad model with intermittent
+extreme events. Build the model, simulate a realisation, then run the
+whole ACI workflow in a single call to `aci()`.
 
-```r
+``` r
 library(aciR)
 
 # Build the dyad model and simulate a realisation of it
@@ -54,66 +62,79 @@ fit
 #>   model: nonlinear dyad model with intermittent extreme events
 #>   steps: 5000, dt: 0.001, time span: [0, 4.999]
 #>   causal-information metric:
-#>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.
-#>  0.00000 0.06962 0.11010 0.22070 0.25589 2.45911
+#>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#> 0.00000 0.06962 0.11010 0.22070 0.25589 2.45911
 ```
 
-`summary()` adds the diagnostics a result should be read with, `plot()` draws
-the observed signal against the metric, and `as.data.frame()` returns every
-series in one tidy frame.
+`summary()` adds the diagnostics a result should be read with, `plot()`
+draws the observed signal against the metric, and `as.data.frame()`
+returns every series in one tidy frame.
 
-```r
+``` r
 summary(fit)
-plot(fit)
-head(as.data.frame(fit))
+#> <summary.aci> assimilative causal inference
+#>   model: nonlinear dyad model with intermittent extreme events
+#>   steps: 5000, dt: 0.001, time span: [0, 4.999]
+#> 
+#>   causal-information metric:
+#>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#> 0.00000 0.06962 0.11010 0.22070 0.25589 2.45911 
+#>   peak 2.45911 at time 0.382
+#> 
+#>   diagnostics:
+#>     smallest covariance: filter 0.1, smoother 0.0682916
+#>     terminal identity residual: 0 (zero analytically)
+#>     metric at the round-off floor: 1 of 5000 steps
 ```
 
 The three core functions -- `aci_filter()`, `aci_smoother()` and
-`aci_metric()` -- work on any conditional Gaussian nonlinear system through a
-general components list, so they are not tied to the dyad model.
-`aci_cgns_model()` builds a model object for a system of one's own. The
-vignette *Assimilative causal inference on the nonlinear dyad model* is a full
-walkthrough.
+`aci_metric()` -- work on any conditional Gaussian nonlinear system
+through a general components list, so they are not tied to the dyad
+model. `aci_cgns_model()` builds a model object for a system of one's
+own. The vignette *Assimilative causal inference on the nonlinear dyad
+model* is a full walkthrough.
 
 ## Validation
 
-The numerical core is graded against fixtures generated by an independent
-MATLAB harness that reproduces the deterministic core of the authors'
-reference implementation ([marandmath/ACI_code](https://github.com/marandmath/ACI_code),
-MIT). aciR runs its own filter, smoother and metric on the reference signal and
-must reproduce all five output series; the gate is a maximum absolute error
-below `1e-6` and the observed error is `4.6e-14`. The test runs from the
-installed package fixtures and never skips.
+The numerical core is graded against fixtures generated by an
+independent MATLAB harness that reproduces the deterministic core of the
+authors' reference implementation
+([marandmath/ACI_code](https://github.com/marandmath/ACI_code), MIT).
+aciR runs its own filter, smoother and metric on the reference signal
+and must reproduce all five output series; the gate is a maximum
+absolute error below `1e-6` and the observed error is `4.57e-14`. The
+test runs from the installed package fixtures and never skips.
 
-Because every scalar model in that reference sets the noise cross-covariance to
-zero, a second fixture and a set of analytic Kalman-Bucy identities grade the
-terms the reference cannot reach. The vignette *Validation and the independent
-oracle* records the design, the provenance and, for each oracle, what it does
-and does not cover.
+Because every scalar model in that reference sets the noise
+cross-covariance to zero, a second fixture and a set of analytic
+Kalman-Bucy identities grade the terms the reference cannot reach. The
+vignette *Validation and the independent oracle* records the design, the
+provenance and, for each oracle, what it does and does not cover.
 
 ## Scope and interpretation
 
-The metric is a statement about the model you supply, not about the world. It
-does not test that model, and it does not identify the effect of an
-intervention. The vignette *Assumptions and interpretation* states the estimand
-precisely, lists the conditions under which the method is valid, and sets out
-what an ACI peak does and does not support. Read it before drawing a causal
-conclusion from a peak.
+The metric is a statement about the model you supply, not about the
+world. It does not test that model, and it does not identify the effect
+of an intervention. The vignette *Assumptions and interpretation* states
+the estimand precisely, lists the conditions under which the method is
+valid, and sets out what an ACI peak does and does not support. Read it
+before drawing a causal conclusion from a peak.
 
-Current scope: a scalar observed process, a scalar unobserved component, a
-self-drift constant in time, and a complete signal on a regular grid. A
-time-varying self-drift and the causal-influence-range are roadmapped; see
-`NEWS.md`. API stability is declared per export in `API_STABILITY.md`.
+Current scope: a scalar observed process, a scalar unobserved component,
+a self-drift constant in time, and a complete signal on a regular grid.
+A time-varying self-drift and the causal-influence-range are roadmapped;
+see `NEWS.md`. API stability is declared per export in
+`API_STABILITY.md`.
 
 ## Citation
 
-If you use `aciR` in published work, please cite both the package and the
-method paper. See `citation("aciR")` for the current entries.
+If you use `aciR` in published work, please cite both the package and
+the method paper. See `citation("aciR")` for the current entries.
 
 The method is:
 
-> Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
-> *Nature Communications*, 17, 1854.
+> Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal
+> inference. *Nature Communications*, 17, 1854.
 > <https://doi.org/10.1038/s41467-026-68568-0>
 
 ## Licence

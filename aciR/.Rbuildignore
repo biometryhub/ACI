@@ -16,3 +16,5 @@
 ^\.positai$
 ^aa_notes.*$
 ^PROJECT_LOG.*$
+^README\.Rmd$
+^README\.html$
