@@ -22,13 +22,25 @@ component (constant in time for the supplied dyad model).}
 unobserved process at each time step.}
 \item{\code{S_xoS_x}}{Numeric scalar. The observation-noise covariance,
 the product of the observed-process noise coefficient with its
-transpose.}
+transpose. Must be strictly positive.}
 \item{\code{S_yoS_y}}{Numeric scalar. The latent-noise covariance of the
-unobserved process.}
+unobserved process. Must be non-negative.}
 \item{\code{S_yoS_x}}{Numeric scalar. The latent-to-observation noise
 cross-covariance.}
 \item{\code{S_xoS_y}}{Numeric scalar. The observation-to-latent noise
-cross-covariance, the transpose of \code{S_yoS_x}.}
+cross-covariance, the transpose of \code{S_yoS_x}. For the scalar systems
+this package integrates the two are equal, and a components list in
+which they disagree is rejected.}
 }
+
+The joint noise covariance must be positive semidefinite, which for a
+scalar system means \code{S_xoS_x * S_yoS_y - S_yoS_x^2} is non-negative. A
+components list that violates any of these conditions is rejected before
+the recursion starts.
+
+This schema is the package's expert-level extension surface: build a
+components list directly to run the core on a conditional Gaussian system
+for which aciR supplies no constructor. See \code{\link[=aci_dyad_components]{aci_dyad_components()}} for a
+worked example, and \code{\link[=aci_cgns_model]{aci_cgns_model()}} for the higher-level alternative.
 }
 \keyword{internal}

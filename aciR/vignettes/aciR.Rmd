@@ -177,9 +177,30 @@ ggplot(signal, aes(x = t)) +
   theme(legend.position = "top")
 ```
 
+The `summary()` method reports the metric alongside the diagnostics that say
+whether the numerical assumptions held: the smallest posterior covariances,
+which show how close the explicit Euler scheme came to losing positivity, and
+the terminal-identity residual, which is zero analytically and so measures
+accumulated numerical error.
+
 ```{r metric-summary}
-summary(fit$aci)
+summary(fit)
 ```
+
+Every series is available in one frame with `as.data.frame()`, which is the
+tidy starting point for a figure or an export.
+
+```{r as-data-frame}
+head(as.data.frame(fit), 3)
+```
+
+A word of caution before reading too much into the peaks. The metric says that
+*under this model* the future of the observed signal is informative about the
+hidden component at those moments. It does not test the model, and it does not
+identify the effect of an intervention. Since the dyad model here is also the
+process that generated the data, the reading is safe. On real data it would not
+be, and the article *Assumptions and interpretation* sets out exactly what an
+ACI peak does and does not support.
 
 ## Under the hood: the general components path
 

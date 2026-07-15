@@ -3,9 +3,13 @@ citHeader("To cite the aciR package in publications use:")
 bibentry(
   bibtype = "Manual",
   title   = "{aciR}: Assimilative Causal Inference for Conditional Gaussian Nonlinear Systems",
-  author  = person("Max", "Moldovan"),
+  author  = person(
+    given = "Max", family = "Moldovan",
+    comment = c(ORCID = "0000-0001-9680-8474")
+  ),
   year    = "2026",
-  note    = "R package version 0.0.0.9000"
+  note    = "R package version 0.1.0",
+  url     = "https://github.com/max578/aciR"
 )
 
 bibentry(

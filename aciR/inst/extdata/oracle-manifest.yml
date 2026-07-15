@@ -1,0 +1,174 @@
+# Provenance of the independent-oracle fixtures shipped with aciR.
+#
+# Each fixture pair is (signal, reference): aciR runs its OWN filter, smoother
+# and metric on the signal and must reproduce the reference at the sampled
+# indices to the stated tolerance. The tests that enforce this are
+# tests/testthat/test-oracle-dyad.R and tests/testthat/test-oracle-cross.R;
+# tests/testthat/test-oracle-manifest.R checks the shipped bytes against the
+# hashes below, so a changed fixture cannot pass unnoticed.
+#
+# Read `grades` on each entry before citing a fixture as validation: an oracle
+# grades the paths its parameters exercise, and no others.
+
+manifest_version: 1
+package_version: 0.1.0
+generated_on: 2026-07-15
+
+upstream:
+  name: Reference implementation of assimilative causal inference
+  repository: https://github.com/marandmath/ACI_code
+  commit: 733c49fc5a36a5dad857608ef550a8f836466144
+  commit_date: 2026-06-19
+  licence: MIT
+  copyright: Marios Andreou
+  authors: Marios Andreou, Nan Chen, Erik Bollt
+  paper_doi: 10.1038/s41467-026-68568-0
+
+environment:
+  matlab_release: R2025b Update 1
+  matlab_version: 25.2.0.3042426
+  platform: macOS (Darwin 25.5.0, x86_64)
+
+fixtures:
+  - id: dyad
+    harness: oracle/aci_oracle_dyad.m
+    upstream_file: dyad_interaction_model.m
+    command: matlab -nodisplay -nosplash -batch "run('aci_oracle_dyad.m')"
+    seed: 333
+    n_steps: 30001
+    dt: 0.001
+    initial_filter_mean: 2.0
+    initial_filter_covariance: 0.1
+    parameters:
+      d_x: 0.5
+      d_y: 0.5
+      gamma: 2
+      F_x: 0.5
+      F_y: 1
+      sigma_x: 0.5
+      sigma_y: 1
+    grammians:
+      S_xoS_x: 0.25
+      S_yoS_y: 1.0
+      S_yoS_x: 0.0
+    sampled_indices: seq(1, 30001, by = 100)   # 301 rows
+    files:
+      dyad_signal_x.csv:
+        sha256: f2b4d5284e19151432d1e1216619c15e00183704fde4d4ba6e378618a648d602
+        md5: 5e63bd2686f8795853aaf90e6dc5ee96
+      dyad_reference.csv:
+        sha256: 6e7cebd1ccf5b0ac99e9e4ca78f3772c978c0706ae60e976650ae1350cc80090
+        md5: cfcf02792404b0593e2ad950fd5a0cee
+    reproduced_on: 2026-07-15
+    reproduced_note: >
+      Regenerated from the harness on MATLAB R2025b Update 1 into a scratch
+      directory and diffed: both files reproduced byte-for-byte, identical
+      SHA-256. The recorded MATLAB release is therefore grounded by
+      reproduction, not by recollection.
+    grades: >
+      The deterministic CGNS core -- filter, smoother and metric -- on a
+      state-dependent coupling L_x = gamma*x with INDEPENDENT noise. Because
+      the reference sets Sx_2 = Sy_1 = 0, the noise cross-covariance is zero:
+      the terms carrying S_yoS_x execute on every run of this fixture but are
+      annihilated, so this fixture does NOT grade them. See the `cross`
+      fixture and the analytic identities for those.
+    does_not_grade: >
+      The noise-cross-covariance terms; simulation (aciR's generator differs
+      from MATLAB's, so paths do not correspond at a matching seed); the
+      causal-influence-range, which is not yet implemented.
+
+  - id: cross
+    harness: oracle/aci_oracle_cross.m
+    upstream_file: null
+    command: matlab -nodisplay -nosplash -batch "run('aci_oracle_cross.m')"
+    seed: 4242
+    n_steps: 30001
+    dt: 0.001
+    initial_filter_mean: 2.0
+    initial_filter_covariance: 0.1
+    parameters:
+      d_x: 0.5
+      d_y: 0.5
+      gamma: 2
+      F_x: 0.5
+      F_y: 1
+      Sx_1: 0.6
+      Sx_2: 0.3
+      Sy_1: 0.5
+      Sy_2: 0.8
+    grammians:
+      S_xoS_x: 0.45
+      S_yoS_y: 0.89
+      S_yoS_x: 0.54
+      determinant: 0.1089
+    sampled_indices: seq(1, 30001, by = 100)   # 301 rows
+    files:
+      cross_signal_x.csv:
+        sha256: a364deab5ef541796c345b9eda00393ef767db1cb7679c86f1fb7742b5f08b7b
+        md5: 1435351d9764ae609aeef6c4ee00566e
+      cross_reference.csv:
+        sha256: f18754ea1fdd6a73296c4ecaeb13d3f5f1151b038bc69f8119a9b28f103ff608
+        md5: a48eecfa90733793560626f752c5de55
+    grades: >
+      The noise-cross-covariance terms of the filter (aux = S_yoS_x + R*L_x)
+      and the smoother (A_j and the S_yoS_x transport term), over the full
+      transient, on the reference dyad with correlated noise switched on.
+    does_not_grade: >
+      Nothing upstream. This harness has NO upstream counterpart: every scalar
+      model in the reference implementation (dyad_interaction_model.m,
+      noisy_predator_prey_model.m) sets Sx_2 = Sy_1 = 0. It is therefore a
+      second, independent implementation of the published equations in a
+      different language and runtime -- agreement refutes an R-side
+      transcription error, but it is NOT an authors'-reference grounding. The
+      primary grounding for these terms is analytic; see `analytic_oracles`.
+
+# The oracles that depend on no implementation at all. These are the primary
+# grounding for the cross-noise path: algebra on the governing equations,
+# solved in closed form in the test file and independent of BOTH aciR and
+# MATLAB.
+analytic_oracles:
+  - id: riccati_fixed_point
+    location: tests/testthat/test-identities.R
+    statement: >
+      The stationary filtered covariance of a constant-coefficient CGNS is the
+      positive root of the algebraic Riccati equation
+      L_x^2 R^2 - 2 (L_y S_xoS_x - S_yoS_x L_x) R - (S_yoS_y S_xoS_x - S_yoS_x^2) = 0.
+      Started at that root with a non-zero S_yoS_x, the recursion must stay
+      there to machine precision, since the fixed point of the ODE is exactly
+      the fixed point of its Euler map.
+    grades: the cross-noise terms in the stationary regime, exactly.
+  - id: terminal_identity
+    location: tests/testthat/test-identities.R
+    statement: >
+      The smoother equals the filter at the final index by construction.
+    grades: the smoother's terminal boundary condition, exactly.
+  - id: zero_information
+    location: tests/testthat/test-identities.R
+    statement: >
+      With no coupling and no noise cross-covariance the observed process is
+      independent of the unobserved one, so the metric is zero. The identity is
+      exact in continuous time only; under an explicit Euler scheme it vanishes
+      at second order in dt, which is what the test asserts.
+    grades: the filter/smoother agreement in the no-information limit.
+
+validation:
+  tolerance_gate: 1.0e-6
+  gate_semantics: >
+    Maximum absolute error across all five compared series at the 301 sampled
+    indices. Both oracle tests run from the installed package fixtures and
+    never skip.
+  # Measured on the release candidate, not recalled. Both are ~8 orders of
+  # magnitude inside the gate: the agreement is at the floating-point noise
+  # floor of a 30,001-step recursion, not merely within tolerance.
+  observed_max_abs_error:
+    dyad: 4.574119e-14
+    cross: 1.376677e-14
+  measured_on: 2026-07-15
+
+refresh:
+  policy: >
+    Fixtures are never regenerated in place. Run the harness into a scratch
+    directory, diff the SHA-256 against the values above, and replace the
+    shipped files only as a deliberate maintainer step with the new hashes and
+    a NEWS entry. A fixture whose hash changes without that step is a defect,
+    not an update.

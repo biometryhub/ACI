@@ -4,6 +4,12 @@
 # inference. They operate on a general CGNS "components" list rather than on a
 # specific model, so any conditional Gaussian nonlinear system can be filtered,
 # smoothed and scored by supplying the appropriate per-step coefficients.
+#
+# The symbols follow the governing equations of the method paper rather than R
+# naming convention: L_x, f_x, L_y, f_y for the drift coefficients, S_xoS_x and
+# its relatives for the noise Grammians, and A_j / B_j for the smoother's
+# per-step terms. The correspondence to the equations is the point, and the
+# package's lint configuration admits these names deliberately.
 
 #' Conditional Gaussian components list
 #'
@@ -24,14 +30,26 @@
 #'     unobserved process at each time step.}
 #'   \item{`S_xoS_x`}{Numeric scalar. The observation-noise covariance,
 #'     the product of the observed-process noise coefficient with its
-#'     transpose.}
+#'     transpose. Must be strictly positive.}
 #'   \item{`S_yoS_y`}{Numeric scalar. The latent-noise covariance of the
-#'     unobserved process.}
+#'     unobserved process. Must be non-negative.}
 #'   \item{`S_yoS_x`}{Numeric scalar. The latent-to-observation noise
 #'     cross-covariance.}
 #'   \item{`S_xoS_y`}{Numeric scalar. The observation-to-latent noise
-#'     cross-covariance, the transpose of `S_yoS_x`.}
+#'     cross-covariance, the transpose of `S_yoS_x`. For the scalar systems
+#'     this package integrates the two are equal, and a components list in
+#'     which they disagree is rejected.}
 #' }
+#'
+#' The joint noise covariance must be positive semidefinite, which for a
+#' scalar system means `S_xoS_x * S_yoS_y - S_yoS_x^2` is non-negative. A
+#' components list that violates any of these conditions is rejected before
+#' the recursion starts.
+#'
+#' This schema is the package's expert-level extension surface: build a
+#' components list directly to run the core on a conditional Gaussian system
+#' for which aciR supplies no constructor. See [aci_dyad_components()] for a
+#' worked example, and [aci_cgns_model()] for the higher-level alternative.
 #'
 #' @name aci_components
 #' @keywords internal
@@ -46,51 +64,67 @@ NULL
 #' to and including the current step.
 #'
 #' The recursion is the closed-form conditional Gaussian filter and is
-#' integrated with a first-order (Euler) step of width `dt`.
+#' integrated with a first-order (Euler) step of width `dt`. The observed
+#' signal is assumed to be complete and sampled on a regular grid of spacing
+#' `dt`.
 #'
-#' @param x Numeric vector. The observed signal, one value per time step.
+#' The filtered covariance is checked at every step. An explicit Euler scheme
+#' can drive the covariance non-positive when `dt` is too large for the
+#' system, even for a perfectly admissible model, and the relative entropy
+#' that scores the result has no meaning in that state. The recursion
+#' therefore stops at the first offending step and names it, rather than
+#' returning a trajectory that looks like a result.
+#'
+#' @param x Numeric vector. The observed signal, one value per time step; at
+#'   least two complete, finite observations.
 #' @param comp A conditional Gaussian components list; see [aci_components].
-#' @param dt Numeric scalar. The integration time step.
+#' @param dt Numeric scalar. The integration time step; must be positive.
 #' @param mu0 Numeric scalar. The initial filtered mean of the unobserved
 #'   component.
 #' @param R0 Numeric scalar. The initial filtered covariance of the unobserved
-#'   component.
+#'   component; must be positive.
 #'
-#' @return A list with two numeric vectors, `mean` and `cov`, the filtered mean
-#'   and covariance of the unobserved component at each time step.
+#' @returns A list with two numeric vectors, `mean` and `cov`, the filtered
+#'   mean and covariance of the unobserved component at each time step.
 #'
 #' @references
 #' Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
 #' *Nature Communications*, 17, 1854. \doi{10.1038/s41467-026-68568-0}
 #'
 #' @examples
-#' p <- list(
-#'   d_x = 0.5, d_y = 0.5, gamma = 2, F_x = 0.5, F_y = 1,
-#'   sigma_x = 0.5, sigma_y = 1
-#' )
-#' set.seed(1)
-#' sim <- aci_simulate_dyad(n = 2000, p = p)
-#' comp <- aci_dyad_components(sim$x, p)
-#' filt <- aci_filter(sim$x, comp, dt = 0.001, mu0 = p$F_y / p$d_y, R0 = 0.1)
+#' model <- aci_dyad_model()
+#' sim <- aci_simulate(model, n = 2000, seed = 1)
+#' comp <- aci_dyad_components(sim$x, model$parameters)
+#' filt <- aci_filter(sim$x, comp, dt = 0.001, mu0 = model$y0, R0 = 0.1)
 #' str(filt)
 #'
-#' @seealso [aci_smoother()], [aci_metric()]
+#' @seealso [aci_smoother()], [aci_metric()], [aci()]
 #' @export
 aci_filter <- function(x, comp, dt, mu0, R0) {
+  .aci_check_signal(x)
   n <- length(x)
+  .aci_check_components(comp, n)
+  .aci_check_positive(dt, "dt")
+  .aci_check_scalar(mu0, "mu0")
+  .aci_check_positive(R0, "R0")
+
+  # ---- Forward recursion ----------------------------------------------------
   m <- numeric(n)
   v <- numeric(n)
-  m[1] <- mu0
-  v[1] <- R0
+  m[1L] <- mu0
+  v[1L] <- R0
   inv <- 1 / comp$S_xoS_x
   mu <- mu0
   R <- R0
-  for (j in 2:n) {
-    dx <- x[j] - x[j - 1]
-    aux <- comp$S_yoS_x + R * comp$L_x[j - 1]
-    mu <- mu + (comp$L_y * mu + comp$f_y[j - 1]) * dt +
-      aux * inv * (dx - (comp$L_x[j - 1] * mu + comp$f_x[j - 1]) * dt)
+  for (j in seq_len(n - 1L) + 1L) {
+    dx <- x[j] - x[j - 1L]
+    aux <- comp$S_yoS_x + R * comp$L_x[j - 1L]
+    mu <- mu + (comp$L_y * mu + comp$f_y[j - 1L]) * dt +
+      aux * inv * (dx - (comp$L_x[j - 1L] * mu + comp$f_x[j - 1L]) * dt)
     R <- R + (2 * comp$L_y * R + comp$S_yoS_y - aux * inv * aux) * dt
+    if (!is.finite(R) || R <= 0) {
+      .aci_stop_covariance("filter", j, (j - 1L) * dt, R)
+    }
     m[j] <- mu
     v[j] <- R
   }
@@ -107,37 +141,45 @@ aci_filter <- function(x, comp, dt, mu0, R0) {
 #'
 #' The recursion is the closed-form conditional Gaussian smoother and is
 #' integrated with a first-order (Euler) step of width `dt`. It consumes the
-#' filtered trajectory returned by [aci_filter()].
+#' filtered trajectory returned by [aci_filter()], and, like the filter,
+#' stops at the first step at which the smoothed covariance leaves its domain.
+#'
+#' At the final index the smoother is the filter by construction: conditioning
+#' on the whole observed path and on the path up to the final step are the
+#' same conditioning. The returned trajectory reproduces that identity
+#' exactly.
 #'
 #' @param x Numeric vector. The observed signal, one value per time step.
 #' @param comp A conditional Gaussian components list; see [aci_components].
-#' @param dt Numeric scalar. The integration time step.
+#' @param dt Numeric scalar. The integration time step; must be positive.
 #' @param filt A list with numeric vectors `mean` and `cov`, as returned by
 #'   [aci_filter()].
 #'
-#' @return A list with two numeric vectors, `mean` and `cov`, the smoothed mean
-#'   and covariance of the unobserved component at each time step.
+#' @returns A list with two numeric vectors, `mean` and `cov`, the smoothed
+#'   mean and covariance of the unobserved component at each time step.
 #'
 #' @references
 #' Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
 #' *Nature Communications*, 17, 1854. \doi{10.1038/s41467-026-68568-0}
 #'
 #' @examples
-#' p <- list(
-#'   d_x = 0.5, d_y = 0.5, gamma = 2, F_x = 0.5, F_y = 1,
-#'   sigma_x = 0.5, sigma_y = 1
-#' )
-#' set.seed(1)
-#' sim <- aci_simulate_dyad(n = 2000, p = p)
-#' comp <- aci_dyad_components(sim$x, p)
-#' filt <- aci_filter(sim$x, comp, dt = 0.001, mu0 = p$F_y / p$d_y, R0 = 0.1)
+#' model <- aci_dyad_model()
+#' sim <- aci_simulate(model, n = 2000, seed = 1)
+#' comp <- aci_dyad_components(sim$x, model$parameters)
+#' filt <- aci_filter(sim$x, comp, dt = 0.001, mu0 = model$y0, R0 = 0.1)
 #' smooth <- aci_smoother(sim$x, comp, dt = 0.001, filt)
 #' str(smooth)
 #'
-#' @seealso [aci_filter()], [aci_metric()]
+#' @seealso [aci_filter()], [aci_metric()], [aci()]
 #' @export
 aci_smoother <- function(x, comp, dt, filt) {
+  .aci_check_signal(x)
   n <- length(x)
+  .aci_check_components(comp, n)
+  .aci_check_positive(dt, "dt")
+  .aci_check_posterior(filt, "filt", n)
+
+  # ---- Backward recursion ---------------------------------------------------
   m <- numeric(n)
   v <- numeric(n)
   m[n] <- filt$mean[n]
@@ -145,14 +187,22 @@ aci_smoother <- function(x, comp, dt, filt) {
   inv <- 1 / comp$S_xoS_x
   muT <- m[n]
   RT <- v[n]
-  for (j in (n - 1):1) {
-    dx <- x[j + 1] - x[j]
+  B_j <- comp$S_yoS_y - comp$S_yoS_x * inv * comp$S_xoS_y
+  for (j in rev(seq_len(n - 1L))) {
+    dx <- x[j + 1L] - x[j]
     A_j <- comp$L_y - comp$S_yoS_x * inv * comp$L_x[j]
-    B_j <- comp$S_yoS_y - comp$S_yoS_x * inv * comp$S_xoS_y
-    muT <- muT - (comp$L_y * muT + comp$f_y[j] -
-      B_j / filt$cov[j] * (filt$mean[j] - muT)) * dt +
-      comp$S_yoS_x * inv * (-dx + (comp$L_x[j] * muT + comp$f_x[j]) * dt)
+    # The backward mean carries two contributions: the reversed prior drift
+    # corrected toward the filtered estimate, and the transport term through
+    # which the noise cross-covariance enters.
+    drift <- comp$L_y * muT + comp$f_y[j] -
+      B_j / filt$cov[j] * (filt$mean[j] - muT)
+    transport <- comp$S_yoS_x * inv *
+      (-dx + (comp$L_x[j] * muT + comp$f_x[j]) * dt)
+    muT <- muT - drift * dt + transport
     RT <- RT - (2 * (A_j + B_j / filt$cov[j]) * RT - B_j) * dt
+    if (!is.finite(RT) || RT <= 0) {
+      .aci_stop_covariance("smoother", j, (j - 1L) * dt, RT)
+    }
     m[j] <- muT
     v[j] <- RT
   }
@@ -173,35 +223,73 @@ aci_smoother <- function(x, comp, dt, filt) {
 #' means relative to the filtered covariance, and a dispersion part, driven by
 #' the ratio of the smoothed to the filtered covariance.
 #'
+#' The dispersion part is evaluated in a form that stays accurate when the two
+#' covariances nearly agree. Writing the covariance ratio as `1 + d`, the
+#' naive expression subtracts two nearly equal quantities and loses precision
+#' exactly where the metric is smallest; the form used here does not. Values
+#' that round to a small negative number are clamped to zero, and anything
+#' more negative than round-off is an error rather than a result.
+#'
 #' @param filt A list with numeric vectors `mean` and `cov`, the filtered mean
 #'   and covariance, as returned by [aci_filter()].
 #' @param smooth A list with numeric vectors `mean` and `cov`, the smoothed
 #'   mean and covariance, as returned by [aci_smoother()].
 #'
-#' @return A numeric vector of the causal-information metric at each time step.
+#' @returns A numeric vector of the causal-information metric at each time
+#'   step, non-negative throughout.
 #'
 #' @references
 #' Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
 #' *Nature Communications*, 17, 1854. \doi{10.1038/s41467-026-68568-0}
 #'
 #' @examples
-#' p <- list(
-#'   d_x = 0.5, d_y = 0.5, gamma = 2, F_x = 0.5, F_y = 1,
-#'   sigma_x = 0.5, sigma_y = 1
-#' )
-#' set.seed(1)
-#' sim <- aci_simulate_dyad(n = 2000, p = p)
-#' comp <- aci_dyad_components(sim$x, p)
-#' filt <- aci_filter(sim$x, comp, dt = 0.001, mu0 = p$F_y / p$d_y, R0 = 0.1)
+#' model <- aci_dyad_model()
+#' sim <- aci_simulate(model, n = 2000, seed = 1)
+#' comp <- aci_dyad_components(sim$x, model$parameters)
+#' filt <- aci_filter(sim$x, comp, dt = 0.001, mu0 = model$y0, R0 = 0.1)
 #' smooth <- aci_smoother(sim$x, comp, dt = 0.001, filt)
-#' aci <- aci_metric(filt, smooth)
-#' summary(aci)
+#' summary(aci_metric(filt, smooth))
 #'
-#' @seealso [aci_filter()], [aci_smoother()]
+#' @seealso [aci_filter()], [aci_smoother()], [aci()]
 #' @export
 aci_metric <- function(filt, smooth) {
+  .aci_check_posterior(filt, "filt")
+  .aci_check_posterior(smooth, "smooth", length(filt$mean))
+
+  # ---- Relative entropy of the smoother from the filter ---------------------
   signal <- 0.5 * (smooth$mean - filt$mean)^2 / filt$cov
-  cov_ratio <- smooth$cov / filt$cov
-  dispersion <- 0.5 * (-log(cov_ratio) + cov_ratio - 1)
-  signal + dispersion
+  ratio_delta <- smooth$cov / filt$cov - 1
+  dispersion <- 0.5 * (ratio_delta - log1p(ratio_delta))
+  value <- signal + dispersion
+
+  # ---- Domain boundary ------------------------------------------------------
+  # A relative entropy is finite and non-negative for a genuine posterior pair,
+  # so anything else is either floating-point noise where the two posteriors
+  # agree, or a defect. The noise is clamped within a documented tolerance; the
+  # defect is reported rather than returned.
+  #
+  # Non-finiteness is tested first and separately. A covariance ratio that
+  # overflows yields Inf - Inf = NaN, and NaN would slip past a comparison
+  # guard unnoticed: `NaN <= x` is NA, not TRUE.
+  round_off <- 1e-10
+  offending <- which(!is.finite(value) | value <= -round_off)
+  if (length(offending) > 0L) {
+    index <- offending[1L]
+    stop(
+      sprintf(
+        paste0(
+          "The causal-information metric is a relative entropy, so it must be ",
+          "finite and non-negative, but it is %s at index %d. The posteriors ",
+          "supplied are not a filter/smoother pair of one system: this arises ",
+          "when their covariances differ by so many orders of magnitude that ",
+          "their ratio overflows. If they are a genuine pair, please report ",
+          "this as a bug."
+        ),
+        format(value[index]), index
+      ),
+      call. = FALSE
+    )
+  }
+  value[value < 0] <- 0
+  value
 }

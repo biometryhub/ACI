@@ -1,4 +1,4 @@
-url: ~
+url: https://max578.github.io/aciR/
 
 template:
   bootstrap: 5
@@ -26,15 +26,21 @@ reference:
 - title: The nonlinear dyad model
   desc: >
     The worked-example dyad model with intermittent extreme events, at the
-    components level.
+    components level, and the components schema it illustrates.
   contents:
+  - aci_components
   - aci_dyad_components
-  - aci_simulate_dyad
 - title: Methods
-  desc: Print methods for the model and result objects.
+  desc: >
+    Reporting methods for the model and result objects. Inspecting, plotting or
+    exporting a result should never require indexing into it.
   contents:
   - print.aci
   - print.aci_model
+  - summary.aci
+  - print.summary.aci
+  - as.data.frame.aci
+  - plot.aci
 - title: Package
   contents:
   - aciR-package
@@ -44,3 +50,8 @@ articles:
   navbar: ~
   contents:
   - aciR
+- title: Scope and evidence
+  navbar: Scope and evidence
+  contents:
+  - assumptions
+  - validation

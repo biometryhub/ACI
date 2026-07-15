@@ -11,14 +11,14 @@ aci_smoother(x, comp, dt, filt)
 
 \item{comp}{A conditional Gaussian components list; see \link{aci_components}.}
 
-\item{dt}{Numeric scalar. The integration time step.}
+\item{dt}{Numeric scalar. The integration time step; must be positive.}
 
 \item{filt}{A list with numeric vectors \code{mean} and \code{cov}, as returned by
 \code{\link[=aci_filter]{aci_filter()}}.}
 }
 \value{
-A list with two numeric vectors, \code{mean} and \code{cov}, the smoothed mean
-and covariance of the unobserved component at each time step.
+A list with two numeric vectors, \code{mean} and \code{cov}, the smoothed
+mean and covariance of the unobserved component at each time step.
 }
 \description{
 Runs the backward smoother of a conditional Gaussian nonlinear system.
@@ -30,17 +30,19 @@ whole observed path.
 \details{
 The recursion is the closed-form conditional Gaussian smoother and is
 integrated with a first-order (Euler) step of width \code{dt}. It consumes the
-filtered trajectory returned by \code{\link[=aci_filter]{aci_filter()}}.
+filtered trajectory returned by \code{\link[=aci_filter]{aci_filter()}}, and, like the filter,
+stops at the first step at which the smoothed covariance leaves its domain.
+
+At the final index the smoother is the filter by construction: conditioning
+on the whole observed path and on the path up to the final step are the
+same conditioning. The returned trajectory reproduces that identity
+exactly.
 }
 \examples{
-p <- list(
-  d_x = 0.5, d_y = 0.5, gamma = 2, F_x = 0.5, F_y = 1,
-  sigma_x = 0.5, sigma_y = 1
-)
-set.seed(1)
-sim <- aci_simulate_dyad(n = 2000, p = p)
-comp <- aci_dyad_components(sim$x, p)
-filt <- aci_filter(sim$x, comp, dt = 0.001, mu0 = p$F_y / p$d_y, R0 = 0.1)
+model <- aci_dyad_model()
+sim <- aci_simulate(model, n = 2000, seed = 1)
+comp <- aci_dyad_components(sim$x, model$parameters)
+filt <- aci_filter(sim$x, comp, dt = 0.001, mu0 = model$y0, R0 = 0.1)
 smooth <- aci_smoother(sim$x, comp, dt = 0.001, filt)
 str(smooth)
 
@@ -50,5 +52,5 @@ Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
 \emph{Nature Communications}, 17, 1854. \doi{10.1038/s41467-026-68568-0}
 }
 \seealso{
-\code{\link[=aci_filter]{aci_filter()}}, \code{\link[=aci_metric]{aci_metric()}}
+\code{\link[=aci_filter]{aci_filter()}}, \code{\link[=aci_metric]{aci_metric()}}, \code{\link[=aci]{aci()}}
 }

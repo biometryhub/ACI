@@ -1,0 +1,31 @@
+linters: linters_with_defaults(
+    line_length_linter(80L),
+    object_name_linter(
+      styles = "snake_case",
+      regexes = c(
+        # The numerical core is written in the notation of the governing
+        # equations of the method paper, and the correspondence is the point:
+        # a reader diffing R/aci-core.R against the reference implementation
+        # must see the same symbols. Admitted deliberately and narrowly -- the
+        # drift coefficients, the noise Grammians, the smoother's per-step
+        # terms, the filter and backward-sweep state, and the dyad parameters.
+        # Widening this rule needs a reason; see CONTRIBUTING.md.
+        equation_notation = paste0(
+          "^(L_[xy]|f_[xy]|S_[xy]oS_[xy]|[AB]_j|mu[0T]?|R[0T]?",
+          "|[dF]_[xy]|sigma_[xy]|gamma)$"
+        ),
+        # The analytic fixed points the identity tests grade against, written
+        # as the equations write them: R*, RT*, mu*, muT*.
+        stationary_points = "^(R|RT|mu|muT)_(star|numerator|denominator)$",
+        # S3 methods carry the generic's name, which is not snake_case for the
+        # dotted base-R generics.
+        s3_methods = "^(as\\.data\\.frame|print|summary|plot)\\.(aci|aci_model|summary\\.aci)$",
+        # Base R owns these names: .Random.seed, and the argument names the
+        # as.data.frame generic mandates for its methods.
+        base_r_names = "^(\\.Random\\.seed|row\\.names)$"
+      )
+    )
+  )
+exclusions: list(
+    "tests/testthat.R" = list(object_name_linter = Inf)
+  )

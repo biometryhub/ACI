@@ -10,7 +10,9 @@ aci_dyad_components(x, p)
 \item{x}{Numeric vector. The observed signal, one value per time step.}
 
 \item{p}{A named list of dyad parameters with elements \code{d_x}, \code{d_y},
-\code{gamma}, \code{F_x}, \code{F_y}, \code{sigma_x} and \code{sigma_y}.}
+\code{gamma}, \code{F_x}, \code{F_y}, \code{sigma_x} and \code{sigma_y}, each a finite numeric
+scalar. The \code{parameters} entry of an \code{\link[=aci_dyad_model]{aci_dyad_model()}} is exactly this
+list.}
 }
 \value{
 A conditional Gaussian components list; see \link{aci_components}.
@@ -26,15 +28,16 @@ In the dyad model the observed process couples to the unobserved process
 through the state-dependent term \code{gamma * x}, and the unobserved process has
 constant linear self-drift \code{-d_y}. The two noise sources are independent, so
 the noise cross-covariances are zero.
+
+Most users should reach for \code{\link[=aci_dyad_model]{aci_dyad_model()}} and \code{\link[=aci]{aci()}} instead. This
+function is the worked example of the components schema: read it as the
+template for a conditional Gaussian system the package supplies no
+constructor for. See \link{aci_components} for the schema itself.
 }
 \examples{
-p <- list(
-  d_x = 0.5, d_y = 0.5, gamma = 2, F_x = 0.5, F_y = 1,
-  sigma_x = 0.5, sigma_y = 1
-)
-set.seed(1)
-sim <- aci_simulate_dyad(n = 2000, p = p)
-comp <- aci_dyad_components(sim$x, p)
+model <- aci_dyad_model()
+sim <- aci_simulate(model, n = 2000, seed = 1)
+comp <- aci_dyad_components(sim$x, model$parameters)
 str(comp)
 
 }
@@ -43,5 +46,5 @@ Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
 \emph{Nature Communications}, 17, 1854. \doi{10.1038/s41467-026-68568-0}
 }
 \seealso{
-\code{\link[=aci_simulate_dyad]{aci_simulate_dyad()}}, \code{\link[=aci_filter]{aci_filter()}}
+\link{aci_components}, \code{\link[=aci_dyad_model]{aci_dyad_model()}}, \code{\link[=aci_filter]{aci_filter()}}
 }

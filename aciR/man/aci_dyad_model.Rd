@@ -25,7 +25,8 @@ aci_dyad_model(
 
 \item{F_y}{Numeric scalar. Constant forcing of the unobserved process.}
 
-\item{sigma_x}{Numeric scalar. Noise coefficient of the observed process.}
+\item{sigma_x}{Numeric scalar. Noise coefficient of the observed process;
+must be non-zero, since its square is the observation-noise covariance.}
 
 \item{sigma_y}{Numeric scalar. Noise coefficient of the unobserved process.}
 }
@@ -50,7 +51,7 @@ model <- aci_dyad_model()
 model
 sim <- aci_simulate(model, n = 5000, seed = 333)
 fit <- aci(sim$x, model)
-summary(fit$aci)
+summary(fit)
 
 }
 \references{

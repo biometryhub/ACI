@@ -4,25 +4,32 @@
 \alias{aci}
 \title{Run assimilative causal inference}
 \usage{
-aci(x, model, dt = 0.001, mu0 = NULL, R0 = 0.1)
+aci(x, model, dt = 0.001, mu0 = NULL, R0 = 0.1, time = NULL)
 }
 \arguments{
-\item{x}{Numeric vector. The observed signal, one value per time step.}
+\item{x}{Numeric vector. The observed signal, one complete finite value per
+time step; at least two.}
 
 \item{model}{An \code{aci_model} object; see \code{\link[=aci_cgns_model]{aci_cgns_model()}}.}
 
-\item{dt}{Numeric scalar. The integration time step.}
+\item{dt}{Numeric scalar. The integration time step; must be positive.
+Ignored with a check when \code{time} is supplied.}
 
 \item{mu0}{Numeric scalar. The initial filtered mean of the unobserved
 component. Defaults to the model's initial unobserved state \code{y0}.}
 
 \item{R0}{Numeric scalar. The initial filtered covariance of the unobserved
 component; must be positive.}
+
+\item{time}{Optional numeric vector. The observed time grid, one value per
+observation, strictly increasing and equally spaced. When supplied, \code{dt}
+is derived from it.}
 }
 \value{
 An \code{aci} object: a list with the \code{model}, the time vector \code{t}, the
 observed signal \code{x}, the \code{filter} and \code{smoother} statistics (each a list of
 \code{mean} and \code{cov}), the causal-information metric \code{aci}, and the step \code{dt}.
+See \code{\link[=summary.aci]{summary.aci()}}, \code{\link[=plot.aci]{plot.aci()}} and \code{\link[=as.data.frame.aci]{as.data.frame.aci()}}.
 }
 \description{
 Runs the whole assimilative causal inference workflow on an observed signal
@@ -31,12 +38,26 @@ from the model and the signal, runs the forward filter and backward smoother,
 and scores each step with the causal-information metric. This is the single
 user-facing entry point that ties the numerical core together.
 }
+\details{
+The workflow assumes the observed signal is complete and sampled on a
+regular grid: the closed-form recursions integrate a fixed step, and there
+is no contract for missing observations or for an irregular grid. By default
+the time vector is constructed from \code{dt}; supply \code{time} instead to have the
+step derived from an observed grid and the regularity checked.
+
+The metric this returns is a statement about the supplied model, not about
+the world. See the \emph{Assumptions and interpretation} vignette for what an ACI
+peak does and does not support.
+}
 \examples{
 model <- aci_dyad_model()
 sim <- aci_simulate(model, n = 5000, seed = 333)
 fit <- aci(sim$x, model)
 fit
-str(fit$filter)
+
+# An observed time grid may be supplied instead of a step.
+fit_time <- aci(sim$x, model, time = sim$t)
+identical(fit$aci, fit_time$aci)
 
 }
 \references{
@@ -44,5 +65,5 @@ Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
 \emph{Nature Communications}, 17, 1854. \doi{10.1038/s41467-026-68568-0}
 }
 \seealso{
-\code{\link[=aci_filter]{aci_filter()}}, \code{\link[=aci_smoother]{aci_smoother()}}, \code{\link[=aci_metric]{aci_metric()}}
+\code{\link[=aci_filter]{aci_filter()}}, \code{\link[=aci_smoother]{aci_smoother()}}, \code{\link[=aci_metric]{aci_metric()}}, \code{\link[=summary.aci]{summary.aci()}}
 }

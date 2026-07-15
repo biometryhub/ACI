@@ -1,0 +1,178 @@
+---
+title: "Validation and the independent oracle"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Validation and the independent oracle}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## The problem this addresses
+
+A test suite written by the author of the code it tests can only prove the code
+is self-consistent. If the author misread an equation, the test encodes the
+same misreading and passes. For a package whose entire purpose is to reproduce
+a published numerical method, self-consistency is close to worthless: the
+question is not whether aciR agrees with itself, but whether it agrees with the
+method.
+
+Every numerical claim aciR makes is therefore graded against a reference the
+package did not produce. This article records what those references are, how
+they were generated, what each one covers, and -- the part most easily
+overlooked -- what each one does *not* cover.
+
+```{r library}
+library(aciR)
+```
+
+## The three oracles
+
+aciR uses three, because no one of them is sufficient.
+
+### 1. The dyad fixture, from the authors' reference implementation
+
+The flagship oracle. A MATLAB harness reproduces the deterministic core of
+`dyad_interaction_model.m` from the reference implementation at
+[github.com/marandmath/ACI_code](https://github.com/marandmath/ACI_code)
+(MIT licence, commit `733c49f`), using that reference's own seed and
+parameters. It writes two files: the observed signal, and the expected filter
+mean, filter covariance, smoother mean, smoother covariance and ACI metric at
+every hundredth step.
+
+aciR then runs its *own* filter, smoother and metric on that signal and must
+reproduce all five series. The comparison is at 301 sampled indices of a
+30,001-step trajectory, and the gate is a maximum absolute error below `1e-6`.
+
+The observed agreement is far tighter than the gate:
+
+| Oracle | Maximum absolute error | Gate |
+|---|---|---|
+| Dyad | `4.574119e-14` | `1e-6` |
+| Cross-noise | `1.376677e-14` | `1e-6` |
+
+Both sit at the floating-point noise floor of a 30,001-step recursion. This is
+not agreement within tolerance; it is agreement to the last few bits the
+arithmetic can carry.
+
+### 2. The cross-noise fixture, and why it had to exist
+
+The dyad oracle is strong, but its scope is narrower than it first appears, and
+the gap is instructive.
+
+Every scalar model in the reference implementation -- the dyad and the noisy
+predator-prey model alike -- sets the noise decomposition so that the noise
+cross-covariance is zero. The filter's update carries a term
+`aux = S_yoS_x + R * L_x`, and the smoother carries `A_j` and a transport term,
+all of which involve that cross-covariance. On every run of the dyad fixture
+those terms *execute*, and are multiplied by zero.
+
+The consequence is worth stating plainly. Line coverage sees the arithmetic run
+and reports it covered. The oracle sees the outputs agree and reports them
+graded. Neither is wrong, and yet the cross-covariance terms had never been
+checked against anything -- while `aci_cgns_model(S_yoS_x = ...)` exposes them
+to users as a supported path. A high coverage figure on a graded path had been
+manufacturing confidence in an ungraded path beside it.
+
+So aciR ships a second harness, `aci_oracle_cross.m`, which is the reference
+dyad with correlated noise switched on. It has no upstream counterpart, because
+upstream has no scalar model that exercises these terms. It is therefore a
+second independent implementation of the published equations in a different
+language and runtime. Agreement with it refutes a transcription error on the R
+side over the full transient. It is *not* an authors'-reference grounding, and
+the manifest says so.
+
+### 3. The analytic identities, which depend on no implementation
+
+The primary grounding for the cross-noise path is not either fixture. It is
+algebra.
+
+For a constant-coefficient system the stationary filtered covariance is the
+positive root of an algebraic Riccati equation, obtained by setting the
+covariance derivative to zero:
+
+$$
+L_x^2 R^2 \;-\; 2\left(L_y S_{xx} - S_{yx} L_x\right) R
+\;-\; \left(S_{yy} S_{xx} - S_{yx}^2\right) \;=\; 0 .
+$$
+
+Started at that root with a non-zero cross-covariance, the recursion must stay
+there to machine precision, because the fixed point of the differential
+equation is exactly the fixed point of its Euler map. This oracle is derived
+from the governing equations and is independent of aciR *and* of MATLAB. The
+package's tests also check the smoother's analogous fixed point, the terminal
+identity, and the zero-information limit.
+
+The zero-information test deserves a note, because it is where a naive test
+would have been wrong. With no coupling and no cross-covariance the observed
+process is independent of the unobserved one, so the smoother must equal the
+filter and the metric must be zero. That identity is exact in continuous time
+only. Under an explicit Euler scheme the forward and backward sweeps do not
+invert one another exactly, so asserting equality would assert a property of
+the mathematics against an approximation of it. The test instead asserts that
+the residual vanishes at second order in the step, which is the true claim and
+a stronger one: it checks the *rate*, not just the size.
+
+## Provenance and the manifest
+
+Trusting a committed fixture requires knowing where it came from and being able
+to tell an intentional change from an accidental one.
+`inst/extdata/oracle-manifest.yml` records, for each fixture, the upstream
+repository and immutable commit, the licence and copyright holder, the MATLAB
+release, the exact generating command, the parameters and seed, the sampled
+indices, both an MD5 and a SHA-256 hash, the measured error -- and a `grades`
+and `does_not_grade` field.
+
+```{r manifest}
+manifest <- system.file("extdata", "oracle-manifest.yml", package = "aciR")
+cat(paste(readLines(manifest)[1:12], collapse = "\n"))
+```
+
+The recorded MATLAB release is grounded by reproduction rather than by
+recollection: the harness was rerun on that release into a scratch directory
+and both files reproduced byte-for-byte, with identical hashes to the committed
+copies. A test checks the shipped bytes against the recorded hashes on every
+run, so a fixture cannot drift silently.
+
+Fixtures are never regenerated in place. The refresh procedure generates into a
+scratch directory and diffs the hashes, and replacing a shipped file is a
+deliberate maintainer step with a `NEWS.md` entry. A fixture whose hash changes
+without that step is a defect, not an update.
+
+## What is not validated
+
+An oracle grades the paths its parameters exercise and no others. The following
+are outside the current evidence, and are listed here rather than left for a
+reader to discover.
+
+* **Simulation.** `aci_simulate()` draws from R's generator, which differs from
+  MATLAB's, so a simulated path does not correspond to the reference path even
+  at a matching seed. The oracle grade runs on the MATLAB signal, never on a
+  fresh simulation. Simulation is checked for reproducibility and for its
+  contract, not against a reference path.
+* **A time-varying self-drift.** Not implemented, so not graded.
+* **The causal-influence-range.** Not implemented. It waits on its own fixture.
+* **Vector states.** Not implemented.
+* **Model adequacy.** No oracle can grade this, and none pretends to. Whether
+  the system you supplied describes your data is a scientific question, treated
+  in the companion article *Assumptions and interpretation*.
+
+## Reproducing the grade
+
+The oracle tests run from the installed package fixtures. They never skip, on
+any platform, in any check environment -- a validation gate that can skip is not
+a gate, and an earlier version of these tests could skip when run outside the
+development tree.
+
+```{r reproduce, eval = FALSE}
+testthat::test_local(system.file(package = "aciR"))
+```
+
+Regenerating the fixtures needs MATLAB and the harnesses in the project's
+`oracle/` directory. The commands are in the manifest.

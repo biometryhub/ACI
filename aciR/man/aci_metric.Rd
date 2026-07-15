@@ -14,7 +14,8 @@ and covariance, as returned by \code{\link[=aci_filter]{aci_filter()}}.}
 mean and covariance, as returned by \code{\link[=aci_smoother]{aci_smoother()}}.}
 }
 \value{
-A numeric vector of the causal-information metric at each time step.
+A numeric vector of the causal-information metric at each time
+step, non-negative throughout.
 }
 \description{
 Computes the assimilative causal-information metric at each time step. The
@@ -29,19 +30,21 @@ For scalar conditional Gaussian posteriors the relative entropy separates
 into a signal part, driven by the shift between the smoothed and filtered
 means relative to the filtered covariance, and a dispersion part, driven by
 the ratio of the smoothed to the filtered covariance.
+
+The dispersion part is evaluated in a form that stays accurate when the two
+covariances nearly agree. Writing the covariance ratio as \code{1 + d}, the
+naive expression subtracts two nearly equal quantities and loses precision
+exactly where the metric is smallest; the form used here does not. Values
+that round to a small negative number are clamped to zero, and anything
+more negative than round-off is an error rather than a result.
 }
 \examples{
-p <- list(
-  d_x = 0.5, d_y = 0.5, gamma = 2, F_x = 0.5, F_y = 1,
-  sigma_x = 0.5, sigma_y = 1
-)
-set.seed(1)
-sim <- aci_simulate_dyad(n = 2000, p = p)
-comp <- aci_dyad_components(sim$x, p)
-filt <- aci_filter(sim$x, comp, dt = 0.001, mu0 = p$F_y / p$d_y, R0 = 0.1)
+model <- aci_dyad_model()
+sim <- aci_simulate(model, n = 2000, seed = 1)
+comp <- aci_dyad_components(sim$x, model$parameters)
+filt <- aci_filter(sim$x, comp, dt = 0.001, mu0 = model$y0, R0 = 0.1)
 smooth <- aci_smoother(sim$x, comp, dt = 0.001, filt)
-aci <- aci_metric(filt, smooth)
-summary(aci)
+summary(aci_metric(filt, smooth))
 
 }
 \references{
@@ -49,5 +52,5 @@ Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
 \emph{Nature Communications}, 17, 1854. \doi{10.1038/s41467-026-68568-0}
 }
 \seealso{
-\code{\link[=aci_filter]{aci_filter()}}, \code{\link[=aci_smoother]{aci_smoother()}}
+\code{\link[=aci_filter]{aci_filter()}}, \code{\link[=aci_smoother]{aci_smoother()}}, \code{\link[=aci]{aci()}}
 }

@@ -12,7 +12,6 @@ aci_cgns_model(
   S_xoS_x,
   S_yoS_y,
   S_yoS_x = 0,
-  S_xoS_y = S_yoS_x,
   x0 = 0,
   y0 = 0,
   label = "conditional Gaussian nonlinear system",
@@ -21,8 +20,8 @@ aci_cgns_model(
 }
 \arguments{
 \item{L_x}{Coupling of the unobserved component into the drift of the
-observed process. A vectorised function of the observed signal, or a
-numeric scalar for a constant coupling.}
+observed process. A vectorised function of the observed signal returning
+one value per observation, or a numeric scalar for a constant coupling.}
 
 \item{f_x}{Remaining drift of the observed process. A vectorised function of
 the observed signal, or a numeric scalar.}
@@ -37,13 +36,10 @@ of the observed signal, or a numeric scalar.}
 positive.}
 
 \item{S_yoS_y}{Numeric scalar. The latent-noise covariance of the unobserved
-process.}
+process; must be non-negative.}
 
 \item{S_yoS_x}{Numeric scalar. The latent-to-observation noise
 cross-covariance. The default \code{0} is independent noise.}
-
-\item{S_xoS_y}{Numeric scalar. The observation-to-latent noise
-cross-covariance, the transpose of \code{S_yoS_x}. Defaults to \code{S_yoS_x}.}
 
 \item{x0}{Numeric scalar. The initial value of the observed process, used
 when simulating.}
@@ -53,8 +49,8 @@ when simulating and as the default initial filtered mean.}
 
 \item{label}{Character string. A human-readable name for the model.}
 
-\item{parameters}{Optional named list of the scalar parameters that define
-the model, retained for printing and reproducibility.}
+\item{parameters}{Optional named list of the finite numeric scalars that
+define the model, retained for printing and reproducibility.}
 }
 \value{
 An \code{aci_model} object: a list of the model coefficients, noise
@@ -65,8 +61,8 @@ Builds an \code{aci_model} object for a conditional Gaussian nonlinear system
 (CGNS). A CGNS pairs an observed process \code{x} with an unobserved process \code{y}
 whose statistics, conditional on the observed path, are Gaussian in closed
 form. The model is described by the coefficients of the pair of governing
-stochastic differential equations, and this constructor is the elegant
-general entry point for supplying them.
+stochastic differential equations, and this constructor is the general entry
+point for supplying them.
 }
 \details{
 The observed process obeys \verb{dx = (L_x(x) y + f_x(x)) dt + dW_x} and the
@@ -82,8 +78,19 @@ roadmapped; see the package \code{NEWS}.
 
 The noise is described by its Grammians, the entries of the noise covariance
 of the pair of processes. \code{S_xoS_x} and \code{S_yoS_y} are the observation-noise
-and latent-noise covariances, and \code{S_yoS_x} (with its transpose \code{S_xoS_y})
-is the noise cross-covariance, zero for independent noise.
+and latent-noise covariances, and \code{S_yoS_x} is the noise cross-covariance,
+zero for independent noise. For the scalar systems this package integrates
+the cross-covariance is symmetric, so the transpose \code{S_xoS_y} of the
+components schema is derived rather than supplied.
+
+The noise covariance must be mathematically admissible: \code{S_xoS_x} strictly
+positive (the filter inverts it), \code{S_yoS_y} non-negative, and the joint
+covariance positive semidefinite, that is
+\code{S_xoS_x * S_yoS_y - S_yoS_x^2 >= 0}. A model that violates any of these
+cannot be constructed. A singular system, whose determinant is zero,
+describes perfectly correlated noise and is admissible, but it can drive the
+filtered covariance toward zero; \code{\link[=aci_filter]{aci_filter()}} reports the step at which
+that happens rather than returning an uninterpretable result.
 }
 \examples{
 # A linear Ornstein-Uhlenbeck pair with constant coupling.
@@ -93,7 +100,13 @@ model <- aci_cgns_model(
 )
 sim <- aci_simulate(model, n = 2000, dt = 0.01, seed = 1)
 fit <- aci(sim$x, model, dt = 0.01)
-summary(fit$aci)
+summary(fit)
+
+# An inadmissible noise covariance is rejected at construction.
+try(aci_cgns_model(
+  L_x = 1, f_x = 0, L_y = -0.5, f_y = 0,
+  S_xoS_x = 1, S_yoS_y = -1
+))
 
 }
 \references{
@@ -101,5 +114,5 @@ Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
 \emph{Nature Communications}, 17, 1854. \doi{10.1038/s41467-026-68568-0}
 }
 \seealso{
-\code{\link[=aci_dyad_model]{aci_dyad_model()}}, \code{\link[=aci_simulate]{aci_simulate()}}, \code{\link[=aci]{aci()}}
+\code{\link[=aci_dyad_model]{aci_dyad_model()}}, \code{\link[=aci_simulate]{aci_simulate()}}, \code{\link[=aci]{aci()}}, \link{aci_components}
 }

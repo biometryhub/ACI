@@ -12,14 +12,14 @@ aci_simulate(model, n, dt = 0.001, seed = NULL)
 \item{n}{Integer scalar. The number of time steps to simulate, including the
 initial step; at least two.}
 
-\item{dt}{Numeric scalar. The integration time step.}
+\item{dt}{Numeric scalar. The integration time step; must be positive.}
 
-\item{seed}{Optional integer. If supplied, passed to \code{\link[=set.seed]{set.seed()}} for a
-reproducible path.}
+\item{seed}{Optional integer. If supplied, seeds a reproducible path and
+restores the caller's generator state on exit.}
 }
 \value{
-A data frame with \code{n} rows and columns \code{t} (time), \code{x} (the observed
-process) and \code{y} (the unobserved process).
+A data frame with \code{n} rows and columns \code{t} (time), \code{x} (the
+observed process) and \code{y} (the unobserved process).
 }
 \description{
 Simulates a realisation of the observed and unobserved processes of an
@@ -32,8 +32,13 @@ The random increments come from R's generator, which differs from that of
 the reference MATLAB implementation, so a simulated path here does not
 reproduce the reference path even at a matching seed. This is expected: the
 independent-oracle grade of the numerical core is run on the MATLAB signal
-itself, not on a fresh simulation. Set \code{seed} for a path that is reproducible
-within R.
+itself, not on a fresh simulation.
+
+Supplying \code{seed} makes the path reproducible without disturbing the calling
+session: the generator state is saved before the draw and restored when the
+function exits, so a seeded call has no effect on the sequence a caller
+would otherwise have seen. Leaving \code{seed} as \code{NULL} consumes the global
+stream in the ordinary way.
 
 Simulation supports independent noise, that is a model with zero noise
 cross-covariance.
@@ -42,6 +47,13 @@ cross-covariance.
 model <- aci_dyad_model()
 sim <- aci_simulate(model, n = 5000, seed = 333)
 head(sim)
+
+# A seeded call leaves the caller's random stream untouched.
+set.seed(1)
+before <- runif(1)
+set.seed(1)
+invisible(aci_simulate(model, n = 10, seed = 99))
+identical(before, runif(1))
 
 }
 \references{
