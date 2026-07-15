@@ -18,6 +18,7 @@ remotes::install_github("max578/aciR", subdir = "aciR")
 |---|---|
 | [`aciR/`](aciR/) | The R package. Start at its [README](aciR/README.md). |
 | [`oracle/`](oracle/) | MATLAB harnesses that generate the validation fixtures, and the fixtures themselves. |
+| [`design/`](design/) | The design record: an external critical review of 0.0.0.9000 and the specification that answered it. Historical, not maintained against the code. |
 
 The package is a subdirectory rather than the repository root so that the
 oracle harnesses can live beside it: the fixtures they produce are the
