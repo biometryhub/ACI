@@ -1,4 +1,14 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
+#
+# Coverage is computed and reported here, and deliberately NOT uploaded to a
+# third-party service. Two reasons. The repository is private, so an upload
+# would ship its coverage metadata off-machine, which is a choice to make
+# deliberately rather than inherit from a template. And coverage is a
+# regression alarm for this package, not a target: the real gates are the
+# independent-oracle tests, which grade the numerics against fixtures the
+# package did not produce. A package can sit at 100% coverage while leaving a
+# public path ungraded -- which is precisely what happened to the
+# noise-cross-covariance terms before 0.1.0.
 on:
   push:
     branches: [main, master]
@@ -22,6 +32,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: r-lib/actions/setup-pandoc@v2
+
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
@@ -29,30 +41,36 @@ jobs:
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           working-directory: aciR
-          extra-packages: any::covr, any::xml2
+          extra-packages: any::covr
           needs: coverage
 
       - name: Test coverage
         run: |
-          cov <- covr::package_coverage(
-            quiet = FALSE,
-            clean = FALSE,
-            install_path = file.path(normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/"), "package")
-          )
+          cov <- covr::package_coverage(quiet = FALSE)
           print(cov)
-          covr::to_cobertura(cov)
-        shell: Rscript {0}
 
-      - uses: codecov/codecov-action@v4
-        with:
-          fail_ci_if_error: ${{ github.event_name != 'pull_request' && true || false }}
-          file: ./cobertura.xml
-          plugin: noop
-          disable_search: true
-          token: ${{ secrets.CODECOV_TOKEN }}
+          zero <- covr::zero_coverage(cov)
+          if (nrow(zero) > 0L) {
+            cat("\nUncovered lines:\n")
+            print(unique(zero[, c("filename", "line")]))
+          }
+
+          pct <- covr::percent_coverage(cov)
+          floor_pct <- 95
+          cat(sprintf("\nTotal coverage: %.2f%% (floor %d%%)\n", pct, floor_pct))
+          if (pct < floor_pct) {
+            stop(sprintf(
+              paste0(
+                "Coverage %.2f%% is below the %d%% floor. Add a test for the ",
+                "uncovered path, or say in the pull request why it cannot be ",
+                "reached."
+              ),
+              pct, floor_pct
+            ))
+          }
+        shell: Rscript {0}
 
       - name: Show testthat output
         if: always()
-        run: |
-          find '${{ runner.temp }}/package' -name 'testthat.Rout*' -exec cat '{}' \; || true
+        run: find . -name 'testthat.Rout*' -exec cat '{}' \; || true
         shell: bash
