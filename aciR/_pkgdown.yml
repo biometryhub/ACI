@@ -1,3 +1,10 @@
+# The site is BUILT and deployed to the gh-pages branch by CI, but is not
+# currently SERVED: GitHub Pages requires a paid plan for a private repository,
+# and this one is private by decision. The URL below is where the site will
+# resolve if Pages is ever enabled (or the repository made public); until then
+# it does not resolve, which is why it appears only here, in build
+# configuration, and is deliberately NOT declared in DESCRIPTION, README or
+# CITATION -- those surfaces must not advertise a link that 404s.
 url: https://max578.github.io/aciR/
 
 template:
