@@ -36,6 +36,25 @@ library(aciR)
 
 aciR uses three, because no one of them is sufficient.
 
+The quantity all of them grade is, at each step, the relative entropy of the
+smoother posterior $\mathcal{N}(m_s, R_s)$ from the filter posterior
+$\mathcal{N}(m_f, R_f)$, which for scalar Gaussians has the closed form
+
+$$
+\mathrm{KL}\!\left(\mathcal{N}(m_s, R_s) \,\|\, \mathcal{N}(m_f, R_f)\right)
+= \frac{1}{2}\left[
+    \frac{(m_s - m_f)^2}{R_f}
+    + \frac{R_s}{R_f} - 1
+    - \log\frac{R_s}{R_f}
+  \right],
+$$
+
+together with the four posterior series that feed it. The first term is the
+signal part, driven by the shift between the two means, and the remainder is
+the dispersion part, driven by the covariance ratio; `aci_metric()` evaluates
+the dispersion part in a cancellation-resistant form, which is one of the
+things the oracles hold it to.
+
 ### 1. The dyad fixture, from the authors' reference implementation
 
 The flagship oracle. A MATLAB harness reproduces the deterministic core of

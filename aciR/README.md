@@ -84,7 +84,7 @@ summary(fit)
 #>   diagnostics:
 #>     smallest covariance: filter 0.1, smoother 0.0682916
 #>     terminal identity residual: 0 (zero analytically)
-#>     metric at the round-off floor: 1 of 5000 steps
+#>     round-off clamps to zero: 0 of 5000 steps
 ```
 
 The three core functions -- `aci_filter()`, `aci_smoother()` and
@@ -139,4 +139,8 @@ The method is:
 
 ## Licence
 
-MIT (c) 2026 Max Moldovan. See the `LICENSE` file.
+MIT (c) 2026 Max Moldovan. The numerical core derives from the
+MIT-licensed reference implementation
+([marandmath/ACI_code](https://github.com/marandmath/ACI_code)), (c)
+2025 Marios Andreou, whose copyright travels with the package. See
+`LICENSE.md` for both notices.

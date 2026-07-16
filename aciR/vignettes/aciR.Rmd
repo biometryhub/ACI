@@ -156,25 +156,35 @@ The metric itself is a time series. Laying it under the observed signal shows
 where the two align. The spikes in causal information sit at the intermittent
 bursts of the observed $x$, which is exactly where the hidden $y$ is driving
 the observed process hardest and where the future of $x$ is most informative
-about $y$.
+about $y$. The two series get a panel each because they are incommensurable
+-- the signal is in its own units, the metric in nats -- so it is the timing
+that aligns between the panels, never the magnitudes.
 
-```{r metric, eval = requireNamespace("ggplot2", quietly = TRUE)}
-signal <- data.frame(t = fit$t, x = fit$x, aci = fit$aci)
+```{r metric, fig.height = 5, eval = requireNamespace("ggplot2", quietly = TRUE)}
+series <- rbind(
+  data.frame(t = fit$t, series = "observed x", value = fit$x),
+  data.frame(t = fit$t, series = "causal information (nats)", value = fit$aci)
+)
+series$series <- factor(
+  series$series,
+  levels = c("observed x", "causal information (nats)")
+)
 
-ggplot(signal, aes(x = t)) +
-  geom_line(aes(y = x, colour = "observed x"), linewidth = 0.4) +
-  geom_line(aes(y = aci, colour = "causal information"), linewidth = 0.4) +
+ggplot(series, aes(x = t, y = value, colour = series)) +
+  geom_line(linewidth = 0.4, show.legend = FALSE) +
+  facet_grid(rows = vars(series), scales = "free_y") +
   scale_colour_manual(
-    values = c("observed x" = "grey55", "causal information" = "#2c7fb8")
+    values = c(
+      "observed x" = "grey40",
+      "causal information (nats)" = "#2c7fb8"
+    )
   ) +
   labs(
     x = "time",
-    y = "observed signal and causal information",
-    colour = NULL,
-    title = "Causal information over the observed dyad signal"
+    y = NULL,
+    title = "Causal information under the observed dyad signal"
   ) +
-  theme_minimal() +
-  theme(legend.position = "top")
+  theme_minimal()
 ```
 
 The `summary()` method reports the metric alongside the diagnostics that say
@@ -201,6 +211,12 @@ identify the effect of an intervention. Since the dyad model here is also the
 process that generated the data, the reading is safe. On real data it would not
 be, and the article *Assumptions and interpretation* sets out exactly what an
 ACI peak does and does not support.
+
+One scope note. This vignette walks through the whole of what aciR computes,
+but not the whole of the published method. The paper also defines the causal
+influence range (CIR) -- the length of time over which an ACI signal persists
+-- and aciR does not implement it yet. The roadmap in `NEWS.md` and
+`API_STABILITY.md` records what it waits on.
 
 ## Under the hood: the general components path
 
