@@ -1,0 +1,5 @@
+aciR test coverage -- measured 2026-07-16 16:34 ACST
+package version: 0.1.0.9000 (working tree)
+command: covr::package_coverage() [covr 3.6.5, R 4.5.2]
+platform: aarch64-apple-darwin20
+

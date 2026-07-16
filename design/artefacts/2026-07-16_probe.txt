@@ -1,0 +1,6 @@
+aciR wall-time probe -- measured 2026-07-16 16:35 ACST
+package version: 0.1.0.9000 (working tree, devtools::load_all)
+platform: aarch64-apple-darwin20, R 4.5.2, Darwin Kernel Version 25.5.0: Tue Jun  9 22:28:17 PDT 2026; root:xnu-12377.121.10~1/RELEASE_ARM64_T8142
+task: aci(x, aci_dyad_model()) on a 30,001-step simulated dyad signal (seed 333)
+elapsed seconds over 5 runs: 0.237, 0.060, 0.035, 0.036, 0.036
+median: 0.036 s
