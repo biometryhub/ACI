@@ -50,5 +50,10 @@ Useful links:
 \author{
 \strong{Maintainer}: Max Moldovan \email{max.moldovan@gmail.com} (\href{https://orcid.org/0000-0001-9680-8474}{ORCID}) [copyright holder]
 
+Other contributors:
+\itemize{
+  \item Marios Andreou (Author and copyright holder of the MIT-licensed reference MATLAB implementation 'ACI_code', from which the numerical core derives and against which it is validated) [copyright holder]
+}
+
 }
 \keyword{internal}

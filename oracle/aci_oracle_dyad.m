@@ -10,6 +10,10 @@
 %
 % Core only (O(N), seconds); the O(N^2) causal-influence-range is a later fixture.
 % Run: matlab -batch "run('aci_oracle_dyad.m')"   (tested target MATLAB R2024b/R2025b)
+%
+% Portions derived from dyad_interaction_model.m, Copyright (c) 2025 Marios
+% Andreou, released under the MIT License. That copyright notice and the
+% permission notice in matlab_reference/LICENSE apply to the derived portions.
 
 rng(333)                                   % the reference's seed — authentic signals
 N = 30000; dt = 0.001;

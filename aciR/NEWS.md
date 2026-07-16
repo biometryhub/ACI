@@ -1,3 +1,35 @@
+# aciR (development version)
+
+## Minor improvements and fixes
+
+* The clamp diagnostic in `summary()` no longer counts the terminal step. The
+  metric at the final step is exactly zero because the smoother is the filter
+  there by construction, but the old count (`sum(aci == 0)`) treated every
+  zero as sitting at the round-off floor, so it reported at least one clamped
+  step on every run, including runs in which nothing was clamped. `aci()` now
+  records the number of values actually clamped -- negative by no more than
+  round-off before being set to zero -- in a new `n_clamped` field of the
+  result, and `summary()` reports that count. An `aci` object saved by 0.1.0
+  has no such field, and `summary()` now says so rather than miscounting;
+  re-run `aci()` to refresh it.
+
+* The dyad vignette draws the observed signal and the causal-information
+  metric in two panels rather than on one shared axis. The two series are in
+  different units -- the signal in its own units, the metric in nats -- and a
+  shared axis invited magnitude comparisons across them that carry no meaning.
+
+* The dyad vignette states in as many words that the causal-influence-range of
+  the method is not implemented in this package yet, and the validation
+  vignette displays the scalar Gaussian relative-entropy formula the metric
+  evaluates.
+
+* `DESCRIPTION` states the release's scope in one sentence, and `Authors@R`,
+  `LICENSE` and `LICENSE.md` carry the upstream copyright of the reference
+  MATLAB implementation (Marios Andreou, MIT) alongside the package's own.
+  The attribution was always in the README, the citation entries and the
+  oracle manifest; it now also travels with the licence, where a derived
+  work's notice belongs.
+
 # aciR 0.1.0
 
 First research preview. The validated dyad calculation is unchanged and still

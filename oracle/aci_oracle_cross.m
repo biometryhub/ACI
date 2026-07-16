@@ -23,6 +23,11 @@
 % difference from the graded flagship is the term under test.
 % Run: matlab -nodisplay -nosplash -batch "run('aci_oracle_cross.m')"
 % Generated on MATLAB R2025b Update 1 (25.2.0.3042426).
+%
+% Portions derived from dyad_interaction_model.m (github.com/marandmath/ACI_code),
+% Copyright (c) 2025 Marios Andreou, released under the MIT License. That
+% copyright notice and the permission notice in matlab_reference/LICENSE apply
+% to the derived portions.
 
 rng(4242)                                  % distinct from the dyad harness's 333
 N = 30000; dt = 0.001;
