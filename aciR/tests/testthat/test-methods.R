@@ -38,6 +38,29 @@ test_that("summary.aci reports the metric and the stability diagnostics", {
   expect_gt(s$min_filter_cov, 0)
 })
 
+test_that("n_clamped counts round-off clamps, not the terminal exact zero", {
+  fit <- .aci_test_fit()
+  s <- summary(fit)
+
+  # The metric at the final step is exactly zero by the terminal identity, not
+  # because it was clamped. The old count (`sum(aci == 0)`) therefore reported
+  # at least one clamped step on every run; the corrected count must stay
+  # strictly below the zero count, because the terminal zero is always in the
+  # latter and never in the former.
+  expect_identical(fit$aci[length(fit$aci)], 0)
+  expect_identical(s$n_clamped, fit$n_clamped)
+  expect_lte(s$n_clamped, sum(fit$aci == 0) - 1L)
+})
+
+test_that("summary.aci refuses a result that predates the clamp count", {
+  # An `aci` object saved by 0.1.0 has no `n_clamped` field, and a summary
+  # that silently printed a missing diagnostic would be worse than one that
+  # says why it cannot.
+  fit <- .aci_test_fit(500L)
+  fit$n_clamped <- NULL
+  expect_error(summary(fit), "carries no clamp count")
+})
+
 test_that("print.summary.aci returns its object invisibly", {
   s <- summary(.aci_test_fit(500L))
   expect_output(print(s), "diagnostics")

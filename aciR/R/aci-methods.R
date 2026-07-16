@@ -4,8 +4,8 @@
 # that inspecting, plotting and exporting a result never requires the user to
 # index into the nested representation, and so that the quantities an ACI
 # result is sensitive to -- the smallest posterior covariances, the terminal
-# identity, the round-off floor of the metric -- are surfaced rather than left
-# for the reader to discover.
+# identity, the round-off clamps of the metric -- are surfaced rather than
+# left for the reader to discover.
 
 # -- print methods ------------------------------------------------------------
 
@@ -95,9 +95,11 @@ print.aci <- function(x, ...) {
 #' discretisation came to losing positivity; a value near zero means the result
 #' is sensitive to `dt`. The terminal residual is the gap between the smoother
 #' and the filter at the final step, which is zero analytically and so
-#' measures accumulated numerical error. The count of clamped values reports
-#' how many steps had a metric at the round-off floor, which is expected
-#' wherever the two posteriors agree.
+#' measures accumulated numerical error. The clamp count reports how many
+#' metric values were negative by no more than round-off and were clamped to
+#' zero, which can happen where the two posteriors agree to near machine
+#' precision. The exact zero at the final step is the terminal identity at
+#' work, not a clamp, and is not counted.
 #'
 #' @param object An `aci` object, as returned by [aci()].
 #' @param ... Ignored, for compatibility with [summary()].
@@ -121,6 +123,14 @@ print.aci <- function(x, ...) {
 #' @seealso [aci()], [plot.aci()], [as.data.frame.aci()]
 #' @export
 summary.aci <- function(object, ...) {
+  if (is.null(object$n_clamped)) {
+    stop(
+      "`object` carries no clamp count, so it was created by aciR 0.1.0 or ",
+      "earlier, which conflated round-off clamps with exact zeros. Re-run ",
+      "`aci()` to obtain a result with the corrected count.",
+      call. = FALSE
+    )
+  }
   n <- length(object$x)
   peak <- which.max(object$aci)
   out <- list(
@@ -135,7 +145,7 @@ summary.aci <- function(object, ...) {
     min_smoother_cov = min(object$smoother$cov),
     terminal_residual = abs(object$smoother$mean[n] - object$filter$mean[n]) +
       abs(object$smoother$cov[n] - object$filter$cov[n]),
-    n_clamped = sum(object$aci == 0)
+    n_clamped = object$n_clamped
   )
   class(out) <- "summary.aci"
   out
@@ -174,7 +184,7 @@ print.summary.aci <- function(x, ...) {
     x$terminal_residual
   ))
   cat(sprintf(
-    "    metric at the round-off floor: %d of %d steps\n",
+    "    round-off clamps to zero: %d of %d steps\n",
     x$n_clamped, x$n
   ))
   invisible(x)

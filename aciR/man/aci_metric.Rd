@@ -36,7 +36,10 @@ covariances nearly agree. Writing the covariance ratio as \code{1 + d}, the
 naive expression subtracts two nearly equal quantities and loses precision
 exactly where the metric is smallest; the form used here does not. Values
 that round to a small negative number are clamped to zero, and anything
-more negative than round-off is an error rather than a result.
+more negative than round-off is an error rather than a result. The number
+of values clamped this way is recorded by \code{\link[=aci]{aci()}} and reported by
+\code{\link[=summary.aci]{summary.aci()}}; a value that is exactly zero because the posteriors agree,
+as at the final step, needs no clamp and is not counted.
 }
 \examples{
 model <- aci_dyad_model()

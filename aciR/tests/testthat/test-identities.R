@@ -182,6 +182,24 @@ test_that("the metric is exactly zero for identical posteriors", {
   expect_identical(aci_metric(post, post), c(0, 0, 0))
 })
 
+test_that("exact zeros are not counted as round-off clamps", {
+  # Identical posteriors give exact zeros with nothing to clamp. Whether a
+  # genuine clamp fires on a given trajectory depends on the platform's
+  # rounding, so the counting itself is pinned here on constructed values
+  # rather than on a run that may or may not produce one.
+  post <- list(mean = c(1, 2, 3), cov = c(0.5, 0.5, 0.5))
+  pair <- .aci_metric_pair(post, post)
+  expect_identical(pair$value, c(0, 0, 0))
+  expect_identical(pair$n_clamped, 0L)
+
+  finished <- .aci_metric_finish(c(0, -1e-12, 2, 1e-3))
+  expect_identical(finished$value, c(0, 0, 2, 1e-3))
+  expect_identical(finished$n_clamped, 1L)
+
+  # Anything more negative than round-off is a defect, not a clamp.
+  expect_error(.aci_metric_finish(c(1, -1e-3)), "finite and non-negative")
+})
+
 test_that("the metric is accurate near a covariance ratio of one", {
   # The naive form of the dispersion term, 0.5 * (-log(r) + r - 1), subtracts
   # two nearly equal quantities and collapses to exactly zero here, losing the

@@ -28,8 +28,10 @@ is derived from it.}
 \value{
 An \code{aci} object: a list with the \code{model}, the time vector \code{t}, the
 observed signal \code{x}, the \code{filter} and \code{smoother} statistics (each a list of
-\code{mean} and \code{cov}), the causal-information metric \code{aci}, and the step \code{dt}.
-See \code{\link[=summary.aci]{summary.aci()}}, \code{\link[=plot.aci]{plot.aci()}} and \code{\link[=as.data.frame.aci]{as.data.frame.aci()}}.
+\code{mean} and \code{cov}), the causal-information metric \code{aci}, the count
+\code{n_clamped} of metric values clamped from a round-off negative to zero,
+and the step \code{dt}. See \code{\link[=summary.aci]{summary.aci()}}, \code{\link[=plot.aci]{plot.aci()}} and
+\code{\link[=as.data.frame.aci]{as.data.frame.aci()}}.
 }
 \description{
 Runs the whole assimilative causal inference workflow on an observed signal

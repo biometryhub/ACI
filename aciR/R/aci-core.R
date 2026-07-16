@@ -228,7 +228,10 @@ aci_smoother <- function(x, comp, dt, filt) {
 #' naive expression subtracts two nearly equal quantities and loses precision
 #' exactly where the metric is smallest; the form used here does not. Values
 #' that round to a small negative number are clamped to zero, and anything
-#' more negative than round-off is an error rather than a result.
+#' more negative than round-off is an error rather than a result. The number
+#' of values clamped this way is recorded by [aci()] and reported by
+#' [summary.aci()]; a value that is exactly zero because the posteriors agree,
+#' as at the final step, needs no clamp and is not counted.
 #'
 #' @param filt A list with numeric vectors `mean` and `cov`, the filtered mean
 #'   and covariance, as returned by [aci_filter()].
@@ -253,6 +256,27 @@ aci_smoother <- function(x, comp, dt, filt) {
 #' @seealso [aci_filter()], [aci_smoother()], [aci()]
 #' @export
 aci_metric <- function(filt, smooth) {
+  .aci_metric_pair(filt, smooth)$value
+}
+
+#' Metric values and clamp count for a filter/smoother pair
+#'
+#' The full metric computation behind [aci_metric()], returning the clamp
+#' count alongside the values so that [aci()] can record it. The public
+#' function returns only the values; keeping a single implementation of the
+#' relative entropy is what rules out drift between the two callers.
+#'
+#' @param filt A list with numeric vectors `mean` and `cov`, as returned by
+#'   [aci_filter()].
+#' @param smooth A list with numeric vectors `mean` and `cov`, as returned by
+#'   [aci_smoother()].
+#'
+#' @returns A list with the numeric metric vector `value` and the integer
+#'   clamp count `n_clamped`.
+#'
+#' @noRd
+#' @keywords internal
+.aci_metric_pair <- function(filt, smooth) {
   .aci_check_posterior(filt, "filt")
   .aci_check_posterior(smooth, "smooth", length(filt$mean))
 
@@ -260,9 +284,24 @@ aci_metric <- function(filt, smooth) {
   signal <- 0.5 * (smooth$mean - filt$mean)^2 / filt$cov
   ratio_delta <- smooth$cov / filt$cov - 1
   dispersion <- 0.5 * (ratio_delta - log1p(ratio_delta))
-  value <- signal + dispersion
+  .aci_metric_finish(signal + dispersion)
+}
 
-  # ---- Domain boundary ------------------------------------------------------
+#' Clamp round-off negatives of raw metric values and count the clamps
+#'
+#' Applies the domain boundary of the causal-information metric to a raw
+#' vector of relative-entropy values. A value that is exactly zero needs no
+#' clamp and is not counted, which is what keeps the terminal identity out of
+#' the count.
+#'
+#' @param value Numeric vector. Raw metric values, signal plus dispersion.
+#'
+#' @returns A list with the clamped numeric vector `value` and the integer
+#'   count `n_clamped` of values that were negative before the clamp.
+#'
+#' @noRd
+#' @keywords internal
+.aci_metric_finish <- function(value) {
   # A relative entropy is finite and non-negative for a genuine posterior pair,
   # so anything else is either floating-point noise where the two posteriors
   # agree, or a defect. The noise is clamped within a documented tolerance; the
@@ -290,6 +329,7 @@ aci_metric <- function(filt, smooth) {
       call. = FALSE
     )
   }
+  n_clamped <- sum(value < 0)
   value[value < 0] <- 0
-  value
+  list(value = value, n_clamped = n_clamped)
 }

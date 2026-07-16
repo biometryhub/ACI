@@ -346,8 +346,10 @@ aci_simulate <- function(model, n, dt = 0.001, seed = NULL) {
 #'
 #' @returns An `aci` object: a list with the `model`, the time vector `t`, the
 #'   observed signal `x`, the `filter` and `smoother` statistics (each a list of
-#'   `mean` and `cov`), the causal-information metric `aci`, and the step `dt`.
-#'   See [summary.aci()], [plot.aci()] and [as.data.frame.aci()].
+#'   `mean` and `cov`), the causal-information metric `aci`, the count
+#'   `n_clamped` of metric values clamped from a round-off negative to zero,
+#'   and the step `dt`. See [summary.aci()], [plot.aci()] and
+#'   [as.data.frame.aci()].
 #'
 #' @references
 #' Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
@@ -408,7 +410,7 @@ aci <- function(x, model, dt = 0.001, mu0 = NULL, R0 = 0.1, time = NULL) {
   )
   filt <- aci_filter(x, comp, dt, mu0, R0)
   smooth <- aci_smoother(x, comp, dt, filt)
-  metric <- aci_metric(filt, smooth)
+  metric <- .aci_metric_pair(filt, smooth)
 
   result <- list(
     model = model,
@@ -416,7 +418,8 @@ aci <- function(x, model, dt = 0.001, mu0 = NULL, R0 = 0.1, time = NULL) {
     x = x,
     filter = filt,
     smoother = smooth,
-    aci = metric,
+    aci = metric$value,
+    n_clamped = metric$n_clamped,
     dt = dt
   )
   class(result) <- "aci"

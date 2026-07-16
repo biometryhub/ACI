@@ -31,9 +31,11 @@ and smoothed covariances indicate how close the explicit Euler
 discretisation came to losing positivity; a value near zero means the result
 is sensitive to \code{dt}. The terminal residual is the gap between the smoother
 and the filter at the final step, which is zero analytically and so
-measures accumulated numerical error. The count of clamped values reports
-how many steps had a metric at the round-off floor, which is expected
-wherever the two posteriors agree.
+measures accumulated numerical error. The clamp count reports how many
+metric values were negative by no more than round-off and were clamped to
+zero, which can happen where the two posteriors agree to near machine
+precision. The exact zero at the final step is the terminal identity at
+work, not a clamp, and is not counted.
 }
 \examples{
 model <- aci_dyad_model()

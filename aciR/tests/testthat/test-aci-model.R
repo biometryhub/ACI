@@ -124,13 +124,17 @@ test_that("aci runs end to end and returns a structured result", {
   expect_s3_class(fit, "aci")
   expect_named(
     fit,
-    c("model", "t", "x", "filter", "smoother", "aci", "dt")
+    c("model", "t", "x", "filter", "smoother", "aci", "n_clamped", "dt")
   )
   expect_length(fit$aci, length(sim$x))
   expect_length(fit$t, length(sim$x))
   expect_true(all(is.finite(fit$aci)))
   expect_true(all(fit$aci >= 0))
   expect_true(all(fit$filter$cov > 0))
+  # Whether a clamp fires on a given trajectory depends on platform rounding,
+  # so only the count's type and range are asserted here; the counting itself
+  # is pinned on constructed values in test-identities.R.
+  expect_true(is.integer(fit$n_clamped) && fit$n_clamped >= 0L)
 })
 
 test_that("aci matches the low-level pipeline exactly", {
