@@ -167,7 +167,7 @@ fixtures:
       smoother: like every scalar model upstream this fixture sets S_yoS_x to
       zero, so the terms carrying it execute but are annihilated. That gap is
       the same one the `cross` fixture closes for the filter and smoother, and
-      it is NOT yet closed for the online smoother.
+      it is closed one layer up by the `cir_cross` fixture below.
     measured_max_abs_error:
       online_mean: 5.107026e-15
       online_cov: 7.216450e-16
@@ -272,6 +272,51 @@ fixtures:
       influence range in the vector case, which remain scalar-only.
     measured_max_abs_error:
       all_series: 5.773160e-15
+    measured_on: 2026-08-13
+
+  - id: cir_cross
+    harness: oracle/aci_oracle_cir_cross.m
+    upstream_file: null
+    command: matlab -nodisplay -nosplash -batch "run('aci_oracle_cir_cross.m')"
+    seed: 4242
+    n_steps: 2001
+    dt: 0.001
+    signal_source: >
+      The leading 2001 steps of cross_signal_x.csv, already pinned above.
+    grammians:
+      S_xoS_x: 0.45
+      S_yoS_y: 0.89
+      S_yoS_x: 0.54
+    files:
+      cir_cross_online_reference.csv:
+        sha256: 5b71e27f535ab2f933808310318d7092e594f0357ed0e9eff3635bed6fe1b09a
+        md5: 5e40a10931710412789ae195d7521451
+      cir_cross_range_reference.csv:
+        sha256: fbbb77290673f691f486bf455805f07230dd672010ff26218ecf3ef62abdc0e6
+        md5: a31ace58932300af419fb8a9b62e794a
+    exists_because: >
+      The package's grading register (tests/testthat/test-grading-matrix.R)
+      MEASURED that the online smoother and the causal influence range were
+      graded only by a fixture whose noise cross-covariance is zero -- so the
+      terms carrying it executed annihilated, exactly as they had for the
+      filter and smoother before the `cross` fixture existed. The register
+      found the gap; this fixture closed it. Two of fifty-six cells were
+      ungraded when the register was first built, and none are now.
+    grades: >
+      The fixed-lag online smoother and the causal influence range with a
+      NON-ZERO noise cross-covariance (S_yoS_x = 0.54), at 75 sampled
+      (time, observation) pairs and 15 reported times.
+    does_not_grade: >
+      Nothing upstream. Like aci_oracle_cross.m, this harness has no upstream
+      counterpart -- no scalar model in the reference exercises these terms --
+      so it is a second independent implementation, NOT an authors'-reference
+      grounding.
+    measured_max_abs_error:
+      online_mean: 8.881784e-15
+      online_cov: 4.302114e-16
+      peak: 1.352390e-14
+      objective: 6.317863e-14
+      subjective: 5.551115e-17
     measured_on: 2026-08-13
 
 # The oracles that depend on no implementation at all. These are the primary
