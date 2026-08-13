@@ -607,6 +607,39 @@
 #' @param time The time corresponding to `index`.
 #' @param value The offending covariance.
 #'
+#' Require a lag length
+#'
+#' A lag is a count of future time steps, so it must be a non-negative whole
+#' number. Infinity is admitted and means the whole remaining path: it is the
+#' value at which the online smoother becomes the backward smoother, and
+#' spelling that as `Inf` rather than as a large integer keeps the identity
+#' explicit at the call site.
+#'
+#' @param value The value to check.
+#' @param name The argument name, used in the error message.
+#'
+#' @returns `value`, invisibly.
+#'
+#' @noRd
+#' @keywords internal
+.aci_check_lag <- function(value, name) {
+  ok <- is.numeric(value) && length(value) == 1L && !is.na(value) &&
+    value >= 0 && (is.infinite(value) || value == trunc(value))
+  if (!ok) {
+    stop(
+      sprintf(
+        paste0(
+          "`%s` must be a single non-negative whole number of time steps, or ",
+          "`Inf` for the whole observed path."
+        ),
+        name
+      ),
+      call. = FALSE
+    )
+  }
+  invisible(value)
+}
+
 #' @returns Never returns; raises an error.
 #'
 #' @noRd

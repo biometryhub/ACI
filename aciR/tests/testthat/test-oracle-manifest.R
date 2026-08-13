@@ -104,9 +104,14 @@
 }
 
 test_that("the manifest records both hashes for every shipped fixture", {
+  # Enumerated rather than discovered, so that adding a fixture is a deliberate
+  # act that updates this list. The causal-influence-range entries carry no
+  # signal of their own: that harness reads the dyad signal already pinned
+  # here, which is why only reference files appear for it.
   expected <- c(
     "dyad_signal_x.csv", "dyad_reference.csv",
-    "cross_signal_x.csv", "cross_reference.csv"
+    "cross_signal_x.csv", "cross_reference.csv",
+    "cir_online_reference.csv", "cir_range_reference.csv"
   )
   md5 <- .aci_manifest_hashes("md5")
   sha <- .aci_manifest_hashes("sha256")

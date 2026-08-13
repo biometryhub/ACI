@@ -1,5 +1,54 @@
 # aciR (development version)
 
+## New features
+
+* `aci_cir()` computes the causal influence range, the second quantity of the
+  method paper. Where the causal-information metric measures how much the
+  future of the observed signal says about the unobserved state at a given
+  time, the range measures how far into that future one must look before the
+  answer stops changing. Both the subjective range, at a grid of thresholds,
+  and the objective range, the threshold-free summary, are returned, along
+  with the peak divergence each is derived from.
+
+  A time close to the end of the record cannot be resolved, because the
+  observations that would settle it do not exist. Such a time yields a small
+  number that looks like a confident short range, so the result marks it
+  saturated and returns `NA` rather than the truncated value. Resolution is
+  judged separately for the objective range and for each threshold of the
+  subjective one, since the demanding thresholds run far longer than the
+  objective range does.
+
+  The reference implementation stores the whole matrix of comparisons, one row
+  per time and one column per later observation, which is quadratic in the
+  window and reaches several gigabytes at the scale of the published figure.
+  Nothing downstream needs the matrix, so `aci_cir()` forms one row at a time
+  and reduces it immediately, leaving the memory linear in the window.
+
+* `aci_online_smoother()` runs the fixed-lag forward-in-time online smoother of
+  Andreou, Chen and Li (2026) <doi:10.48550/arXiv.2411.05870>. Where
+  `aci_smoother()` conditions every step on the whole observed path, the online
+  smoother conditions step `j` on the path up to `j + lag`, so it is the
+  estimator available while the signal is still arriving. It is the object the
+  causal influence range is built from, and the roadmapped `aci_cir()` will
+  consume it.
+
+  The two boundaries of the lag family are the estimators the package already
+  had: at `lag = 0` the result is the filter, exactly, and as `lag` grows the
+  result approaches the backward smoother. The first of those is asserted as a
+  bitwise identity. The second is a first-order limit rather than an identity,
+  because the online recursion is the discrete smoother while `aci_smoother()`
+  integrates the continuous backward equation; the test asserts the measured
+  convergence order, which a mis-stated recursion would not produce.
+
+  Each new observation updates earlier steps through an ordered product that
+  decays geometrically, a property the source paper establishes by bounding the
+  spectral radius of each factor. The implementation accumulates those products
+  in logarithms and truncates them once they fall below tolerance, so the work
+  is bounded by the effective lag and the memory is linear in the signal
+  length. The reference algorithm forms the full quadratic triangle instead;
+  a literal transcription of it is carried in the tests and the two agree to
+  machine precision.
+
 ## Minor improvements and fixes
 
 * The clamp diagnostic in `summary()` no longer counts the terminal step. The

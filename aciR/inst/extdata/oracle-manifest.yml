@@ -122,6 +122,60 @@ fixtures:
       transcription error, but it is NOT an authors'-reference grounding. The
       primary grounding for these terms is analytic; see `analytic_oracles`.
 
+  - id: cir
+    harness: oracle/aci_oracle_cir.m
+    upstream_file: dyad_interaction_model.m
+    command: matlab -nodisplay -nosplash -batch "run('aci_oracle_cir.m')"
+    seed: 333
+    n_steps: 2001
+    dt: 0.001
+    initial_filter_mean: 2.0
+    initial_filter_covariance: 0.1
+    signal_source: >
+      The leading 2001 steps of dyad_signal_x.csv. This harness generates no
+      signal of its own: it reads the fixture already pinned above, so the CIR
+      grade and the dyad grade are driven by the identical path and there is
+      one fewer set of bytes to keep honest. The truncation is a limit of the
+      REFERENCE, whose staggered triangle is quadratic in the record and needs
+      several gigabytes at full length; aciR never forms that triangle.
+    parameters:
+      d_x: 0.5
+      d_y: 0.5
+      gamma: 2
+      F_x: 0.5
+      F_y: 1
+      sigma_x: 0.5
+      sigma_y: 1
+    epsilon_grid: [1.0e-1, 1.0e-2, 1.0e-3, 1.0e-4]
+    files:
+      cir_online_reference.csv:
+        sha256: 2133c0655512097f7636439db7da92552e543ecfd5ac382b62f729c32b7b394b
+        md5: 1c1a696f83dfcc820a3684e4be839836
+      cir_range_reference.csv:
+        sha256: f7e258bfda1f00c909451792a3fab58e6009657f0710fdcee663a3c3cd7a1a32
+        md5: 2abff74d5873b797439c01f522049a6f
+    grades: >
+      The fixed-lag online smoother at 75 sampled (time, observation) pairs
+      spanning lags from zero to the whole record, and the causal influence
+      range at 15 times: the peak divergence, the objective range, and the
+      subjective range at four thresholds.
+    does_not_grade: >
+      The saturation margin, which is aciR's own and has no counterpart
+      upstream -- the reference reports every value it computes and leaves the
+      record-limited ones to the reader. The margin is graded by its own tests
+      in test-cir.R. Also the noise-cross-covariance terms of the online
+      smoother: like every scalar model upstream this fixture sets S_yoS_x to
+      zero, so the terms carrying it execute but are annihilated. That gap is
+      the same one the `cross` fixture closes for the filter and smoother, and
+      it is NOT yet closed for the online smoother.
+    measured_max_abs_error:
+      online_mean: 5.107026e-15
+      online_cov: 7.216450e-16
+      peak: 4.884981e-15
+      objective: 1.318390e-15
+      subjective: 1.110223e-16
+    measured_on: 2026-08-13
+
 # The oracles that depend on no implementation at all. These are the primary
 # grounding for the cross-noise path: algebra on the governing equations,
 # solved in closed form in the test file and independent of BOTH aciR and
@@ -142,6 +196,45 @@ analytic_oracles:
     statement: >
       The smoother equals the filter at the final index by construction.
     grades: the smoother's terminal boundary condition, exactly.
+  - id: online_smoother_zero_lag
+    location: tests/testthat/test-online-smoother.R
+    statement: >
+      The fixed-lag online smoother at lag zero conditions on no observation
+      beyond the current step, so it is the forward filter. The recursion adds
+      one term per admitted future observation and at lag zero admits none.
+    grades: >
+      the online smoother's boundary at zero lag, exactly. Measured 2026-08-13:
+      identical to the filter, bit for bit, at every step size tried.
+  - id: online_smoother_triangle
+    location: tests/testthat/test-online-smoother.R
+    statement: >
+      The implementation reconstructs each ordered update product from
+      cumulative logarithms rather than forming the reference algorithm's
+      O(n^2) triangle. A literal transcription of that triangle is carried in
+      the test file and must agree to machine precision.
+    grades: >
+      the logarithmic reconstruction against the algorithm it replaces.
+      Measured 2026-08-13: 2.442e-15 at n = 400, 5.773e-15 at n = 800.
+    does_not_grade: >
+      the recursion itself -- both sides here share the per-step auxiliary
+      quantities. This grades the redesign, not the equations; those are
+      graded by the zero-lag identity and the convergence rate below.
+  - id: online_smoother_full_lag_order
+    location: tests/testthat/test-online-smoother.R
+    statement: >
+      At full lag the online smoother is the DISCRETE smoother, whereas
+      aci_smoother() integrates the CONTINUOUS backward equation. These are
+      distinct objects agreeing only as dt tends to zero, so the graded
+      quantity is the convergence rate and not equality.
+    grades: >
+      the full-lag limit at first order. Measured 2026-08-13 on a fixed
+      analytic signal: gap ratios 2.017, 2.009, 2.004, 2.002, 2.001 across
+      successive halvings of dt, an estimated order of 1.000.
+    does_not_grade: >
+      agreement at any fixed dt. Asserting equality here would fail by
+      construction; the earlier plan for this package wrongly recorded the
+      full-lag case as an exact identity, and the refinement study is what
+      corrected it.
   - id: zero_information
     location: tests/testthat/test-identities.R
     statement: >
