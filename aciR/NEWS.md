@@ -2,6 +2,26 @@
 
 ## New features
 
+* `aci_simulate()` gains the **Milstein scheme** for systems whose diffusion
+  varies with the state it integrates, alongside the Euler-Maruyama scheme it
+  has always used. Pass `scheme = "milstein"` with `sigma_x` and `d_sigma_x`,
+  the diffusion and its derivative as functions of the observed state.
+
+  The correction term is not estimated numerically on the caller's behalf: a
+  derivative supplied by finite differences would silently degrade the
+  convergence order the scheme exists to provide, so it must be given.
+
+  The two schemes coincide exactly, not approximately, when the diffusion is
+  constant. When it is not, the tests measure what distinguishes them --
+  Euler-Maruyama converges strongly at order one half and Milstein at order
+  one, against the closed-form solution of geometric Brownian motion driven by
+  the same Wiener path the simulator integrated.
+
+  A caveat worth stating plainly: this is a **simulation** capability. The
+  filter still requires a constant observation-noise covariance, so a path
+  generated with a state-dependent diffusion cannot yet be assimilated by this
+  package. Closing that gap is what the remaining roadmap item needs.
+
 * The numerical core takes **vector-valued states**. `aci_filter()`,
   `aci_smoother()` and `aci_metric()` dispatch on the shape of the components
   they are given: a matrix latent-noise covariance selects the vector path, a

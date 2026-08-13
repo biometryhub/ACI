@@ -242,6 +242,18 @@ aci_dyad_model <- function(d_x = 0.5, d_y = 0.5, gamma = 2,
 #' @param dt Numeric scalar. The integration time step; must be positive.
 #' @param seed Optional integer. If supplied, seeds a reproducible path and
 #'   restores the caller's generator state on exit.
+#' @param scheme Character scalar. The integration scheme,
+#'   `"euler_maruyama"` (the default) or `"milstein"`. The two coincide unless
+#'   the diffusion varies with the state it integrates, so `"milstein"`
+#'   requires `sigma_x` and `d_sigma_x`.
+#' @param sigma_x Optional function of the observed state. Supplying it makes
+#'   the observation noise multiplicative, overriding the model's constant
+#'   `S_xoS_x` **for the simulation only**. This is a simulation capability:
+#'   the filter still requires a constant observation-noise covariance, so a
+#'   path generated this way cannot yet be assimilated by this package.
+#' @param d_sigma_x Optional function of the observed state, the derivative of
+#'   `sigma_x`. Required by the Milstein scheme, and never estimated
+#'   numerically on the caller's behalf.
 #'
 #' @returns A data frame with `n` rows and columns `t` (time), `x` (the
 #'   observed process) and `y` (the unobserved process).
@@ -264,12 +276,15 @@ aci_dyad_model <- function(d_x = 0.5, d_y = 0.5, gamma = 2,
 #'
 #' @seealso [aci_dyad_model()], [aci()]
 #' @export
-aci_simulate <- function(model, n, dt = 0.001, seed = NULL) {
+aci_simulate <- function(model, n, dt = 0.001, seed = NULL,
+                         scheme = c("euler_maruyama", "milstein"),
+                         sigma_x = NULL, d_sigma_x = NULL) {
   if (!inherits(model, "aci_model")) {
     stop("`model` must be an `aci_model`; see `aci_cgns_model()`.",
       call. = FALSE
     )
   }
+  scheme <- match.arg(scheme)
   whole_number <- is.numeric(n) && length(n) == 1L && is.finite(n) &&
     n == round(n)
   if (!whole_number || n < 2) {
@@ -298,9 +313,49 @@ aci_simulate <- function(model, n, dt = 0.001, seed = NULL) {
     set.seed(seed)
   }
 
-  # ---- Euler-Maruyama integration -------------------------------------------
+  # ---- Noise coefficients ---------------------------------------------------
+  #
+  # The observation noise may be supplied as a function of the observed state,
+  # which makes it multiplicative. That is a SIMULATION capability: the filter
+  # still requires a constant observation-noise covariance, so a path
+  # simulated this way cannot yet be assimilated by this package.
+  #
+  # A conditional Gaussian system's noise may depend on the observed state but
+  # never on the unobserved one. The Milstein correction is therefore non-zero
+  # for the observed process and identically zero for the unobserved one,
+  # whose diffusion does not vary with the variable it integrates.
+  state_dependent <- !is.null(sigma_x)
+  if (state_dependent && !is.function(sigma_x)) {
+    stop("`sigma_x` must be a function of the observed state.", call. = FALSE)
+  }
+  if (identical(scheme, "milstein")) {
+    if (!state_dependent) {
+      stop(
+        paste0(
+          "The Milstein scheme differs from Euler-Maruyama only when the ",
+          "diffusion varies with the state it integrates. Supply `sigma_x` ",
+          "as a function of the observed state, or leave the scheme at ",
+          "\"euler_maruyama\"."
+        ),
+        call. = FALSE
+      )
+    }
+    if (!is.function(d_sigma_x)) {
+      stop(
+        paste0(
+          "`d_sigma_x` must be supplied as a function for the Milstein ",
+          "scheme: the correction term is the derivative of the diffusion ",
+          "with respect to the state, and this package will not estimate it ",
+          "numerically on your behalf."
+        ),
+        call. = FALSE
+      )
+    }
+  }
+
+  # ---- Integration ----------------------------------------------------------
   n <- as.integer(n)
-  sigma_x <- sqrt(model$S_xoS_x)
+  sigma_x_const <- sqrt(model$S_xoS_x)
   sigma_y <- sqrt(model$S_yoS_y)
   root_dt <- sqrt(dt)
   x <- numeric(n)
@@ -315,8 +370,16 @@ aci_simulate <- function(model, n, dt = 0.001, seed = NULL) {
     l_x <- model$L_x(x[j - 1L])
     f_x <- model$f_x(x[j - 1L])
     f_y <- model$f_y(x[j - 1L])
+    s_x <- if (state_dependent) sigma_x(x[j - 1L]) else sigma_x_const
     x[j] <- x[j - 1L] + (l_x * y[j - 1L] + f_x) * dt +
-      sigma_x * root_dt * dw_x[j - 1L]
+      s_x * root_dt * dw_x[j - 1L]
+    if (identical(scheme, "milstein")) {
+      # The Milstein correction: half the diffusion times its own derivative,
+      # against the centred square of the increment. With dW = sqrt(dt) * z,
+      # the bracket is dt * z^2 - dt.
+      x[j] <- x[j] + 0.5 * s_x * d_sigma_x(x[j - 1L]) *
+        (dt * dw_x[j - 1L]^2 - dt)
+    }
     l_y <- model$L_y(x[j - 1L])
     y[j] <- y[j - 1L] + (l_y * y[j - 1L] + f_y) * dt +
       sigma_y * root_dt * dw_y[j - 1L]

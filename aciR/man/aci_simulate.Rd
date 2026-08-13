@@ -4,7 +4,15 @@
 \alias{aci_simulate}
 \title{Simulate a conditional Gaussian nonlinear system}
 \usage{
-aci_simulate(model, n, dt = 0.001, seed = NULL)
+aci_simulate(
+  model,
+  n,
+  dt = 0.001,
+  seed = NULL,
+  scheme = c("euler_maruyama", "milstein"),
+  sigma_x = NULL,
+  d_sigma_x = NULL
+)
 }
 \arguments{
 \item{model}{An \code{aci_model} object; see \code{\link[=aci_cgns_model]{aci_cgns_model()}}.}
@@ -16,6 +24,21 @@ initial step; at least two.}
 
 \item{seed}{Optional integer. If supplied, seeds a reproducible path and
 restores the caller's generator state on exit.}
+
+\item{scheme}{Character scalar. The integration scheme,
+\code{"euler_maruyama"} (the default) or \code{"milstein"}. The two coincide unless
+the diffusion varies with the state it integrates, so \code{"milstein"}
+requires \code{sigma_x} and \code{d_sigma_x}.}
+
+\item{sigma_x}{Optional function of the observed state. Supplying it makes
+the observation noise multiplicative, overriding the model's constant
+\code{S_xoS_x} \strong{for the simulation only}. This is a simulation capability:
+the filter still requires a constant observation-noise covariance, so a
+path generated this way cannot yet be assimilated by this package.}
+
+\item{d_sigma_x}{Optional function of the observed state, the derivative of
+\code{sigma_x}. Required by the Milstein scheme, and never estimated
+numerically on the caller's behalf.}
 }
 \value{
 A data frame with \code{n} rows and columns \code{t} (time), \code{x} (the
