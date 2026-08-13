@@ -117,6 +117,12 @@
          }),
          consumers = c("online_smoother", "cir")),
     list(id = "mv", variant = "vector", comp = mv,
+         consumers = c("filter", "smoother", "metric")),
+    list(id = "enso", variant = "vector",
+         comp = local({
+           e <- read.csv(.aci_gm_fixture("enso_signal.csv"))
+           aci_enso_components(e$T_C, e$T_E, e$I, time = e$t)
+         }),
          consumers = c("filter", "smoother", "metric"))
   )
 }

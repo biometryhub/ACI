@@ -129,22 +129,46 @@ aci_conditional <- function(comp, target) {
   }
 
   target <- as.integer(sort(target))
-  block <- s_xx[target, target, drop = FALSE]
-  factor <- .aci_chol(block)
-  if (is.null(factor)) {
-    stop(
-      paste0(
-        "The observation-noise covariance of the target components is not ",
-        "positive definite, so their contribution to the filter cannot be ",
-        "weighted. A component with no observation noise of its own cannot ",
-        "be a target until some is modelled for it."
-      ),
-      call. = FALSE
-    )
+
+  # The masked weight inherits the time-variation of the covariance it is
+  # derived from. Building it from the first step alone would freeze a weight
+  # that should move -- the same silent failure the vector validator once had,
+  # and it would bite exactly where it is hardest to notice, since the
+  # conditional result has no unconditional counterpart to be compared against.
+  varying <- length(dim(comp$S_xoS_x)) == 3L
+  n <- if (varying) dim(comp$S_xoS_x)[3L] else 1L
+  steps <- seq_len(n)
+  inv <- if (varying) {
+    array(0, c(n_x, n_x, n))
+  } else {
+    matrix(0, n_x, n_x, dimnames = dimnames(s_xx))
   }
 
-  inv <- matrix(0, n_x, n_x, dimnames = dimnames(s_xx))
-  inv[target, target] <- chol2inv(factor)
+  for (j in steps) {
+    block <- .aci_slice(comp$S_xoS_x, j)[target, target, drop = FALSE]
+    factor <- .aci_chol(block)
+    if (is.null(factor)) {
+      stop(
+        sprintf(
+          paste0(
+            "The observation-noise covariance of the target components is ",
+            "not positive definite at step %d, so their contribution to the ",
+            "filter cannot be weighted. A component with no observation ",
+            "noise of its own cannot be a target until some is modelled for ",
+            "it."
+          ),
+          j
+        ),
+        call. = FALSE
+      )
+    }
+    if (varying) {
+      inv[target, target, j] <- chol2inv(factor)
+    } else {
+      inv[target, target] <- chol2inv(factor)
+    }
+  }
+
   comp$S_xoS_x_inv <- inv
   comp$conditional_target <- target
   comp

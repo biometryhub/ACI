@@ -46,6 +46,15 @@ reference:
     the unobserved state given that the others are also watched.
   contents:
   - aci_conditional
+- title: The stochastic ENSO model
+  desc: >
+    The six-dimensional El Nino Southern Oscillation system of the paper's
+    case study. The largest system the package expresses, and the only one
+    whose noise covariances vary in time.
+  contents:
+  - aci_enso_model
+  - aci_enso_components
+  - aci_enso_parameters
 - title: The noisy predator-prey model
   desc: >
     A stochastic Lotka-Volterra pair, studied in either causal direction. It is

@@ -31,6 +31,7 @@ aciR uses three stages, following the conventions of the
 | `aci_metric()` | Maturing | Expert surface. |
 | `aci_predprey_model()`, `aci_predprey_components()` | Experimental | New in the development version. The `direction` vocabulary may change; the parameterisation follows the reference implementation and is not expected to. |
 | `aci_online_smoother()` | Experimental | New in the development version. The `lag` and `tol` arguments are settled in meaning, but the returned object may gain fields as the causal influence range and the adaptive-lag variant develop. |
+| `aci_enso_model()`, `aci_enso_components()`, `aci_enso_parameters()` | Experimental | New in the development version. The parameterisation follows the reference implementation; the observed/unobserved partition is currently fixed to the case study's principal configuration and will gain siblings. |
 | `aci_conditional()` | Experimental | New in the development version. The construction is the reference implementation's, but the interface for naming targets is this package's own. |
 | `aci_cir()` | Experimental | New in the development version. The returned object's shape, and in particular how an unresolved time is reported, may change: the saturation margin is this package's own device and has no counterpart in the reference implementation. |
 | `aci_dyad_components()` | Maturing | The worked example of the components schema. |

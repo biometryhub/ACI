@@ -2,6 +2,22 @@
 
 ## New features
 
+* `aci_enso_model()`, `aci_enso_components()` and `aci_enso_parameters()` build
+  the stochastic ENSO model of the paper's case study: three observed
+  variables -- the central- and eastern-Pacific temperature anomalies and the
+  Walker circulation -- and three unobserved ones, the zonal current, the
+  thermocline depth and the intraseasonal wind burst.
+
+  It is the largest system the package expresses and the only one whose noise
+  covariances vary in time. The Walker circulation's observation noise is
+  multiplicative in its own state, and the latent noise of the wind burst depends on
+  the observed central-Pacific temperature and on the season. A path whose
+  Walker circulation reaches either end of its domain is rejected rather than
+  regularised: the noise vanishes there, and the filter inverts it.
+
+  `aci_conditional()` composes with it directly, which is the configuration the
+  case study is built around.
+
 * `aci_simulate()` gains the **Milstein scheme** for systems whose diffusion
   varies with the state it integrates, alongside the Euler-Maruyama scheme it
   has always used. Pass `scheme = "milstein"` with `sigma_x` and `d_sigma_x`,
@@ -18,9 +34,10 @@
   the same Wiener path the simulator integrated.
 
   A caveat worth stating plainly: this is a **simulation** capability. The
-  filter still requires a constant observation-noise covariance, so a path
-  generated with a state-dependent diffusion cannot yet be assimilated by this
-  package. Closing that gap is what the remaining roadmap item needs.
+  filter still requires a constant observation-noise covariance in the scalar
+  schema, so a scalar path generated with a state-dependent diffusion cannot
+  yet be assimilated. The vector schema has no such restriction.
+
 
 * The numerical core takes **vector-valued states**. `aci_filter()`,
   `aci_smoother()` and `aci_metric()` dispatch on the shape of the components
@@ -129,6 +146,20 @@
   machine precision.
 
 ## Minor improvements and fixes
+
+* A time-varying observation-noise covariance is now honoured rather than read
+  at its first step. The vector components schema accepted a three-dimensional
+  `S_xoS_x` and inverted only its first slice, so a covariance that changed
+  over the record produced a result identical, to the last bit, to a constant
+  one. Positive-definiteness is now checked at every step rather than only the
+  first, and `aci_conditional()` likewise builds a weight that tracks the
+  covariance it is derived from.
+
+  Nothing caught this: not the oracles, whose fixtures all held that covariance
+  constant; not the contracts, which accepted the array; not line coverage,
+  which was total. The package's grading register now tests the general
+  property instead -- a coefficient is genuinely consumed only if perturbing it
+  at a late step changes the answer.
 
 * The clamp diagnostic in `summary()` no longer counts the terminal step. The
   metric at the final step is exactly zero because the smoother is the filter

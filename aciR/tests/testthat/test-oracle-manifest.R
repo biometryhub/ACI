@@ -116,7 +116,8 @@ test_that("the manifest records both hashes for every shipped fixture", {
     "predprey_reference_predator_to_prey.csv",
     "predprey_reference_prey_to_predator.csv",
     "mv_signal.csv", "mv_reference.csv",
-    "cir_cross_online_reference.csv", "cir_cross_range_reference.csv"
+    "cir_cross_online_reference.csv", "cir_cross_range_reference.csv",
+    "enso_signal.csv", "enso_reference.csv"
   )
   md5 <- .aci_manifest_hashes("md5")
   sha <- .aci_manifest_hashes("sha256")

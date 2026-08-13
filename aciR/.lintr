@@ -20,6 +20,17 @@ linters: linters_with_defaults(
           "|[dF]_[xy]|sigma_[xy]|gamma",
           "|G_[xy]|[EFHKPb]_j|R_[fs]|c_[fs])$"
         ),
+        # The ENSO model's symbols are the physical ones of the climate
+        # literature the paper draws on, and a reader checking this file
+        # against Supplementary Information section 4.3 must see them: the two
+        # sea-surface temperature anomalies, the Walker circulation, the
+        # western-Pacific thermocline, and the parameters derived from them.
+        # Same standard as the two rules above -- narrow, enumerated, and here
+        # because the correspondence to the published equations is the point.
+        enso_notation = paste0(
+          "^(T_[CE]|h_W|I|C_u|b_0|d_tau|r_[CE]|zeta_[CE]|gamma_[CE]",
+          "|delta_[uh]|alpha_[12]|sigma_[uhCE]|beta_[uhCE])$"
+        ),
         # The analytic fixed points the identity tests grade against, written
         # as the equations write them: R*, RT*, mu*, muT*.
         stationary_points = "^(R|RT|mu|muT)_(star|numerator|denominator)$",

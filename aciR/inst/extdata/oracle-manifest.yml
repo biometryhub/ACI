@@ -319,6 +319,46 @@ fixtures:
       subjective: 5.551115e-17
     measured_on: 2026-08-13
 
+  - id: enso
+    harness: oracle/aci_oracle_enso.m
+    upstream_file: ENSO_model_cond_ACI_u_h_W_tau_unobs.m
+    command: matlab -nodisplay -nosplash -batch "run('aci_oracle_enso.m')"
+    seed: 1618
+    n_steps: 4001
+    dt: 0.005
+    observed: [T_C, T_E, I]
+    unobserved: [u, h_W, tau]
+    files:
+      enso_signal.csv:
+        sha256: c664a6a786f670577383467203e697f99e5048727c42e797ee9484c211286b57
+        md5: 15112b88642e7f45e11d429e5f784618
+      enso_reference.csv:
+        sha256: faf981c3149a79a84aaa9a45e4ef094d67ae9736d9f41e7e8a33adeda825e7d8
+        md5: fe8f0f1c74b693324e9858697c3b3b90
+    grades: >
+      The ENSO coefficient construction -- matrix-valued, seasonally modulated
+      on a six-unit period -- and the vector recursions on the only system the
+      package carries whose noise covariances VARY IN TIME. The Walker
+      circulation's observation-noise variance is multiplicative in its own
+      state and swings by a factor of more than three across the record; the
+      wind burst's latent variance depends on the observed central-Pacific
+      temperature and on the season. A filter reading either at its first step
+      alone would integrate a different system and still look plausible, which
+      is a defect this package found and fixed before this fixture existed.
+    does_not_grade: >
+      The reference's own realisation. The harness generates its observed path
+      by plain Euler-Maruyama rather than the reference's mixed scheme, because
+      that scheme's wind-burst update carries a correction aciR does not
+      reproduce -- see design/2026-08-13_milstein_anomaly.md. A filter is
+      graded on whatever signal drives it, so this grades the coefficients and
+      the recursions and NOT the particular path upstream would produce. Also
+      not graded: the noise cross-covariance, which this model sets to zero as
+      every model in the reference does, and the online smoother and causal
+      influence range, which remain scalar-only.
+    measured_max_abs_error:
+      all_series: 8.509859e-14
+    measured_on: 2026-08-13
+
 # The oracles that depend on no implementation at all. These are the primary
 # grounding for the cross-noise path: algebra on the governing equations,
 # solved in closed form in the test file and independent of BOTH aciR and
