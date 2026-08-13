@@ -175,7 +175,11 @@ reader to discover.
   at a matching seed. The oracle grade runs on the MATLAB signal, never on a
   fresh simulation. Simulation is checked for reproducibility and for its
   contract, not against a reference path.
-* **A time-varying self-drift.** Not implemented, so not graded.
+* **A time-varying self-drift.** Implemented and graded, in both causal
+  directions, against the noisy predator-prey model of the reference
+  implementation -- the system whose latent damping is set by the observed
+  population. The dyad and cross fixtures cannot reach this path, since both
+  pin the self-drift at a constant.
 * **The noise cross-covariance of the online smoother.** Implemented and
   reachable, but *not* graded against the reference. The causal-influence-range
   fixture, like every scalar model upstream, sets the cross-covariance to zero,

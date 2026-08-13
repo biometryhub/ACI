@@ -39,6 +39,14 @@ reference:
   contents:
   - aci_online_smoother
   - aci_cir
+- title: The noisy predator-prey model
+  desc: >
+    A stochastic Lotka-Volterra pair, studied in either causal direction. It is
+    the model whose latent self-drift is set by the observed state, and so the
+    one that exercises a self-drift varying in time.
+  contents:
+  - aci_predprey_model
+  - aci_predprey_components
 - title: The nonlinear dyad model
   desc: >
     The worked-example dyad model with intermittent extreme events, at the

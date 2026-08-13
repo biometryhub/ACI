@@ -21,15 +21,17 @@
 #' point for supplying them.
 #'
 #' The observed process obeys `dx = (L_x(x) y + f_x(x)) dt + dW_x` and the
-#' unobserved process obeys `dy = (L_y y + f_y(x)) dt + dW_y`, where the drift
-#' of the unobserved component is linear in `y`. The coefficients `L_x`, `f_x`
-#' and `f_y` may vary with the observed signal and are supplied as vectorised
-#' functions of `x` (a numeric constant is accepted and treated as constant in
-#' time). The self-drift `L_y` of the unobserved component is a numeric scalar:
-#' the numerical core in this package integrates a time-invariant `L_y`, which
-#' covers the reference dyad model and the general class it belongs to. Systems
-#' with a time-varying `L_y`, such as the noisy predator-prey model, are
-#' roadmapped; see the package `NEWS`.
+#' unobserved process obeys `dy = (L_y(x) y + f_y(x)) dt + dW_y`, where the
+#' drift of the unobserved component is linear in `y`. All four coefficients may
+#' vary with the observed signal and are supplied as vectorised functions of
+#' `x`; a numeric constant is accepted and treated as constant in time.
+#'
+#' A self-drift `L_y` that varies with the observed signal keeps the system
+#' conditionally Gaussian, because the coefficient is measurable with respect to
+#' the observed path. This is what the noisy predator-prey model needs, where
+#' the latent population's growth rate is set by the population being watched.
+#' What would leave the class is a coefficient depending on the *unobserved*
+#' component, and no such system can be built here.
 #'
 #' The noise is described by its Grammians, the entries of the noise covariance
 #' of the pair of processes. `S_xoS_x` and `S_yoS_y` are the observation-noise
@@ -52,8 +54,9 @@
 #'   one value per observation, or a numeric scalar for a constant coupling.
 #' @param f_x Remaining drift of the observed process. A vectorised function of
 #'   the observed signal, or a numeric scalar.
-#' @param L_y Numeric scalar. The linear self-drift of the unobserved
-#'   component, constant in time.
+#' @param L_y Linear self-drift of the unobserved component. A vectorised
+#'   function of the observed signal, or a numeric scalar for a self-drift
+#'   constant in time.
 #' @param f_y Remaining drift of the unobserved process. A vectorised function
 #'   of the observed signal, or a numeric scalar.
 #' @param S_xoS_x Numeric scalar. The observation-noise covariance; must be
@@ -101,7 +104,13 @@ aci_cgns_model <- function(L_x, f_x, L_y, f_y,
                            x0 = 0, y0 = 0,
                            label = "conditional Gaussian nonlinear system",
                            parameters = NULL) {
-  .aci_check_scalar(L_y, "L_y")
+  # The unobserved component's self-drift is admitted on the same terms as the
+  # other coefficients: a constant, or a vectorised function of the observed
+  # signal. A system whose latent damping is set by the observed state -- a
+  # predator whose growth rate depends on the prey it can see -- is still
+  # conditionally Gaussian, because the coefficient is measurable with respect
+  # to the observed path.
+  l_y_is_constant <- !is.function(L_y)
   .aci_check_noise_covariance(S_xoS_x, S_yoS_y, S_yoS_x)
   .aci_check_scalar(x0, "x0")
   .aci_check_scalar(y0, "y0")
@@ -111,7 +120,10 @@ aci_cgns_model <- function(L_x, f_x, L_y, f_y,
   model <- list(
     L_x = .aci_as_coef(L_x, "L_x"),
     f_x = .aci_as_coef(f_x, "f_x"),
-    L_y = L_y,
+    L_y = .aci_as_coef(L_y, "L_y"),
+    # Retained so the printed form can show the value when it is one, rather
+    # than reporting every model's self-drift as state-dependent.
+    L_y_constant = if (l_y_is_constant) L_y else NA_real_,
     f_y = .aci_as_coef(f_y, "f_y"),
     S_xoS_x = S_xoS_x,
     S_yoS_y = S_yoS_y,
@@ -305,7 +317,8 @@ aci_simulate <- function(model, n, dt = 0.001, seed = NULL) {
     f_y <- model$f_y(x[j - 1L])
     x[j] <- x[j - 1L] + (l_x * y[j - 1L] + f_x) * dt +
       sigma_x * root_dt * dw_x[j - 1L]
-    y[j] <- y[j - 1L] + (model$L_y * y[j - 1L] + f_y) * dt +
+    l_y <- model$L_y(x[j - 1L])
+    y[j] <- y[j - 1L] + (l_y * y[j - 1L] + f_y) * dt +
       sigma_y * root_dt * dw_y[j - 1L]
   }
   data.frame(t = seq(0, by = dt, length.out = n), x = x, y = y)
@@ -401,7 +414,7 @@ aci <- function(x, model, dt = 0.001, mu0 = NULL, R0 = 0.1, time = NULL) {
   comp <- list(
     L_x = .aci_eval_coef(model$L_x, "L_x", x),
     f_x = .aci_eval_coef(model$f_x, "f_x", x),
-    L_y = model$L_y,
+    L_y = .aci_eval_coef(model$L_y, "L_y", x),
     f_y = .aci_eval_coef(model$f_y, "f_y", x),
     S_xoS_x = model$S_xoS_x,
     S_yoS_y = model$S_yoS_y,

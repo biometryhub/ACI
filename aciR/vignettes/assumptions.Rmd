@@ -96,11 +96,14 @@ The current implementation is scalar: one observed process, one unobserved
 component. The method generalises to vector states, this implementation does
 not yet.
 
-### Time-invariant self-drift
+### Self-drift measurable with respect to the observed path
 
-The self-drift `L_y` of the unobserved component is constant in time. This
-covers the reference dyad model and the class it belongs to. Systems with a
-time-varying self-drift, such as the noisy predator-prey model, are roadmapped.
+The self-drift `L_y` of the unobserved component may be constant in time, as in
+the reference dyad model, or it may vary, as in the noisy predator-prey model
+where the latent population's growth rate is set by the population being
+watched. What it may *not* do is depend on the unobserved component itself:
+that is what would take the system outside the conditional Gaussian class and
+leave the closed-form recursions without a posterior to propagate.
 
 ### Regular, complete sampling
 

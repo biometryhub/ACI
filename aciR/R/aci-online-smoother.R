@@ -160,16 +160,17 @@ aci_online_smoother <- function(x, comp, dt, filt, lag = Inf, tol = 1e-18) {
   inv <- 1 / comp$S_xoS_x
   m_f <- filt$mean
   r_f <- filt$cov
+  L_y <- .aci_expand(comp$L_y, n)
 
   # ---- Auxiliary matrices ---------------------------------------------------
   G_x <- comp$L_x + comp$S_xoS_y / r_f
-  G_y <- comp$L_y + comp$S_yoS_y / r_f
+  G_y <- L_y + comp$S_yoS_y / r_f
   K_j <- inv * G_x
-  H_j <- (2 * comp$L_y * r_f + comp$S_yoS_y) / r_f
+  H_j <- (2 * L_y * r_f + comp$S_yoS_y) / r_f
 
   E_j <- 1 - G_y * dt + comp$S_yoS_x * K_j * dt
   F_j <- -r_f * (
-    K_j + (G_x * K_j * r_f * K_j - H_j * K_j + comp$L_y * K_j) * dt -
+    K_j + (G_x * K_j * r_f * K_j - H_j * K_j + L_y * K_j) * dt -
       comp$L_x * (inv + K_j * r_f * K_j * dt)
   )
 
@@ -181,9 +182,9 @@ aci_online_smoother <- function(x, comp, dt, filt, lag = Inf, tol = 1e-18) {
   # ordered product of E.
   k <- seq_len(n - 1L)
   b_j <- m_f[k] -
-    E_j[k] * ((1 + comp$L_y * dt) * m_f[k] + comp$f_y[k] * dt) +
+    E_j[k] * ((1 + L_y[k] * dt) * m_f[k] + comp$f_y[k] * dt) +
     F_j[k] * (x[k + 1L] - x[k] - (comp$L_x[k] * m_f[k] + comp$f_x[k]) * dt)
-  P_j <- r_f[k] - E_j[k] * (1 + comp$L_y * dt) * r_f[k] -
+  P_j <- r_f[k] - E_j[k] * (1 + L_y[k] * dt) * r_f[k] -
     F_j[k] * comp$L_x[k] * r_f[k] * dt
 
   innov_mean <- E_j[k] * m_f[k + 1L] + b_j - m_f[k]

@@ -32,7 +32,14 @@
 #' @export
 print.aci_model <- function(x, ...) {
   cat("<aci_model> ", x$label, "\n", sep = "")
-  cat(sprintf("  unobserved self-drift L_y: %g\n", x$L_y))
+  cat(sprintf(
+    "  unobserved self-drift L_y: %s\n",
+    if (is.na(x$L_y_constant)) {
+      "state-dependent"
+    } else {
+      format(x$L_y_constant)
+    }
+  ))
   cat(sprintf(
     "  noise Grammians: S_xoS_x = %g, S_yoS_y = %g, S_yoS_x = %g\n",
     x$S_xoS_x, x$S_yoS_y, x$S_yoS_x

@@ -2,6 +2,36 @@
 
 ## New features
 
+* The unobserved component's self-drift may now vary in time. `L_y` accepts one
+  value per observation in a components list, and a function of the observed
+  signal in `aci_cgns_model()`, alongside the constant it accepted before. A
+  constant still means what it meant, so components lists and models built
+  against the earlier contract are unaffected.
+
+  This admits systems whose latent damping is set by the observed state, which
+  is still a conditional Gaussian system -- the coefficient is measurable with
+  respect to the observed path. What remains out of scope is a self-drift
+  depending on the unobserved component itself, which would leave the
+  conditional Gaussian class altogether.
+
+  `model$L_y` is now a coefficient function, like `model$L_x` and `model$f_y`
+  before it, rather than a bare number. Code reading it as a number should read
+  `model$L_y_constant`, which holds the value when the self-drift is constant
+  and `NA` when it is not.
+
+* `aci_predprey_model()` and `aci_predprey_components()` build the noisy
+  predator-prey model, a stochastic Lotka-Volterra pair, in either causal
+  direction: `"prey_to_predator"` observes the predator and treats the prey as
+  latent, and `"predator_to_prey"` is the converse. The two are different
+  questions rather than one question and its mirror, and the metric is not
+  symmetric between them.
+
+  This is the system that needed a self-drift varying in time: in both
+  directions the latent population's growth rate is set by the population being
+  watched. It is graded against the reference implementation in both
+  directions, over a self-drift that changes sign, so the latent process is
+  damped at some times and driven at others.
+
 * `aci_cir()` computes the causal influence range, the second quantity of the
   method paper. Where the causal-information metric measures how much the
   future of the observed signal says about the unobserved state at a given

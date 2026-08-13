@@ -12,7 +12,8 @@ test_that("aci_cgns_model builds a well-formed model object", {
   expect_true(is.function(model$L_x))
   expect_true(is.function(model$f_x))
   expect_true(is.function(model$f_y))
-  expect_identical(model$L_y, -0.5)
+  expect_true(is.function(model$L_y))
+  expect_identical(model$L_y_constant, -0.5)
   expect_identical(model$S_yoS_x, 0)
   expect_identical(model$S_xoS_y, 0)
 })
@@ -46,7 +47,7 @@ test_that("aci_dyad_model matches the hand-built dyad components", {
 
   expect_equal(model$L_x(x), comp_ref$L_x)
   expect_equal(model$f_x(x), comp_ref$f_x)
-  expect_equal(model$L_y, comp_ref$L_y)
+  expect_equal(unique(model$L_y(x)), comp_ref$L_y)
   expect_equal(model$f_y(x), comp_ref$f_y)
   expect_equal(model$S_xoS_x, comp_ref$S_xoS_x)
   expect_equal(model$S_yoS_y, comp_ref$S_yoS_y)

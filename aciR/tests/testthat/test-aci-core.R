@@ -53,7 +53,10 @@ test_that("the components list of the dyad model matches its constructor", {
 
   expect_equal(model$L_x(x), comp$L_x)
   expect_equal(model$f_x(x), comp$f_x)
-  expect_equal(model$L_y, comp$L_y)
+  # L_y is a coefficient function like the others now; the dyad's is constant,
+  # so evaluating it at any signal must give the components entry back.
+  expect_equal(unique(model$L_y(x)), comp$L_y)
+  expect_identical(model$L_y_constant, comp$L_y)
   expect_equal(model$f_y(x), comp$f_y)
   expect_equal(model$S_xoS_x, comp$S_xoS_x)
   expect_equal(model$S_yoS_y, comp$S_yoS_y)

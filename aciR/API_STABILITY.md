@@ -23,12 +23,13 @@ aciR uses three stages, following the conventions of the
 | Export | Stage | Notes |
 |---|---|---|
 | `aci()` | Maturing | The canonical entry point. `time` is the newest argument and the most likely to gain siblings. |
-| `aci_cgns_model()` | Maturing | The general constructor. Will gain arguments as the core widens (a time-varying `L_y` is roadmapped); existing arguments are settled. |
+| `aci_cgns_model()` | Maturing | The general constructor. `L_y` now accepts a function of the observed signal as well as a constant; remaining arguments are settled and will widen only additively. |
 | `aci_dyad_model()` | Maturing | Parameterisation follows the reference implementation and is not expected to change. |
 | `aci_simulate()` | Maturing | See the reproducibility contract below. |
 | `aci_filter()` | Maturing | Expert surface; see the components contract below. |
 | `aci_smoother()` | Maturing | Expert surface. |
 | `aci_metric()` | Maturing | Expert surface. |
+| `aci_predprey_model()`, `aci_predprey_components()` | Experimental | New in the development version. The `direction` vocabulary may change; the parameterisation follows the reference implementation and is not expected to. |
 | `aci_online_smoother()` | Experimental | New in the development version. The `lag` and `tol` arguments are settled in meaning, but the returned object may gain fields as the causal influence range and the adaptive-lag variant develop. |
 | `aci_cir()` | Experimental | New in the development version. The returned object's shape, and in particular how an unresolved time is reported, may change: the saturation margin is this package's own device and has no counterpart in the reference implementation. |
 | `aci_dyad_components()` | Maturing | The worked example of the components schema. |
@@ -60,9 +61,9 @@ Within a minor release series:
 * new *optional* entries may be added, and a components list built for an
   earlier version will keep working.
 
-The one foreseeable change is the addition of a per-step `L_y` when the core
-gains a time-varying self-drift. That will be additive: a scalar `L_y` will
-continue to mean a self-drift constant in time.
+`L_y` now carries either a scalar, meaning a self-drift constant in time, or
+one value per observation. That widening was additive, as promised: every
+components list built against the earlier contract still means what it meant.
 
 ## The reproducibility contract
 
@@ -97,9 +98,11 @@ triggers them will not change without a `NEWS.md` entry.
 
 ## Roadmap items that will force change
 
-* A core admitting a **time-varying self-drift** `L_y`, needed for the noisy
-  predator-prey model. Additive to the components schema.
-* The **causal-influence-range** (`aci_cir()`). A new export; no change to
-  existing ones.
+* **Vector states and the conditional extension.** The components schema
+  becomes matrix-valued. This is the one roadmap item that cannot be additive
+  to the scalar schema, and it will carry a deprecation cycle.
 
-Both wait on their own independent-oracle fixtures.
+It waits on its own independent-oracle fixtures, and on one that does not yet
+exist anywhere: every scalar model in the reference implementation sets the
+noise cross-covariance to zero, so the matrix-valued cross-noise path will have
+no upstream counterpart to be graded against.

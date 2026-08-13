@@ -24,8 +24,12 @@
 #'     component into the drift of the observed process at each time step.}
 #'   \item{`f_x`}{Numeric vector, length `n`. The remaining drift of the
 #'     observed process at each time step.}
-#'   \item{`L_y`}{Numeric scalar. The linear self-drift of the unobserved
-#'     component (constant in time for the supplied dyad model).}
+#'   \item{`L_y`}{Numeric scalar, or numeric vector of length `n`. The linear
+#'     self-drift of the unobserved component. A scalar is a self-drift
+#'     constant in time, as in the supplied dyad model; a vector carries one
+#'     value per observation, as the supplied predator-prey model needs. It may
+#'     depend on the observed signal but never on the unobserved component,
+#'     which is what keeps the system conditionally Gaussian.}
 #'   \item{`f_y`}{Numeric vector, length `n`. The remaining drift of the
 #'     unobserved process at each time step.}
 #'   \item{`S_xoS_x`}{Numeric scalar. The observation-noise covariance,
@@ -114,14 +118,15 @@ aci_filter <- function(x, comp, dt, mu0, R0) {
   m[1L] <- mu0
   v[1L] <- R0
   inv <- 1 / comp$S_xoS_x
+  L_y <- .aci_expand(comp$L_y, n)
   mu <- mu0
   R <- R0
   for (j in seq_len(n - 1L) + 1L) {
     dx <- x[j] - x[j - 1L]
     aux <- comp$S_yoS_x + R * comp$L_x[j - 1L]
-    mu <- mu + (comp$L_y * mu + comp$f_y[j - 1L]) * dt +
+    mu <- mu + (L_y[j - 1L] * mu + comp$f_y[j - 1L]) * dt +
       aux * inv * (dx - (comp$L_x[j - 1L] * mu + comp$f_x[j - 1L]) * dt)
-    R <- R + (2 * comp$L_y * R + comp$S_yoS_y - aux * inv * aux) * dt
+    R <- R + (2 * L_y[j - 1L] * R + comp$S_yoS_y - aux * inv * aux) * dt
     if (!is.finite(R) || R <= 0) {
       .aci_stop_covariance("filter", j, (j - 1L) * dt, R)
     }
@@ -185,16 +190,17 @@ aci_smoother <- function(x, comp, dt, filt) {
   m[n] <- filt$mean[n]
   v[n] <- filt$cov[n]
   inv <- 1 / comp$S_xoS_x
+  L_y <- .aci_expand(comp$L_y, n)
   muT <- m[n]
   RT <- v[n]
   B_j <- comp$S_yoS_y - comp$S_yoS_x * inv * comp$S_xoS_y
   for (j in rev(seq_len(n - 1L))) {
     dx <- x[j + 1L] - x[j]
-    A_j <- comp$L_y - comp$S_yoS_x * inv * comp$L_x[j]
+    A_j <- L_y[j] - comp$S_yoS_x * inv * comp$L_x[j]
     # The backward mean carries two contributions: the reversed prior drift
     # corrected toward the filtered estimate, and the transport term through
     # which the noise cross-covariance enters.
-    drift <- comp$L_y * muT + comp$f_y[j] -
+    drift <- L_y[j] * muT + comp$f_y[j] -
       B_j / filt$cov[j] * (filt$mean[j] - muT)
     transport <- comp$S_yoS_x * inv *
       (-dx + (comp$L_x[j] * muT + comp$f_x[j]) * dt)

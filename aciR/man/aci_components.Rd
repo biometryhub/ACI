@@ -16,8 +16,12 @@ equations governing \code{x} and \code{y}. The list has the following entries.
 component into the drift of the observed process at each time step.}
 \item{\code{f_x}}{Numeric vector, length \code{n}. The remaining drift of the
 observed process at each time step.}
-\item{\code{L_y}}{Numeric scalar. The linear self-drift of the unobserved
-component (constant in time for the supplied dyad model).}
+\item{\code{L_y}}{Numeric scalar, or numeric vector of length \code{n}. The linear
+self-drift of the unobserved component. A scalar is a self-drift
+constant in time, as in the supplied dyad model; a vector carries one
+value per observation, as the supplied predator-prey model needs. It may
+depend on the observed signal but never on the unobserved component,
+which is what keeps the system conditionally Gaussian.}
 \item{\code{f_y}}{Numeric vector, length \code{n}. The remaining drift of the
 unobserved process at each time step.}
 \item{\code{S_xoS_x}}{Numeric scalar. The observation-noise covariance,

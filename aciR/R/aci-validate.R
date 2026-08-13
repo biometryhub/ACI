@@ -503,7 +503,36 @@
       )
     }
   }
-  .aci_check_scalar(comp$L_y, sprintf("%s$L_y", name))
+  # The self-drift of the unobserved component may be constant in time, which
+  # is the case the flagship dyad model and the reference implementation's
+  # scalar models present, or it may carry one value per observation, which is
+  # what a system whose latent damping depends on the observed state needs.
+  # Both are admitted; a length between the two is a mistake rather than a
+  # third case.
+  if (!is.numeric(comp$L_y) || !is.null(dim(comp$L_y)) ||
+        !length(comp$L_y) %in% c(1L, n)) {
+    stop(
+      sprintf(
+        paste0(
+          "`%s$L_y` must be a numeric scalar, for a self-drift constant in ",
+          "time, or a numeric vector of length %d, one value per ",
+          "observation; it is %s."
+        ),
+        name, n, .aci_describe(comp$L_y)
+      ),
+      call. = FALSE
+    )
+  }
+  bad <- which(!is.finite(comp$L_y))
+  if (length(bad) > 0L) {
+    stop(
+      sprintf(
+        "`%s$L_y` must be finite; it holds %s at index %d.",
+        name, .aci_bad_kind(comp$L_y[bad[1L]]), bad[1L]
+      ),
+      call. = FALSE
+    )
+  }
   .aci_check_noise_covariance(comp$S_xoS_x, comp$S_yoS_y, comp$S_yoS_x)
   .aci_check_scalar(comp$S_xoS_y, sprintf("%s$S_xoS_y", name))
   asymmetry <- abs(comp$S_xoS_y - comp$S_yoS_x)
@@ -607,6 +636,26 @@
 #' @param time The time corresponding to `index`.
 #' @param value The offending covariance.
 #'
+#' Expand a possibly-constant coefficient to one value per observation
+#'
+#' The unobserved component's self-drift is admitted either as a scalar,
+#' constant in time, or as one value per observation. The recursions index it
+#' either way, so it is expanded once at the top rather than branched on at
+#' every step: a length-n vector of a repeated value costs a few hundred
+#' kilobytes on the longest signals this core integrates, and buys a loop body
+#' that reads like the equation it implements.
+#'
+#' @param value Numeric scalar or numeric vector of length `n`.
+#' @param n Integer scalar. The number of observations.
+#'
+#' @returns A numeric vector of length `n`.
+#'
+#' @noRd
+#' @keywords internal
+.aci_expand <- function(value, n) {
+  if (length(value) == 1L) rep.int(value, n) else value
+}
+
 #' Require a lag length
 #'
 #' A lag is a count of future time steps, so it must be a non-negative whole

@@ -176,6 +176,60 @@ fixtures:
       subjective: 1.110223e-16
     measured_on: 2026-08-13
 
+  - id: predprey
+    harness: oracle/aci_oracle_predprey.m
+    upstream_file: noisy_predator_prey_model.m
+    command: matlab -nodisplay -nosplash -batch "run('aci_oracle_predprey.m')"
+    seed: 42
+    n_steps: 12001
+    dt: 0.005
+    initial_filter_mean: 4.0
+    initial_filter_covariance: 0.1
+    parameters:
+      alpha: 0.4
+      beta: 0.1
+      gamma: 1.1
+      delta: 0.4
+      sigma_x: 0.3
+      sigma_y: 0.3
+    sampled_indices: seq(1, 12001, by = 40)   # 301 rows per direction
+    directions:
+      predator_to_prey: prey observed, predator latent
+      prey_to_predator: predator observed, prey latent
+    branch_equivalence: >
+      The reference presents the two directions as separate code sections, each
+      run after rng(42). Both integrate the same Lotka-Volterra pair with the
+      same noise applied the same way, so one simulation serves both. The
+      harness does not assume this: it re-runs the second branch's formulation
+      and diffs. Measured 2026-08-13: 1.669775e-13.
+    files:
+      predprey_signal.csv:
+        sha256: 591f904e511efc7abd6b884a75b65aea00aadfdd2ce9598d841feb9b41b34f13
+        md5: a1689909bc099b10eedf0dd3e17d5acb
+      predprey_reference_predator_to_prey.csv:
+        sha256: 734400af4096ecf7462e767f2e3e588a88472332c9a90f503a0a8cf64ff4ded3
+        md5: de6e4ecd530c9c60973112b3500f5b74
+      predprey_reference_prey_to_predator.csv:
+        sha256: 09aa718cfcf4fff322d4f720266182e2548da56a625df8ff33cb6c011e5721c7
+        md5: 9e76f6c6599bcc54044e0c84e092f904
+    grades: >
+      The filter, smoother and metric with a TIME-VARYING latent self-drift, in
+      both causal directions. This is the path the dyad and cross fixtures
+      cannot reach: both pin L_y at a constant, so the terms that index it
+      execute against an unvarying value. Here the self-drift moves over
+      [-0.3705, 0.8174] one way and [-1.1583, 0.8386] the other, changing sign
+      in both, so the latent process is damped at some times and driven at
+      others.
+    does_not_grade: >
+      The noise cross-covariance, which this model sets to zero as every scalar
+      model upstream does; the online smoother and the causal influence range,
+      which this fixture does not exercise; simulation, since aciR's generator
+      differs from MATLAB's and the grade runs on the MATLAB path.
+    measured_max_abs_error:
+      predator_to_prey: 4.281020e-13
+      prey_to_predator: 6.572520e-14
+    measured_on: 2026-08-13
+
 # The oracles that depend on no implementation at all. These are the primary
 # grounding for the cross-noise path: algebra on the governing equations,
 # solved in closed form in the test file and independent of BOTH aciR and

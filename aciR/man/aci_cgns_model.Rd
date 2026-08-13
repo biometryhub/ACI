@@ -26,8 +26,9 @@ one value per observation, or a numeric scalar for a constant coupling.}
 \item{f_x}{Remaining drift of the observed process. A vectorised function of
 the observed signal, or a numeric scalar.}
 
-\item{L_y}{Numeric scalar. The linear self-drift of the unobserved
-component, constant in time.}
+\item{L_y}{Linear self-drift of the unobserved component. A vectorised
+function of the observed signal, or a numeric scalar for a self-drift
+constant in time.}
 
 \item{f_y}{Remaining drift of the unobserved process. A vectorised function
 of the observed signal, or a numeric scalar.}
@@ -66,15 +67,17 @@ point for supplying them.
 }
 \details{
 The observed process obeys \verb{dx = (L_x(x) y + f_x(x)) dt + dW_x} and the
-unobserved process obeys \verb{dy = (L_y y + f_y(x)) dt + dW_y}, where the drift
-of the unobserved component is linear in \code{y}. The coefficients \code{L_x}, \code{f_x}
-and \code{f_y} may vary with the observed signal and are supplied as vectorised
-functions of \code{x} (a numeric constant is accepted and treated as constant in
-time). The self-drift \code{L_y} of the unobserved component is a numeric scalar:
-the numerical core in this package integrates a time-invariant \code{L_y}, which
-covers the reference dyad model and the general class it belongs to. Systems
-with a time-varying \code{L_y}, such as the noisy predator-prey model, are
-roadmapped; see the package \code{NEWS}.
+unobserved process obeys \verb{dy = (L_y(x) y + f_y(x)) dt + dW_y}, where the
+drift of the unobserved component is linear in \code{y}. All four coefficients may
+vary with the observed signal and are supplied as vectorised functions of
+\code{x}; a numeric constant is accepted and treated as constant in time.
+
+A self-drift \code{L_y} that varies with the observed signal keeps the system
+conditionally Gaussian, because the coefficient is measurable with respect to
+the observed path. This is what the noisy predator-prey model needs, where
+the latent population's growth rate is set by the population being watched.
+What would leave the class is a coefficient depending on the \emph{unobserved}
+component, and no such system can be built here.
 
 The noise is described by its Grammians, the entries of the noise covariance
 of the pair of processes. \code{S_xoS_x} and \code{S_yoS_y} are the observation-noise
