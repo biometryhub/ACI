@@ -231,3 +231,142 @@ test_that("the register covers the schema it claims to", {
   # to be genuinely graded, or every assertion above passes vacuously.
   expect_gt(sum(matrix_df$graded), 20L)
 })
+
+# -- the sibling class: declared time-varying, read as constant ----------------
+#
+# The register above catches a term that is present but ANNIHILATED. It cannot
+# catch a term that is present, non-zero, and silently read only at its first
+# step -- which produces a plausible result computed from an input the caller
+# did not supply.
+#
+# That defect was real. The vector validator inverted only the first slice of a
+# time-varying observation-noise covariance, so a covariance ramping from 0.5
+# to 0.9 gave a result identical, to the last bit, to a constant 0.5. No oracle
+# caught it: the fixtures all hold that covariance constant. No contract caught
+# it: the array was accepted. Line coverage was total throughout.
+#
+# The general property is stronger than non-degeneracy and subsumes it:
+#
+#   a coefficient is genuinely consumed only if PERTURBING IT CHANGES THE
+#   ANSWER.
+#
+# So each term that may vary in time is perturbed at a LATE step -- late enough
+# that a reader of the first step alone would not notice -- and the output must
+# move. A term whose perturbation changes nothing is either ignored or dead.
+
+.aci_gm_perturb_at <- function(n) as.integer(round(0.75 * n))
+
+.aci_gm_scalar_system <- function(n = 300L) {
+  dt <- 1e-3
+  x <- 1 + 0.3 * sin(5 * seq(0, by = dt, length.out = n))
+  comp <- list(
+    L_x = 0.8 + 0.2 * x, f_x = 0.4 - 0.3 * x, L_y = rep(-0.6, n),
+    f_y = 0.5 - 0.2 * x^2,
+    S_xoS_x = 0.5, S_yoS_y = 0.9, S_yoS_x = 0.2, S_xoS_y = 0.2
+  )
+  list(x = x, comp = comp, dt = dt, n = n)
+}
+
+.aci_gm_vector_system <- function(n = 300L) {
+  dt <- 1e-3
+  tt <- seq(0, by = dt, length.out = n)
+  x <- rbind(1 + 0.3 * sin(5 * tt), 0.5 + 0.2 * cos(7 * tt))
+  arr <- function(m) array(rep(m, n), c(2L, 2L, n))
+  comp <- list(
+    L_x = arr(matrix(c(0.8, 0.1, 0.2, 0.7), 2L, 2L)),
+    f_x = matrix(0.2, 2L, n),
+    L_y = arr(matrix(c(-1.1, 0.2, 0.3, -0.9), 2L, 2L)),
+    f_y = matrix(0.3, 2L, n),
+    S_xoS_x = arr(matrix(c(0.7, 0.1, 0.1, 0.8), 2L, 2L)),
+    S_yoS_y = arr(matrix(c(0.9, 0.2, 0.2, 1.0), 2L, 2L)),
+    S_yoS_x = arr(matrix(c(0.2, 0.05, 0.05, 0.15), 2L, 2L))
+  )
+  list(x = x, comp = comp, dt = dt, n = n)
+}
+
+.aci_gm_filter_out <- function(sys) {
+  filt <- aci_filter(
+    sys$x, sys$comp, sys$dt,
+    mu0 = if (is.matrix(sys$x)) c(0.4, 0.1) else 0.4,
+    R0 = if (is.matrix(sys$x)) diag(c(0.3, 0.3)) else 0.3
+  )
+  c(as.numeric(filt$mean), as.numeric(filt$cov))
+}
+
+test_that("perturbing a late step of any time-varying term moves the result", {
+  for (sys in list(.aci_gm_scalar_system(), .aci_gm_vector_system())) {
+    base <- .aci_gm_filter_out(sys)
+    j <- .aci_gm_perturb_at(sys$n)
+
+    for (term in .aci_gm_terms) {
+      value <- sys$comp[[term]]
+      d <- dim(value)
+      varying <- (is.null(d) && length(value) == sys$n) ||
+        (length(d) == 2L && ncol(value) == sys$n) ||
+        (length(d) == 3L && d[3L] == sys$n)
+      if (!varying) {
+        next
+      }
+
+      bumped <- sys
+      if (length(d) == 3L) {
+        # Scale the whole slice, preserving symmetry so a covariance stays a
+        # covariance and the perturbation tests consumption rather than
+        # admissibility.
+        bumped$comp[[term]][, , j] <- value[, , j] * 1.5
+      } else if (length(d) == 2L) {
+        bumped$comp[[term]][, j] <- value[, j] + 0.5
+      } else {
+        bumped$comp[[term]][j] <- value[j] + 0.5
+      }
+
+      moved <- max(abs(.aci_gm_filter_out(bumped) - base))
+      expect_gt(moved, 0)
+    }
+  }
+})
+
+test_that("a time-varying observation covariance is not read as constant", {
+  # The specific defect, pinned so it cannot return. Both systems agree at the
+  # FIRST step and differ later; a filter that reads only the first step gives
+  # bit-identical answers, which is what this once did.
+  n <- 300L
+  dt <- 1e-3
+  tt <- seq(0, by = dt, length.out = n)
+  x <- rbind(1 + 0.3 * sin(5 * tt), 0.5 + 0.2 * cos(7 * tt))
+  build <- function(varying) {
+    s_xx <- array(0, c(2L, 2L, n))
+    for (j in seq_len(n)) {
+      first <- if (varying) 0.5 + 0.4 * (j - 1L) / (n - 1L) else 0.5
+      s_xx[, , j] <- diag(c(first, 0.8))
+    }
+    list(
+      L_x = diag(2L), f_x = c(0, 0), L_y = -diag(2L), f_y = c(0, 0),
+      S_xoS_x = s_xx, S_yoS_y = diag(2L), S_yoS_x = matrix(0, 2L, 2L)
+    )
+  }
+  expect_identical(build(TRUE)$S_xoS_x[, , 1L], build(FALSE)$S_xoS_x[, , 1L])
+
+  a <- aci_filter(x, build(TRUE), dt, mu0 = c(0, 0), R0 = diag(2L))
+  b <- aci_filter(x, build(FALSE), dt, mu0 = c(0, 0), R0 = diag(2L))
+  expect_gt(max(abs(a$cov - b$cov)), 1e-6)
+})
+
+test_that("a covariance that loses positivity later is rejected, not ignored", {
+  # The same first-slice-only reading would have accepted a covariance that is
+  # positive definite at step one and singular afterwards.
+  n <- 200L
+  x <- matrix(0, 2L, n)
+  s_xx <- array(0, c(2L, 2L, n))
+  for (j in seq_len(n)) {
+    s_xx[, , j] <- diag(c(if (j < n %/% 2L) 0.5 else -0.2, 0.8))
+  }
+  comp <- list(
+    L_x = diag(2L), f_x = c(0, 0), L_y = -diag(2L), f_y = c(0, 0),
+    S_xoS_x = s_xx, S_yoS_y = diag(2L), S_yoS_x = matrix(0, 2L, 2L)
+  )
+  expect_error(
+    aci_filter(x, comp, 1e-3, mu0 = c(0, 0), R0 = diag(2L)),
+    "positive definite at every"
+  )
+})

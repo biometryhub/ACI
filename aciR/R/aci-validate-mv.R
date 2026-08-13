@@ -175,32 +175,58 @@
   }
 
   # The observation-noise covariance is inverted by the filter, so it must be
-  # positive definite and not merely non-negative.
+  # positive definite and not merely non-negative -- at EVERY step it is
+  # supplied for, not merely the first.
+  #
+  # Inverting only the first slice of a time-varying covariance is a silent
+  # wrong answer rather than an error: the recursion runs, the result looks
+  # plausible, and the variation the caller supplied is discarded. This code
+  # did exactly that until it was probed by perturbing a late slice and
+  # observing the output not move at all.
   if (is.null(comp$S_xoS_x_inv)) {
-    factor <- .aci_chol(s_xx)
-    if (is.null(factor)) {
+    varying <- length(dim(comp$S_xoS_x)) == 3L
+    steps <- if (varying) seq_len(n) else 1L
+    inverse <- if (varying) array(0, c(n_x, n_x, n)) else NULL
+    for (j in steps) {
+      slice <- .aci_slice(comp$S_xoS_x, j)
+      factor <- .aci_chol(slice)
+      if (is.null(factor)) {
+        stop(
+          sprintf(
+            paste0(
+              "`%s$S_xoS_x` must be symmetric positive definite at every ",
+              "step: the filter inverts it. It is not at step %d. Supply ",
+              "`%s$S_xoS_x_inv` directly if a weighting that is not the ",
+              "inverse of a covariance is intended, as the conditional ",
+              "construction requires."
+            ),
+            name, j, name
+          ),
+          call. = FALSE
+        )
+      }
+      if (varying) {
+        inverse[, , j] <- chol2inv(factor)
+      } else {
+        inverse <- chol2inv(factor)
+      }
+    }
+    comp$S_xoS_x_inv <- inverse
+  } else {
+    d <- dim(comp$S_xoS_x_inv)
+    ok <- is.numeric(comp$S_xoS_x_inv) && !is.null(d) &&
+      d[1L] == n_x && d[2L] == n_x &&
+      (length(d) == 2L || (length(d) == 3L && d[3L] == n)) &&
+      all(is.finite(comp$S_xoS_x_inv))
+    if (!ok) {
       stop(
         sprintf(
           paste0(
-            "`%s$S_xoS_x` must be symmetric positive definite: the filter ",
-            "inverts it. Supply `%s$S_xoS_x_inv` directly if a weighting ",
-            "that is not the inverse of a covariance is intended, as the ",
-            "conditional construction requires."
+            "`%s$S_xoS_x_inv` must be a finite %d by %d matrix, constant in ",
+            "time, or a %d by %d by %d array with time in the last margin; ",
+            "it is %s."
           ),
-          name, name
-        ),
-        call. = FALSE
-      )
-    }
-    comp$S_xoS_x_inv <- chol2inv(factor)
-  } else {
-    inv <- .aci_slice(comp$S_xoS_x_inv, 1L)
-    if (!is.matrix(inv) || nrow(inv) != n_x || ncol(inv) != n_x ||
-          !all(is.finite(inv))) {
-      stop(
-        sprintf(
-          "`%s$S_xoS_x_inv` must be a finite %d by %d matrix; it is %s.",
-          name, n_x, n_x, .aci_describe(inv)
+          name, n_x, n_x, n_x, n_x, n, .aci_describe(comp$S_xoS_x_inv)
         ),
         call. = FALSE
       )
