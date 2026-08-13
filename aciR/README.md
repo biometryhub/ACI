@@ -122,7 +122,9 @@ before drawing a causal conclusion from a peak.
 
 Current scope: a scalar observed process, a scalar unobserved component,
 a self-drift constant in time, and a complete signal on a regular grid.
-A time-varying self-drift and the causal-influence-range are roadmapped;
+Both published quantities are implemented -- the causal-information
+metric and, via `aci_cir()`, the causal influence range. A time-varying
+self-drift, vector states and the conditional extension are roadmapped;
 see `NEWS.md`. API stability is declared per export in
 `API_STABILITY.md`.
 

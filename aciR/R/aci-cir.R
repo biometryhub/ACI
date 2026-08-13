@@ -117,7 +117,7 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
   .aci_check_posterior(filt, "filt", n)
   window <- .aci_check_window(window, n)
   if (!is.numeric(epsilon) || length(epsilon) < 1L || anyNA(epsilon) ||
-      any(epsilon <= 0)) {
+        any(epsilon <= 0)) {
     stop(
       "`epsilon` must be a vector of positive, non-missing thresholds.",
       call. = FALSE

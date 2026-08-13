@@ -38,7 +38,7 @@
   bitwise identity. The second is a first-order limit rather than an identity,
   because the online recursion is the discrete smoother while `aci_smoother()`
   integrates the continuous backward equation; the test asserts the measured
-  convergence order, which a mis-stated recursion would not produce.
+  convergence order, which a wrongly stated recursion would not produce.
 
   Each new observation updates earlier steps through an ordered product that
   decays geometrically, a property the source paper establishes by bounding the
@@ -67,10 +67,12 @@
   different units -- the signal in its own units, the metric in nats -- and a
   shared axis invited magnitude comparisons across them that carry no meaning.
 
-* The dyad vignette states in as many words that the causal-influence-range of
-  the method is not implemented in this package yet, and the validation
-  vignette displays the scalar Gaussian relative-entropy formula the metric
-  evaluates.
+* The dyad vignette says which of the paper's two quantities it covers and
+  which it does not, and the validation vignette displays the scalar Gaussian
+  relative-entropy formula the metric evaluates. The scope note was written
+  when the causal influence range was unimplemented; it now distinguishes the
+  two questions instead, since the range arrived later in this same development
+  cycle.
 
 * `DESCRIPTION` states the release's scope in one sentence, and `Authors@R`,
   `LICENSE` and `LICENSE.md` carry the upstream copyright of the reference

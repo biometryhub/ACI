@@ -29,6 +29,8 @@ aciR uses three stages, following the conventions of the
 | `aci_filter()` | Maturing | Expert surface; see the components contract below. |
 | `aci_smoother()` | Maturing | Expert surface. |
 | `aci_metric()` | Maturing | Expert surface. |
+| `aci_online_smoother()` | Experimental | New in the development version. The `lag` and `tol` arguments are settled in meaning, but the returned object may gain fields as the causal influence range and the adaptive-lag variant develop. |
+| `aci_cir()` | Experimental | New in the development version. The returned object's shape, and in particular how an unresolved time is reported, may change: the saturation margin is this package's own device and has no counterpart in the reference implementation. |
 | `aci_dyad_components()` | Maturing | The worked example of the components schema. |
 | `aci_components` | Maturing | The components schema itself; see below. |
 | `print.aci_model()`, `print.aci()` | Maturing | Printed output is for humans and may be reformatted in any release. Do not parse it; use `summary()` or `as.data.frame()`. |

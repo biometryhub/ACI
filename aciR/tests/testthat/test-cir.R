@@ -37,7 +37,8 @@ test_that("the comparison sequence ends at the online smoother", {
 
   for (j in c(10L, 100L, 500L, 900L)) {
     k <- seq.int(j, p$n - 1L)
-    d <- aux$cum_sign[k] * aux$cum_sign[j] * exp(aux$cum_log[k] - aux$cum_log[j])
+    d <- aux$cum_sign[k] * aux$cum_sign[j] *
+      exp(aux$cum_log[k] - aux$cum_log[j])
     expect_lt(
       abs(p$filt$mean[j] + sum(d * aux$innov_mean[k]) - online$mean[j]),
       1e-12

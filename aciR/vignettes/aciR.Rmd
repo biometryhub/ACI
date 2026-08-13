@@ -212,11 +212,14 @@ process that generated the data, the reading is safe. On real data it would not
 be, and the article *Assumptions and interpretation* sets out exactly what an
 ACI peak does and does not support.
 
-One scope note. This vignette walks through the whole of what aciR computes,
-but not the whole of the published method. The paper also defines the causal
-influence range (CIR) -- the length of time over which an ACI signal persists
--- and aciR does not implement it yet. The roadmap in `NEWS.md` and
-`API_STABILITY.md` records what it waits on.
+One scope note. This vignette walks through the causal-information metric,
+which answers *how much* the future of the observed signal says about the
+unobserved state. The paper defines a second quantity, the causal influence
+range, which answers *how far ahead* one must look before that answer stops
+changing. It is implemented as `aci_cir()` and graded against the same
+reference; it is not covered here because it is a different question rather
+than a further step in this one. What aciR still does not implement is the
+vector and conditional case, which `NEWS.md` and `API_STABILITY.md` record.
 
 ## Under the hood: the general components path
 

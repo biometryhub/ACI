@@ -30,6 +30,15 @@ reference:
   - aci_filter
   - aci_smoother
   - aci_metric
+- title: Causal influence range
+  desc: >
+    How far ahead in the observed record the estimate of the unobserved state
+    keeps improving, and the fixed-lag online smoother it is built from. These
+    answer a different question from the causal-information metric, which
+    measures how much the record says rather than how long it takes to say it.
+  contents:
+  - aci_online_smoother
+  - aci_cir
 - title: The nonlinear dyad model
   desc: >
     The worked-example dyad model with intermittent extreme events, at the

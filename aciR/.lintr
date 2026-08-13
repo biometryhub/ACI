@@ -10,9 +10,15 @@ linters: linters_with_defaults(
         # drift coefficients, the noise Grammians, the smoother's per-step
         # terms, the filter and backward-sweep state, and the dyad parameters.
         # Widening this rule needs a reason; see CONTRIBUTING.md.
+        # The online smoother adds a second set of paper symbols: the auxiliary
+        # matrices E and F, the drift operators G, and the per-step offsets
+        # b, H, K and P, all as Algorithm 1 of the online-smoother paper writes
+        # them (arXiv 2411.05870). Same reason as above -- a reader diffing
+        # R/aci-online-smoother.R against that algorithm must see its symbols.
         equation_notation = paste0(
           "^(L_[xy]|f_[xy]|S_[xy]oS_[xy]|[AB]_j|mu[0T]?|R[0T]?",
-          "|[dF]_[xy]|sigma_[xy]|gamma)$"
+          "|[dF]_[xy]|sigma_[xy]|gamma",
+          "|G_[xy]|[EFHKPb]_j)$"
         ),
         # The analytic fixed points the identity tests grade against, written
         # as the equations write them: R*, RT*, mu*, muT*.

@@ -176,7 +176,13 @@ reader to discover.
   fresh simulation. Simulation is checked for reproducibility and for its
   contract, not against a reference path.
 * **A time-varying self-drift.** Not implemented, so not graded.
-* **The causal-influence-range.** Not implemented. It waits on its own fixture.
+* **The noise cross-covariance of the online smoother.** Implemented and
+  reachable, but *not* graded against the reference. The causal-influence-range
+  fixture, like every scalar model upstream, sets the cross-covariance to zero,
+  so the terms carrying it execute on every run with the term annihilated. This
+  is the same gap the `cross` fixture closes for the filter and the smoother,
+  and it is not yet closed here. Treat the online smoother's correlated-noise
+  path as unverified.
 * **Vector states.** Not implemented.
 * **Model adequacy.** No oracle can grade this, and none pretends to. Whether
   the system you supplied describes your data is a scientific question, treated

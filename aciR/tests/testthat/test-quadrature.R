@@ -51,5 +51,7 @@ test_that("Simpson rejects malformed input", {
   expect_error(aciR:::.aci_simpson(1), "at least two")
   expect_error(aciR:::.aci_simpson(c(1, NA, 3)), "non-missing")
   expect_error(aciR:::.aci_simpson(c(1, 2, 3), c(1, 2)), "same length")
-  expect_error(aciR:::.aci_simpson(c(1, 2, 3), c(1, 1, 2)), "strictly increasing")
+  expect_error(
+    aciR:::.aci_simpson(c(1, 2, 3), c(1, 1, 2)), "strictly increasing"
+  )
 })

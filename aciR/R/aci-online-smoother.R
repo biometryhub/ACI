@@ -158,19 +158,19 @@ aci_online_smoother <- function(x, comp, dt, filt, lag = Inf, tol = 1e-18) {
 .aci_online_aux <- function(x, comp, dt, filt) {
   n <- length(x)
   inv <- 1 / comp$S_xoS_x
-  mf <- filt$mean
-  Rf <- filt$cov
+  m_f <- filt$mean
+  r_f <- filt$cov
 
   # ---- Auxiliary matrices ---------------------------------------------------
-  G_x <- comp$L_x + comp$S_xoS_y / Rf
-  G_y <- comp$L_y + comp$S_yoS_y / Rf
+  G_x <- comp$L_x + comp$S_xoS_y / r_f
+  G_y <- comp$L_y + comp$S_yoS_y / r_f
   K_j <- inv * G_x
-  H_j <- (2 * comp$L_y * Rf + comp$S_yoS_y) / Rf
+  H_j <- (2 * comp$L_y * r_f + comp$S_yoS_y) / r_f
 
   E_j <- 1 - G_y * dt + comp$S_yoS_x * K_j * dt
-  F_j <- -Rf * (
-    K_j + (G_x * K_j * Rf * K_j - H_j * K_j + comp$L_y * K_j) * dt -
-      comp$L_x * (inv + K_j * Rf * K_j * dt)
+  F_j <- -r_f * (
+    K_j + (G_x * K_j * r_f * K_j - H_j * K_j + comp$L_y * K_j) * dt -
+      comp$L_x * (inv + K_j * r_f * K_j * dt)
   )
 
   # ---- Per-observation innovations ------------------------------------------
@@ -180,14 +180,14 @@ aci_online_smoother <- function(x, comp, dt, filt, lag = Inf, tol = 1e-18) {
   # the innovation which every earlier step then inherits, damped by the
   # ordered product of E.
   k <- seq_len(n - 1L)
-  b_j <- mf[k] -
-    E_j[k] * ((1 + comp$L_y * dt) * mf[k] + comp$f_y[k] * dt) +
-    F_j[k] * (x[k + 1L] - x[k] - (comp$L_x[k] * mf[k] + comp$f_x[k]) * dt)
-  P_j <- Rf[k] - E_j[k] * (1 + comp$L_y * dt) * Rf[k] -
-    F_j[k] * comp$L_x[k] * Rf[k] * dt
+  b_j <- m_f[k] -
+    E_j[k] * ((1 + comp$L_y * dt) * m_f[k] + comp$f_y[k] * dt) +
+    F_j[k] * (x[k + 1L] - x[k] - (comp$L_x[k] * m_f[k] + comp$f_x[k]) * dt)
+  P_j <- r_f[k] - E_j[k] * (1 + comp$L_y * dt) * r_f[k] -
+    F_j[k] * comp$L_x[k] * r_f[k] * dt
 
-  innov_mean <- E_j[k] * mf[k + 1L] + b_j - mf[k]
-  innov_cov <- E_j[k] * Rf[k + 1L] * E_j[k] + P_j - Rf[k]
+  innov_mean <- E_j[k] * m_f[k + 1L] + b_j - m_f[k]
+  innov_cov <- E_j[k] * r_f[k + 1L] * E_j[k] + P_j - r_f[k]
 
   # ---- Cumulative logarithm and sign of E -----------------------------------
   #

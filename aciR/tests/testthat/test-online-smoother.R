@@ -49,8 +49,7 @@
 .aci_online_literal <- function(x, comp, dt, filt) {
   n <- length(x)
   aux <- aciR:::.aci_online_aux(x, comp, dt, filt)
-  E <- aux$E
-  mu <- filt$mean[1L]
+  e_j <- aux$E
   prev <- filt$mean[1L]
   for (nn in seq_len(n - 1L) + 1L) {
     cur <- numeric(nn)
@@ -59,7 +58,7 @@
     innov <- cur[nn - 1L] - filt$mean[nn - 1L]
     if (nn >= 3L) {
       for (j in rev(seq_len(nn - 2L))) {
-        cur[j] <- prev[j] + prod(E[j:(nn - 2L)]) * innov
+        cur[j] <- prev[j] + prod(e_j[j:(nn - 2L)]) * innov
       }
     }
     prev <- cur
