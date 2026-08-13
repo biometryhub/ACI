@@ -105,6 +105,23 @@ NULL
 #' @seealso [aci_smoother()], [aci_metric()], [aci()]
 #' @export
 aci_filter <- function(x, comp, dt, mu0, R0) {
+  if (.aci_is_mv(comp)) {
+    x <- .aci_check_signal_mv(x)
+    .aci_check_positive(dt, "dt")
+    comp <- .aci_check_components_mv(comp, x)
+    mu0 <- as.numeric(mu0)
+    R0 <- as.matrix(R0)
+    if (length(mu0) != nrow(R0) || nrow(R0) != ncol(R0)) {
+      stop(
+        "`mu0` and `R0` must share the unobserved dimension, with `R0` square.",
+        call. = FALSE
+      )
+    }
+    if (is.null(.aci_chol(R0))) {
+      stop("`R0` must be symmetric positive definite.", call. = FALSE)
+    }
+    return(.aci_filter_mv(x, comp, dt, mu0, R0))
+  }
   .aci_check_signal(x)
   n <- length(x)
   .aci_check_components(comp, n)
@@ -178,6 +195,23 @@ aci_filter <- function(x, comp, dt, mu0, R0) {
 #' @seealso [aci_filter()], [aci_metric()], [aci()]
 #' @export
 aci_smoother <- function(x, comp, dt, filt) {
+  if (.aci_is_mv(comp)) {
+    x <- .aci_check_signal_mv(x)
+    .aci_check_positive(dt, "dt")
+    comp <- .aci_check_components_mv(comp, x)
+    if (!is.list(filt) || !is.matrix(filt$mean) ||
+          length(dim(filt$cov)) != 3L) {
+      stop(
+        paste0(
+          "`filt` must be a vector-valued posterior, with a matrix `mean` ",
+          "and a three-dimensional array `cov`, as returned by ",
+          "`aci_filter()` on a vector system."
+        ),
+        call. = FALSE
+      )
+    }
+    return(.aci_smoother_mv(x, comp, dt, filt))
+  }
   .aci_check_signal(x)
   n <- length(x)
   .aci_check_components(comp, n)
@@ -283,6 +317,11 @@ aci_metric <- function(filt, smooth) {
 #' @noRd
 #' @keywords internal
 .aci_metric_pair <- function(filt, smooth) {
+  # A vector-valued posterior carries a matrix mean; the scalar checks below
+  # would reject it, and the relative entropy it needs is the multivariate one.
+  if (is.list(filt) && is.matrix(filt$mean)) {
+    return(.aci_metric_mv(filt, smooth))
+  }
   .aci_check_posterior(filt, "filt")
   .aci_check_posterior(smooth, "smooth", length(filt$mean))
 

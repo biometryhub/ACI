@@ -31,6 +31,7 @@ aciR uses three stages, following the conventions of the
 | `aci_metric()` | Maturing | Expert surface. |
 | `aci_predprey_model()`, `aci_predprey_components()` | Experimental | New in the development version. The `direction` vocabulary may change; the parameterisation follows the reference implementation and is not expected to. |
 | `aci_online_smoother()` | Experimental | New in the development version. The `lag` and `tol` arguments are settled in meaning, but the returned object may gain fields as the causal influence range and the adaptive-lag variant develop. |
+| `aci_conditional()` | Experimental | New in the development version. The construction is the reference implementation's, but the interface for naming targets is this package's own. |
 | `aci_cir()` | Experimental | New in the development version. The returned object's shape, and in particular how an unresolved time is reported, may change: the saturation margin is this package's own device and has no counterpart in the reference implementation. |
 | `aci_dyad_components()` | Maturing | The worked example of the components schema. |
 | `aci_components` | Maturing | The components schema itself; see below. |
@@ -98,9 +99,10 @@ triggers them will not change without a `NEWS.md` entry.
 
 ## Roadmap items that will force change
 
-* **Vector states and the conditional extension.** The components schema
-  becomes matrix-valued. This is the one roadmap item that cannot be additive
-  to the scalar schema, and it will carry a deprecation cycle.
+* **The online smoother and the causal influence range in the vector case.**
+  Both are scalar-only. The ordered products the online smoother reduces to
+  cumulative logarithms do not commute once they are matrices, so the fast
+  path needs a matrix-specific derivation rather than a widening.
 
 It waits on its own independent-oracle fixtures, and on one that does not yet
 exist anywhere: every scalar model in the reference implementation sets the

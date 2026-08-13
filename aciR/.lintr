@@ -18,7 +18,7 @@ linters: linters_with_defaults(
         equation_notation = paste0(
           "^(L_[xy]|f_[xy]|S_[xy]oS_[xy]|[AB]_j|mu[0T]?|R[0T]?",
           "|[dF]_[xy]|sigma_[xy]|gamma",
-          "|G_[xy]|[EFHKPb]_j)$"
+          "|G_[xy]|[EFHKPb]_j|R_[fs]|c_[fs])$"
         ),
         # The analytic fixed points the identity tests grade against, written
         # as the equations write them: R*, RT*, mu*, muT*.

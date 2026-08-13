@@ -124,9 +124,12 @@ Current scope: a scalar observed process, a scalar unobserved component,
 and a complete signal on a regular grid. Both published quantities are
 implemented -- the causal-information metric and, via `aci_cir()`, the
 causal influence range -- and the unobserved component's self-drift may
-vary in time, which the noisy predator-prey model needs. Vector states
-and the conditional extension are roadmapped; see `NEWS.md`. API
-stability is declared per export in `API_STABILITY.md`.
+vary in time, which the noisy predator-prey model needs. The numerical
+core also takes vector-valued states and the conditional construction,
+in which the causal question is asked of one observed component given
+the others. The online smoother and the causal influence range remain
+scalar-only; see `NEWS.md`. API stability is declared per export in
+`API_STABILITY.md`.
 
 ## Citation
 

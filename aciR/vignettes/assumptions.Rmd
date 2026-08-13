@@ -90,11 +90,29 @@ fit, the reported metric is conditional on a point estimate, and its true
 uncertainty is wider than anything the package reports -- by an amount the
 package cannot see.
 
-### Scalar state
+### State dimension
 
-The current implementation is scalar: one observed process, one unobserved
-component. The method generalises to vector states, this implementation does
-not yet.
+The numerical core takes vector-valued states: an observed process of any
+dimension and an unobserved one of any dimension, with matrix coefficients that
+may vary in time. The filter, smoother and metric all dispatch on the shape of
+the components you supply.
+
+Two things remain scalar-only, and they are the ones a reader is most likely to
+assume otherwise. The fixed-lag online smoother and the causal influence range
+built on it are not implemented for vector states. And the matrix
+noise-cross-covariance terms, while implemented, are graded more weakly than
+anything else in the package -- the reference implementation contains no model
+that exercises them at all. The validation article says exactly how weakly.
+
+### Conditional questions
+
+With more than one observed component, `aci_conditional()` asks what one of
+them says about the unobserved state given that the others are also watched.
+This changes the **estimand**, not the arithmetic: the result answers a
+different question rather than answering the same one more precisely. The
+non-target components are not removed -- they still drive the system -- but the
+filter stops assimilating them, which is not the same as never having observed
+them.
 
 ### Self-drift measurable with respect to the observed path
 

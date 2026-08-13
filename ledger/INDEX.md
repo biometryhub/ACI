@@ -14,6 +14,7 @@
 - [2026-08-13 T3 open] [Latent self-drift widened to admit dependence on the observed state](r-package/2026-08-13-l-y-admits-observed-state-dependence.cairn.md)
 - [2026-08-13 T3 open] [Online smoother reconstructs update products in logarithms rather than storing the reference triangle](r-package/2026-08-13-online-smoother-log-reconstruction.cairn.md)
 - [2026-08-13 T3 open] [Package stays pure R; compiled kernels deferred to measurement and to the companion repository](infrastructure/2026-08-13-pure-r-over-compiled-kernels.cairn.md)
+- [2026-08-13 T3 open] [Vector core added beside the scalar one, and its cross-noise path grounded analytically](r-package/2026-08-13-vector-core-dispatch-and-cross-noise-gap.cairn.md)
 <!-- END auto-generated cairn list -->
 
 ## Maintenance

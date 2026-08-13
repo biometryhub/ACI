@@ -230,6 +230,50 @@ fixtures:
       prey_to_predator: 6.572520e-14
     measured_on: 2026-08-13
 
+  - id: mv
+    harness: oracle/aci_oracle_mv.m
+    upstream_file: null
+    command: matlab -nodisplay -nosplash -batch "run('aci_oracle_mv.m')"
+    seed: 2718
+    n_steps: 4001
+    dt: 0.002
+    observed_dimension: 2
+    unobserved_dimension: 2
+    initial_filter_mean: [0.8, 0.2]
+    initial_filter_covariance: 0.2 * identity
+    sampled_indices: seq(1, 4001, by = 20)   # 201 rows
+    cross_covariance_frobenius_norm: 3.990144e-01
+    files:
+      mv_signal.csv:
+        sha256: 81edee4c357e97771443d0b612a0498b74bc8c3b0e9c67ba70202235727cde28
+        md5: 1880de99ca8aa51bbb5690c00a4937f6
+      mv_reference.csv:
+        sha256: d7ce590ffdb29defd2261bf126e46d6be541c0143cfdd20fe31b631beeac3cd4
+        md5: 4d4d4b94ea160f85942cbc6e4cc81c94
+    grades: >
+      The vector-valued filter, smoother and multivariate relative entropy on a
+      two-by-two system with time-varying coefficients and a NON-ZERO matrix
+      noise cross-covariance, over the full transient. The covariances carry
+      genuine off-diagonal structure, which matters: a block-diagonal system
+      has diagonal Cholesky factors and cannot distinguish the correct trace
+      term of the relative entropy from a plausible wrong one. This fixture
+      caught exactly that defect on its first run.
+    does_not_grade: >
+      NOTHING UPSTREAM. This harness has NO upstream counterpart, and the gap
+      is wider here than anywhere else in the package: every scalar model in
+      the reference sets the noise cross-covariance to zero, and all five ENSO
+      scripts state in as many words that the cross-interaction terms are
+      absent -- thirty-five times across those files. It is therefore a second
+      independent implementation of the published matrix equations in a
+      different language and runtime. Agreement refutes an R-side transcription
+      error; it is NOT an authors'-reference grounding, and must not be cited
+      as one. The primary grounding for these terms is analytic; see
+      `analytic_oracles`. Also not graded: the online smoother and causal
+      influence range in the vector case, which remain scalar-only.
+    measured_max_abs_error:
+      all_series: 5.773160e-15
+    measured_on: 2026-08-13
+
 # The oracles that depend on no implementation at all. These are the primary
 # grounding for the cross-noise path: algebra on the governing equations,
 # solved in closed form in the test file and independent of BOTH aciR and

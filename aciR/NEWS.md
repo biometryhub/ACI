@@ -2,6 +2,36 @@
 
 ## New features
 
+* The numerical core takes **vector-valued states**. `aci_filter()`,
+  `aci_smoother()` and `aci_metric()` dispatch on the shape of the components
+  they are given: a matrix latent-noise covariance selects the vector path, a
+  bare number the scalar one. The observed signal may then be a matrix with one
+  row per observed component, the coefficients matrices or arrays with time in
+  the last margin.
+
+  The scalar path is unchanged and is not routed through the new code. At one
+  dimension the two agree bit for bit, which is graded, but the scalar
+  recursion is some thirty times faster and is what the package's oldest oracle
+  grades; replacing it would spend a validated asset to buy nothing.
+
+  In the vector case the covariance is re-symmetrised at each step, since an
+  explicit Euler step breaks symmetry at round-off and the asymmetry compounds;
+  positive-definiteness is checked by attempting a Cholesky factorisation
+  rather than by a proxy for it; and the relative entropy is evaluated through
+  Cholesky factors throughout, never an explicit inverse or a determinant
+  formed as a product.
+
+* `aci_conditional()` asks the causal question of one observed component given
+  that the others are also observed. The construction is the reference
+  implementation's: inflating a component's observational uncertainty without
+  bound sends its weight in the filter to zero, which is implemented by
+  supplying an inverse noise Grammian supported only on the target block. That
+  object is deliberately not the inverse of any covariance, which is why the
+  components schema now admits `S_xoS_x_inv` directly.
+
+  This changes the estimand rather than the arithmetic. The result answers a
+  different question, and the assumptions article says so.
+
 * The unobserved component's self-drift may now vary in time. `L_y` accepts one
   value per observation in a components list, and a function of the observed
   signal in `aci_cgns_model()`, alongside the constant it accepted before. A
@@ -58,9 +88,8 @@
   Andreou, Chen and Li (2026) <doi:10.48550/arXiv.2411.05870>. Where
   `aci_smoother()` conditions every step on the whole observed path, the online
   smoother conditions step `j` on the path up to `j + lag`, so it is the
-  estimator available while the signal is still arriving. It is the object the
-  causal influence range is built from, and the roadmapped `aci_cir()` will
-  consume it.
+  estimator available while the signal is still arriving. It is the object
+  `aci_cir()` is built from.
 
   The two boundaries of the lag family are the estimators the package already
   had: at `lag = 0` the result is the filter, exactly, and as `lag` grows the

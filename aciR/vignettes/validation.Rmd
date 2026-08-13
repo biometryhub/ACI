@@ -187,7 +187,17 @@ reader to discover.
   is the same gap the `cross` fixture closes for the filter and the smoother,
   and it is not yet closed here. Treat the online smoother's correlated-noise
   path as unverified.
-* **Vector states.** Not implemented.
+* **Vector states and the conditional construction.** Implemented and graded,
+  but read the scope carefully. The matrix noise-cross-covariance terms have
+  **no upstream counterpart at all**: every scalar model in the reference sets
+  the cross-covariance to zero, and all five ENSO scripts state that the
+  cross-interaction terms are absent. They are graded against a second
+  independent implementation, which refutes a transcription error but is not an
+  authors'-reference grounding, and against block-diagonal algebraic Riccati
+  fixed points solved in closed form, which depend on neither implementation.
+  The analytic identities are the primary grounding here.
+* **The online smoother and the causal influence range on vector states.** Not
+  implemented, so not graded.
 * **Model adequacy.** No oracle can grade this, and none pretends to. Whether
   the system you supplied describes your data is a scientific question, treated
   in the companion article *Assumptions and interpretation*.

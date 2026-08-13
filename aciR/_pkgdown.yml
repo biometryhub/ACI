@@ -39,6 +39,13 @@ reference:
   contents:
   - aci_online_smoother
   - aci_cir
+- title: Vector states and conditional questions
+  desc: >
+    The numerical core takes vector-valued states with matrix coefficients, and
+    the conditional construction asks what one observed component says about
+    the unobserved state given that the others are also watched.
+  contents:
+  - aci_conditional
 - title: The noisy predator-prey model
   desc: >
     A stochastic Lotka-Volterra pair, studied in either causal direction. It is
