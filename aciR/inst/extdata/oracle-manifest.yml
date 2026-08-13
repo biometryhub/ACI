@@ -359,6 +359,39 @@ fixtures:
       all_series: 8.509859e-14
     measured_on: 2026-08-13
 
+  - id: mv_online
+    harness: oracle/aci_oracle_mv_online.m
+    upstream_file: null
+    command: matlab -nodisplay -nosplash -batch "run('aci_oracle_mv_online.m')"
+    seed: 2718
+    signal_source: >
+      The mv_signal.csv fixture already pinned above.
+    files:
+      mv_online_reference.csv:
+        sha256: c02b23ecbfe69e884fa87d3286a4cb3b3da97bb0719da2c88a8e93c6c85b66ee
+        md5: ce6a171c27b82642e72e208b8ff383a4
+    exists_because: >
+      The grading register measured that the vector online smoother and causal
+      influence range were ungraded against the noise cross-covariance, the
+      moment those consumers were added to it. The register found the gap in
+      the same session that created it.
+    grades: >
+      The vector online smoother with a NON-ZERO matrix noise cross-covariance,
+      at 45 sampled (time, observation) pairs spanning lags from zero to 3949.
+    does_not_grade: >
+      Nothing upstream, and the gap is wider than for any other fixture. The
+      reference implements only the ZERO-cross-noise specialisation of the
+      auxiliary matrices, equation (3.8) of the online-smoother paper. This
+      harness is an independent transcription of the general forms, equations
+      (3.5) to (3.7), so it grades an R transcription against a MATLAB
+      transcription of the same published equations. Agreement refutes a
+      transcription error on one side; it is NOT an authors'-reference
+      grounding, and no upstream code exists that could provide one.
+    measured_max_abs_error:
+      online_mean: 5.551115e-15
+      online_cov: 5.551115e-16
+    measured_on: 2026-08-13
+
 # The oracles that depend on no implementation at all. These are the primary
 # grounding for the cross-noise path: algebra on the governing equations,
 # solved in closed form in the test file and independent of BOTH aciR and

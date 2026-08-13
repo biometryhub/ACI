@@ -18,7 +18,7 @@ linters: linters_with_defaults(
         equation_notation = paste0(
           "^(L_[xy]|f_[xy]|S_[xy]oS_[xy]|[AB]_j|mu[0T]?|R[0T]?",
           "|[dF]_[xy]|sigma_[xy]|gamma",
-          "|G_[xy]|[EFHKPb]_j|R_[fs]|c_[fs])$"
+          "|G_[xy]|[EFHKPb]_j|R_[fs](_inv)?|c_[fs])$"
         ),
         # The ENSO model's symbols are the physical ones of the climate
         # literature the paper draws on, and a reader checking this file

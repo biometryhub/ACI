@@ -100,11 +100,27 @@
 aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
                     epsilon = 10^seq(-6, 0.5, length.out = 129L),
                     threshold = 1e-5, margin = 0.1, mu0 = NULL, R0 = NULL) {
-  .aci_check_signal(x)
-  n <- length(x)
-  .aci_check_components(comp, n)
   .aci_check_positive(dt, "dt")
   .aci_check_positive(threshold, "threshold")
+  is_mv <- .aci_is_mv(comp)
+  if (is_mv) {
+    x <- .aci_check_signal_mv(x)
+    n <- ncol(x)
+    if (is.null(filt)) {
+      stop(
+        paste0(
+          "`filt` must be supplied for a vector system: the initial mean and ",
+          "covariance have no scalar defaults there."
+        ),
+        call. = FALSE
+      )
+    }
+    comp <- .aci_check_components_mv(comp, x)
+  } else {
+    .aci_check_signal(x)
+    n <- length(x)
+    .aci_check_components(comp, n)
+  }
   .aci_check_scalar(margin, "margin")
   if (margin <= 0 || margin >= 1) {
     stop("`margin` must lie strictly between zero and one.", call. = FALSE)
@@ -114,7 +130,9 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
     .aci_check_positive(R0, "R0")
     filt <- aci_filter(x, comp, dt, mu0 = mu0, R0 = R0)
   }
-  .aci_check_posterior(filt, "filt", n)
+  if (!is_mv) {
+    .aci_check_posterior(filt, "filt", n)
+  }
   window <- .aci_check_window(window, n)
   if (!is.numeric(epsilon) || length(epsilon) < 1L || anyNA(epsilon) ||
         any(epsilon <= 0)) {
@@ -124,7 +142,11 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
     )
   }
 
-  aux <- .aci_online_aux(x, comp, dt, filt)
+  aux <- if (is_mv) {
+    .aci_online_aux_mv(x, comp, dt, filt)
+  } else {
+    .aci_online_aux(x, comp, dt, filt)
+  }
   eps_sorted <- sort(epsilon)
   n_eps <- length(epsilon)
 
@@ -135,7 +157,11 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
 
   for (i in seq_along(window)) {
     j <- window[i]
-    re <- .aci_cir_row(aux, filt, j, n)
+    re <- if (is_mv) {
+      .aci_cir_row_mv(aux, filt, j, n, tol = 1e-18)
+    } else {
+      .aci_cir_row(aux, filt, j, n)
+    }
     if (is.null(re)) {
       # The final step has no later observation to be compared against.
       saturated[i] <- TRUE

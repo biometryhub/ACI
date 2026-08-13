@@ -33,7 +33,7 @@
 # is reachable must have every term it touches accounted for.
 .aci_gm_consumers <- list(
   scalar = c("filter", "smoother", "metric", "online_smoother", "cir"),
-  vector = c("filter", "smoother", "metric")
+  vector = c("filter", "smoother", "metric", "online_smoother", "cir")
 )
 
 # ---- Known gaps, each with a reason ------------------------------------------
@@ -116,8 +116,23 @@
            cc
          }),
          consumers = c("online_smoother", "cir")),
+    list(id = "mv_online", variant = "vector", comp = mv,
+         consumers = c("online_smoother", "cir")),
     list(id = "mv", variant = "vector", comp = mv,
          consumers = c("filter", "smoother", "metric")),
+    list(id = "mv_collapse", variant = "vector",
+         comp = local({
+           dx <- dyad_x[seq_len(1500L)]
+           nn <- length(dx)
+           list(L_x = array(2 * dx, c(1L, 1L, nn)),
+                f_x = matrix(0.5 - 0.5 * dx, 1L, nn),
+                L_y = matrix(-0.5, 1L, 1L),
+                f_y = matrix(1 - 2 * dx^2, 1L, nn),
+                S_xoS_x = matrix(0.25, 1L, 1L),
+                S_yoS_y = matrix(1, 1L, 1L),
+                S_yoS_x = matrix(0, 1L, 1L))
+         }),
+         consumers = c("online_smoother", "cir")),
     list(id = "enso", variant = "vector",
          comp = local({
            e <- read.csv(.aci_gm_fixture("enso_signal.csv"))

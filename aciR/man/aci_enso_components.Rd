@@ -44,8 +44,8 @@ the observed state, the season, or both.
 Two noise covariances vary in time and neither is optional. The Walker
 circulation's observation noise is multiplicative in its own state, with
 variance \code{lambda * (4 - I) * I}, which vanishes at the ends of the interval
-\verb{[0, 4]} and so keeps the process inside it. The latent noise of the wind burst
-depends on the observed central-Pacific temperature and on the season. A
+\verb{[0, 4]} and so keeps the process inside it. The latent noise of the wind
+burst depends on the observed central-Pacific temperature and the season. A
 filter that read either at its first step alone would be integrating a
 different system.
 

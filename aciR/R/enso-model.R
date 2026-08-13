@@ -11,14 +11,14 @@
 # nothing else does. The coefficients are matrix-valued and vary at every step.
 # They are seasonally modulated, on a six-unit period. And BOTH noise
 # covariances vary in time: the Walker circulation's is multiplicative in its
-# own state, and the latent one of the wind burst depends on the observed central-Pacific
+# own state, and the wind burst's depends on the observed central-Pacific
 # temperature through a hyperbolic tangent.
 #
 # That last property is why this constructor could not have been written
 # earlier without shipping a defect: the vector validator inverted only the
 # first slice of a time-varying observation-noise covariance until that was
 # found and fixed, so every ENSO result would have been computed from a
-# Walker-circulation noise frozen at its initial value.
+# Walker-circulation noise frozen at step one.
 
 #' Parameters of the stochastic ENSO model
 #'
@@ -102,8 +102,8 @@ aci_enso_parameters <- function(factor = 0.65, b_0 = 2.5, mu = 0.5,
 #' Two noise covariances vary in time and neither is optional. The Walker
 #' circulation's observation noise is multiplicative in its own state, with
 #' variance `lambda * (4 - I) * I`, which vanishes at the ends of the interval
-#' `[0, 4]` and so keeps the process inside it. The latent noise of the wind burst
-#' depends on the observed central-Pacific temperature and on the season. A
+#' `[0, 4]` and so keeps the process inside it. The latent noise of the wind
+#' burst depends on the observed central-Pacific temperature and the season. A
 #' filter that read either at its first step alone would be integrating a
 #' different system.
 #'

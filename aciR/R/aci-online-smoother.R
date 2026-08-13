@@ -81,13 +81,29 @@
 #' @seealso [aci_filter()], [aci_smoother()]
 #' @export
 aci_online_smoother <- function(x, comp, dt, filt, lag = Inf, tol = 1e-18) {
+  .aci_check_lag(lag, "lag")
+  .aci_check_positive(tol, "tol")
+  if (.aci_is_mv(comp)) {
+    x <- .aci_check_signal_mv(x)
+    .aci_check_positive(dt, "dt")
+    comp <- .aci_check_components_mv(comp, x)
+    if (!is.list(filt) || !is.matrix(filt$mean) ||
+          length(dim(filt$cov)) != 3L) {
+      stop(
+        paste0(
+          "`filt` must be a vector-valued posterior, as returned by ",
+          "`aci_filter()` on a vector system."
+        ),
+        call. = FALSE
+      )
+    }
+    return(.aci_online_smoother_mv(x, comp, dt, filt, lag, tol))
+  }
   .aci_check_signal(x)
   n <- length(x)
   .aci_check_components(comp, n)
   .aci_check_positive(dt, "dt")
   .aci_check_posterior(filt, "filt", n)
-  .aci_check_lag(lag, "lag")
-  .aci_check_positive(tol, "tol")
 
   aux <- .aci_online_aux(x, comp, dt, filt)
 

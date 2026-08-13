@@ -2,6 +2,26 @@
 
 ## New features
 
+* The fixed-lag online smoother and the causal influence range now run on
+  **vector-valued states**. `aci_online_smoother()` and `aci_cir()` dispatch on
+  the shape of the components exactly as the core does.
+
+  One thing does not carry over from the scalar implementation, and it is the
+  thing that made the scalar one fast. In one dimension the ordered product of
+  the per-step auxiliary matrices reduces to a difference of cumulative
+  logarithms, so any range is recoverable in constant time. Matrices do not
+  commute and there is no such reduction. What survives is the reason the
+  reduction was worth having: the products decay geometrically, so the
+  accumulation is truncated once its norm falls below tolerance rather than
+  reconstructed from endpoint summaries.
+
+  The auxiliary matrices are implemented in full generality, equations (3.5) to
+  (3.7) of the source paper. The reference implementation carries only the
+  zero-cross-noise specialisation, equation (3.8), which is what its own models
+  need; the general form is here because the components schema exposes the
+  cross-covariance and would otherwise offer a path the recursion could not
+  take.
+
 * `aci_enso_model()`, `aci_enso_components()` and `aci_enso_parameters()` build
   the stochastic ENSO model of the paper's case study: three observed
   variables -- the central- and eastern-Pacific temperature anomalies and the
