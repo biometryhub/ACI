@@ -263,3 +263,67 @@ Note: The multivariate relative entropy, formed with det() and a right matrix
  quantity, numerically a different route, so these two agree to round-off
  rather than exactly. Operates on the windowed `_s` slices rather than the full
  record.
+
+Function: ref_pp_online_dir1
+Script: noisy_predator_prey_model.m
+Lines: 619-724
+Inputs: y, L_x, L_y, f_x, f_y, filter_mean, filter_cov, E_j_matrices,
+ F_j_matrices, fixed_lag, N, dt
+Outputs: online_fixed_mean, online_fixed_cov, update_matrices_fixed
+Pairs: aci_online_smoother
+Note: Fixed-lag online smoother for causal direction 1. The staggered
+ triangle is quadratic in N, which is why the harness runs at reduced size.
+
+Function: ref_pp_cir_dir1
+Script: noisy_predator_prey_model.m
+Lines: 726-839
+Inputs: dt, T, time_start_plot, time_end_plot, online_fixed_mean,
+ online_fixed_cov
+Outputs: subjective_CIR, approx_objective_CIR, RE_metric, max_RE_metric,
+ eps_ord_values, epsilon_resolution, lookahead_tolerance, first_idx, last_idx,
+ plot_len
+Pairs: aci_cir
+Note: Causal influence range for direction 1. lookahead_tolerance is 5 here
+ against the dyad's 0.6, so the guard region is 1000 steps at dt = 0.005.
+
+Function: ref_pp_objective_cir_exact_dir1
+Script: noisy_predator_prey_model.m
+Lines: 842-854
+Inputs: eps_ord_values, subjective_CIR, max_RE_metric, lookahead_tolerance, dt
+Outputs: defn_objective_CIR
+Pairs: aci_cir
+Note: The objective range by its definition for direction 1. aciR now
+ computes this as `objective_exact`, so unlike the dyad's counterpart this pair
+ is no longer absent on the R side.
+
+Function: ref_pp_online_dir2
+Script: noisy_predator_prey_model.m
+Lines: 886-991
+Inputs: x, L_x, L_y, f_x, f_y, filter_mean, filter_cov, E_j_matrices,
+ F_j_matrices, fixed_lag, N, dt
+Outputs: online_fixed_mean, online_fixed_cov, update_matrices_fixed
+Pairs: aci_online_smoother
+Note: Fixed-lag online smoother for causal direction 2. The staggered
+ triangle is quadratic in N, which is why the harness runs at reduced size.
+
+Function: ref_pp_cir_dir2
+Script: noisy_predator_prey_model.m
+Lines: 993-1106
+Inputs: dt, T, time_start_plot, time_end_plot, online_fixed_mean,
+ online_fixed_cov
+Outputs: subjective_CIR, approx_objective_CIR, RE_metric, max_RE_metric,
+ eps_ord_values, epsilon_resolution, lookahead_tolerance, first_idx, last_idx,
+ plot_len
+Pairs: aci_cir
+Note: Causal influence range for direction 2. lookahead_tolerance is 5 here
+ against the dyad's 0.6, so the guard region is 1000 steps at dt = 0.005.
+
+Function: ref_pp_objective_cir_exact_dir2
+Script: noisy_predator_prey_model.m
+Lines: 1109-1121
+Inputs: eps_ord_values, subjective_CIR, max_RE_metric, lookahead_tolerance, dt
+Outputs: defn_objective_CIR
+Pairs: aci_cir
+Note: The objective range by its definition for direction 2. aciR now
+ computes this as `objective_exact`, so unlike the dyad's counterpart this pair
+ is no longer absent on the R side.

@@ -121,3 +121,55 @@ Rationale: The configuration in which (T_C, T_E, I) are observed and
  The first Requires condition is the discriminator that this is the VECTOR path:
  filter_mean must have three rows. A scalar result would mean the wrong script
  or the wrong section had run.
+
+Script: ENSO_model_cond_ACI_h_W_unobs.m
+Profile: enso_h_W
+Knobs: T=100
+Sections: 883-1320
+Requires: size(filter_mean, 1) == 1; all(isfinite(filter_mean));
+ all(isfinite(smoother_mean))
+Rationale: The ENSO configuration in which h_W alone is unobserved. Unlike the
+ u_h_W_tau case this leaves a SCALAR latent state against a multi-dimensional
+ observation, which is the discriminator asserted above. Linear script, no
+ direction blocks; the selection drops only the observational-data loader
+ before the setup banner and the plotting and ACI sections after the smoother.
+ T is cut from 15000 years to 100, as for the other ENSO profile.
+
+Script: ENSO_model_cond_ACI_T_C_unobs.m
+Profile: enso_T_C
+Knobs: T=100
+Sections: 887-1325
+Requires: size(filter_mean, 1) == 1; all(isfinite(filter_mean));
+ all(isfinite(smoother_mean))
+Rationale: The ENSO configuration in which T_C alone is unobserved. Unlike the
+ u_h_W_tau case this leaves a SCALAR latent state against a multi-dimensional
+ observation, which is the discriminator asserted above. Linear script, no
+ direction blocks; the selection drops only the observational-data loader
+ before the setup banner and the plotting and ACI sections after the smoother.
+ T is cut from 15000 years to 100, as for the other ENSO profile.
+
+Script: ENSO_model_cond_ACI_tau_unobs.m
+Profile: enso_tau
+Knobs: T=100
+Sections: 884-1323
+Requires: size(filter_mean, 1) == 1; all(isfinite(filter_mean));
+ all(isfinite(smoother_mean))
+Rationale: The ENSO configuration in which tau alone is unobserved. Unlike the
+ u_h_W_tau case this leaves a SCALAR latent state against a multi-dimensional
+ observation, which is the discriminator asserted above. Linear script, no
+ direction blocks; the selection drops only the observational-data loader
+ before the setup banner and the plotting and ACI sections after the smoother.
+ T is cut from 15000 years to 100, as for the other ENSO profile.
+
+Script: ENSO_model_cond_ACI_u_unobs.m
+Profile: enso_u
+Knobs: T=100
+Sections: 884-1323
+Requires: size(filter_mean, 1) == 1; all(isfinite(filter_mean));
+ all(isfinite(smoother_mean))
+Rationale: The ENSO configuration in which u alone is unobserved. Unlike the
+ u_h_W_tau case this leaves a SCALAR latent state against a multi-dimensional
+ observation, which is the discriminator asserted above. Linear script, no
+ direction blocks; the selection drops only the observational-data loader
+ before the setup banner and the plotting and ACI sections after the smoother.
+ T is cut from 15000 years to 100, as for the other ENSO profile.

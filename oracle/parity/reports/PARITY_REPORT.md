@@ -42,10 +42,10 @@ factors the auxiliaries out.
 Each extract is called with the inputs the script itself used, and every output
 must **equal** -- not approximate -- the value the script itself produced.
 
-> **96 of 96 outputs across five profiles, maximum absolute difference 0.**
-> 58 for the dyad (two problem sizes), 30 for predator-prey (two causal
-> directions), 8 for the ENSO vector filter and smoother -- over **1,215
-> verbatim reference lines in 19 extracts**.
+> **124 of 124 outputs across five profiles, maximum absolute difference 0.**
+> 58 for the dyad, 58 for predator-prey (both causal directions, core and
+> range), 8 for the ENSO vector filter and smoother -- over **1,681 verbatim
+> reference lines in 25 extracts**.
 
 ## 3. The fixture re-grade
 
@@ -131,13 +131,31 @@ was structurally invisible to it. The agreements previously reported for the
 CIR (2.67e-15, 7.08e-15) are real, but they graded aciR against itself on this
 axis.
 
-**Recommended repair.** Add a `horizon` argument to `aci_cir()` defaulting to
-the whole record, i.e. current behaviour. `.aci_cir_row()` must keep computing
-the fully-informed posterior over the *whole* record -- the reference's `{end}`
-is the full record even when its sequence is truncated -- and return only the
-first `horizon - j + 1` entries. Not implemented here: it changes the signature
-of an exported function and needs its own tests and grading. Roughly 15 lines
-plus validation, documentation and tests.
+**IMPLEMENTED.** `aci_cir()` now takes `horizon`, defaulting to `NULL` = the
+whole record, so existing behaviour is unchanged. The fully informed posterior
+is still taken over the whole record even when the comparison sequence is
+truncated, which is the part easiest to get wrong and is covered by a test
+asserting the truncated row is a prefix of the untruncated one.
+
+With the reference's horizon the subjective range agrees to **2.22e-16**,
+against 1.16 time units at the default. Two residuals remain visible rather
+than smoothed away:
+
+* At the reference's horizon aciR marks **every** reported time saturated --
+  within the truncated sequence the divergence never falls below threshold --
+  while the reference reports numbers anyway. Isolating the arithmetic from
+  that resolution policy requires `margin = 0.001`.
+* Doing so, `objective` agrees only to **4.58e-09**. The obvious suspect was
+  the odd-length Simpson closure, and that suspect was **eliminated by
+  measurement**: `.aci_simpson()` and `simps.m` do differ on odd interval
+  counts, by up to 4.3e-03 on a test function, but the CIR integrand decays to
+  ~0 at its endpoint so the closure term is multiplied by nothing. The cause of
+  the 4.58e-09 is **not yet identified** and is recorded as open.
+
+A by-product of that measurement, against the exact integral: aciR's 3/8
+closure is consistently about three times more accurate than `simps.m`'s for
+odd interval counts at n >= 6 (errors 0.00479 vs 0.00913 at n = 6, 0.00029 vs
+0.00100 at n = 12).
 
 ### F2 -- aciR does not compute the exact objective CIR
 
@@ -150,11 +168,18 @@ the definition, but does not compute it.
 This **corrects a claim I made in the previous session** that capability parity
 with the reference was complete. It was not.
 
-**Recommended repair.** `.aci_simpson()` currently assumes unit spacing;
-the threshold grid is logarithmic, so it needs an abscissa-aware form. Then
-`objective_exact[i] = simpson(epsilon_sorted, subjective[order(epsilon), i]) /
-peak[i]`. Also not implemented here -- same reason, it adds a field to an
-exported return value.
+**IMPLEMENTED.** `aci_cir()` now returns `objective_exact` alongside
+`objective`. It agrees with the reference's `defn_objective_CIR` to
+**1.59e-14** once the horizons match.
+
+Cheaper than the earlier estimate in this report, which was wrong on a checkable
+point: `.aci_simpson()` already accepted an abscissa. It was never unit-spacing
+only.
+
+It is computed from the **unmasked** subjective ranges, deliberately: a
+quadrature over the threshold grid needs every node, and masking one because
+its range ran long would make the integral undefined rather than conservative.
+The `saturated` flag still marks the time.
 
 ### F3 -- The reference's exact objective CIR silently evaluates to empty on a short window
 
@@ -204,10 +229,33 @@ composed of that direction's declared line ranges, in file order, and every
 profile declares a discriminating condition (`numel(f_x) == 1` holds only in
 direction one) checked before anything is graded.
 
-### F7 -- Conditional ACI has no executable counterpart upstream
+### F7 -- Conditional ACI is enabled in exactly one of the five ENSO scripts
 
-Previously logged as "pending extraction". That was wrong, and the correction
-matters for how `aci_conditional()` is described.
+**This finding has been corrected twice and the current form is the measured
+one.** First logged as "pending extraction", then as "no executable counterpart
+upstream" on the evidence of `u_h_W_tau_unobs.m` alone. Reading all five settles
+it:
+
+| Script | Conditional ACI |
+|---|---|
+| `ENSO_..._h_W_unobs.m` | **ENABLED** -- line 1202 is live |
+| `ENSO_..._T_C_unobs.m` | commented, full ACI |
+| `ENSO_..._tau_unobs.m` | commented, full ACI |
+| `ENSO_..._u_unobs.m` | commented, full ACI |
+| `ENSO_..._u_h_W_tau_unobs.m` | commented, full ACI |
+
+In `h_W_unobs.m`, `S_xoS_x_inv(1, 1, :) = 1/sigma_C^2;` carries leading
+whitespace rather than a comment marker, and sits among five comment lines that
+read as guidance. It computes `h_W(t) -> T_C | (u,T_E,tau,I)` where its four
+siblings compute unconditional ACI.
+
+This is a **reproducibility hazard in the reference**, not in aciR: a user
+running all five expecting comparable outputs gets four answers to one question
+and one answer to another, distinguished by one character of indentation. It
+also means `aci_conditional()` does have an executable counterpart to be graded
+against -- which the earlier version of this finding denied.
+
+The original wording follows, for the record.
 
 `ENSO_model_cond_ACI_u_h_W_tau_unobs.m` lines 1214--1226 are **commented
 guidance**, not code. They tell the reader which single `S_xoS_x_inv` line to
@@ -264,9 +312,9 @@ carried through it.
 | Reference script | Status |
 |---|---|
 | `dyad_interaction_model.m` | **complete** -- 7 extracts, G1 58/58, parity run |
-| `noisy_predator_prey_model.m` (1,332 lines) | **filter / smoother / metric, both directions** -- G1 30/30, fixtures re-graded. Online smoother and CIR not yet extracted |
-| `ENSO_model_cond_ACI_u_h_W_tau_unobs.m` (2,103 lines) | **vector filter / smoother** -- G1 8/8. Metric extracted, not yet compared; ACI/CIR sections not extracted |
-| 4 remaining `ENSO_model_cond_ACI_*.m` | not extracted (same linear structure; no F6 hazard) |
+| `noisy_predator_prey_model.m` (1,332 lines) | **complete, both directions** -- setup, filter, smoother, metric, online smoother, CIR, exact objective range. G1 58/58, both fixtures re-graded |
+| `ENSO_model_cond_ACI_u_h_W_tau_unobs.m` (2,103 lines) | **complete for the core** -- G1 8/8, aciR vs reference 5/5. ACI/CIR sections not extracted |
+| 4 remaining `ENSO_model_cond_ACI_*.m` | **workspaces captured and validated**; extracts NOT verified -- see below |
 
 Consequently `aci_conditional` has no parity row and never will have one from
 this reference (F7); `aci_enso_*` and `aci_predprey_*` have rows for the core
@@ -281,3 +329,24 @@ test is to drive aciR with the reference's own captured signal. They are graded 
 fixtures -- which, per F1, is exactly the grading whose blind spot this
 exercise demonstrated. Extending the manifest to those scripts is the next
 step; the generator, gate and driver need no changes.
+
+
+## 7. Open items
+
+**The four scalar-latent ENSO scripts are captured but not gated.** Their
+workspaces run and pass their validity conditions -- including the
+`size(filter_mean, 1) == 1` discriminator that distinguishes them from the
+vector configuration -- but the extracted filter and smoother do not yet call,
+because each script's block needs its own input list derived individually
+rather than by the shared template. `h_W_unobs.m` needs `sigma_C` for the
+reason in F7; the others each want something different. The eight unverified
+records were **removed from the manifest** rather than left in place claiming a
+grading they do not have.
+
+**The 4.58e-09 `objective` residual is unexplained.** The Simpson-closure
+hypothesis was tested and eliminated. No replacement hypothesis is offered
+here.
+
+**aciR has not been compared against the reference on predator-prey.** The
+extracts and G1 are complete for both directions, but the aciR-side comparison
+was run only for the dyad (scalar) and ENSO (vector).

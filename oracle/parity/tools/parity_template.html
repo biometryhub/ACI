@@ -84,10 +84,10 @@
   byte-exact slices &mdash; nothing retyped.</p>
 
   <div class="stats">
-    <div class="stat"><b>96 / 96</b><span>extract outputs reproducing the reference's own workspace, difference 0</span></div>
-    <div class="stat"><b>1,215</b><span>verbatim reference lines, 19 extracts, zero retyped</span></div>
+    <div class="stat"><b>124 / 124</b><span>extract outputs reproducing the reference's own workspace, difference 0</span></div>
+    <div class="stat"><b>1,681</b><span>verbatim reference lines, 25 extracts, zero retyped</span></div>
     <div class="stat"><b>0</b><span>fixture disagreement at published settings (dyad, 8 quantities)</span></div>
-    <div class="stat"><b>1.5e-14</b><span>worst core disagreement on arbitrary data</span></div>
+    <div class="stat"><b>0 err / 0 warn</b><span>R CMD check --as-cran; one NOTE, the private-repo URLs</span></div>
   </div>
 
   <h2>Side by side</h2>
@@ -120,18 +120,25 @@
 
   <h2>Findings</h2>
 
-  <div class="find"><h4>F1 &mdash; the CIR horizon, and an oracle that shared the convention under test</h4>
-  <p>The package's own CIR harness loops <code>obs = j:(N+1)</code> &mdash; aciR's
-  convention, not the reference's. Every CIR grading the package owns was taken
-  against a harness sharing the convention being tested, so this divergence was
-  structurally invisible to it. Repair specified, not applied: it changes an
-  exported signature.</p></div>
+  <div class="find"><h4>F1 &mdash; the CIR horizon, and an oracle that shared the convention under test <em>(fixed)</em></h4>
+  <p>The package's own CIR harness looped <code>obs = j:(N+1)</code> &mdash;
+  aciR's convention, not the reference's &mdash; so every CIR grading the package
+  owned was taken against a harness sharing the convention under test.
+  <code>aci_cir()</code> now takes <code>horizon</code>; with the reference's
+  value the subjective range agrees to <strong>2.22e-16</strong>, against 1.16
+  time units at the default. Two residuals stay visible: aciR marks every time
+  saturated at that horizon where the reference reports numbers anyway, and
+  <code>objective</code> then agrees only to 4.58e-09 &mdash; cause not yet
+  identified, and the obvious suspect was eliminated by measurement.</p></div>
 
-  <div class="find"><h4>F2 &mdash; the exact objective CIR is absent from aciR</h4>
+  <div class="find"><h4>F2 &mdash; the exact objective CIR was absent from aciR <em>(fixed)</em></h4>
   <p>The reference computes the objective range both as an efficient
-  underestimate and by its definition. aciR implements the first and documents
-  the second. This corrects an earlier claim that capability parity was
-  complete.</p></div>
+  underestimate and by its definition; aciR implemented only the first.
+  <code>objective_exact</code> now agrees with the reference's
+  <code>defn_objective_CIR</code> to <strong>1.59e-14</strong>. It came cheaper
+  than estimated, because the earlier report was wrong that
+  <code>.aci_simpson()</code> assumed unit spacing &mdash; it always took an
+  abscissa.</p></div>
 
   <div class="find"><h4>F6 &mdash; the predator-prey script cannot be run top to bottom</h4>
   <p>Fourteen blocks, seven per causal direction, all assigning the same names.
@@ -141,14 +148,21 @@
   is therefore composed from its own declared line ranges, guarded by a condition
   that holds in one direction only.</p></div>
 
-  <div class="find"><h4>F7 &mdash; conditional ACI has no executable counterpart upstream</h4>
-  <p>The ENSO script's conditional-ACI section is <em>commented guidance</em>,
-  telling the reader which single line to substitute by hand. There is nothing to
-  extract and nothing to grade against, so <code>aci_conditional()</code> is
-  absent-upstream rather than pending. Alongside it, the reference pseudo-inverts
-  the observation-noise Grammian where aciR requires positive-definiteness at
-  every slice and refuses &mdash; a system the reference will analyse, aciR
-  declines.</p></div>
+  <div class="find"><h4>F7 &mdash; conditional ACI is enabled in exactly one of the five ENSO scripts</h4>
+  <p>In <code>h_W_unobs.m</code>, <code>S_xoS_x_inv(1,1,:) = 1/sigma_C^2;</code>
+  is <em>live code</em>: it carries leading whitespace rather than a comment
+  marker, among five comment lines that read as guidance. Its four siblings leave
+  the equivalent line commented. So one script answers
+  <code>h_W &rarr; T_C | (u,T_E,&tau;,I)</code> where the others answer the
+  unconditional question, distinguished by one character of indentation. A
+  reproducibility hazard in the reference, and a correction to this finding's own
+  earlier wording, which claimed no executable counterpart existed.</p></div>
+
+  <div class="find"><h4>F8 &mdash; the reference pseudo-inverts where aciR refuses</h4>
+  <p>Measured rather than argued: <code>pinv</code> and a Cholesky inverse differ
+  by at most <strong>1.14e-13</strong> over 2001 ENSO slices, worst condition
+  number 397.5, and Cholesky refused none of them. aciR is the stricter route and
+  is never driven to failure on this data.</p></div>
 
   <div class="find"><h4>F3, F4, F5 &mdash; a silent empty, a vacuous pass, and three interface asymmetries</h4>
   <p>The reference's exact objective CIR evaluates to an empty range rather than
@@ -161,8 +175,8 @@
   <p class="cap">MATLAB R2025b (25.2.0.3042426 Update 1), macOS arm64, 32&nbsp;GB.
   Excerpts between the VERBATIM markers are Copyright &copy; 2025 Marios Andreou,
   reproduced under the MIT Licence. Scope: the dyad in full; predator-prey filter,
-  smoother and metric in both directions; the ENSO vector filter and smoother.
-  The remaining four ENSO scripts are not extracted, and aciR has not yet been
-  compared against the reference on the ENSO model &mdash; only the extracts
-  against the script.</p>
+  predator-prey complete in both directions; the ENSO vector filter and smoother,
+  compared against aciR at 5/5. The four scalar-latent ENSO scripts are captured
+  but not gated, and aciR has not been compared against the reference on
+  predator-prey. Both are recorded as open in the report.</p>
 </div>
