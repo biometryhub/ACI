@@ -1,0 +1,158 @@
+<title>Parity Ledger</title>
+<style>
+  :root{
+    --bg:#FBFAF8; --surface:#FFFFFF; --ink:#1A1D21; --muted:#5A6169;
+    --rule:#E3E1DC; --accent:#0F6E6E; --warn:#A85B12; --code:#F5F4F1;
+    --ok-bg:#E7F1EF; --ok-fg:#0F5E58; --bad-bg:#F7EBDD; --bad-fg:#8F4A0C;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#14171A; --surface:#1B1F23; --ink:#E6E8EA; --muted:#98A1A9;
+      --rule:#2A3037; --accent:#46B3AE; --warn:#DC9A52; --code:#1F252A;
+      --ok-bg:#12312E; --ok-fg:#69C9C2; --bad-bg:#332415; --bad-fg:#E0A468;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14171A; --surface:#1B1F23; --ink:#E6E8EA; --muted:#98A1A9;
+    --rule:#2A3037; --accent:#46B3AE; --warn:#DC9A52; --code:#1F252A;
+    --ok-bg:#12312E; --ok-fg:#69C9C2; --bad-bg:#332415; --bad-fg:#E0A468;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg); color:var(--ink); margin:0;
+    font:16px/1.62 ui-sans-serif,-apple-system,"Segoe UI",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1160px; margin:0 auto; padding:64px 28px 96px}
+  h1,h2,h3{font-family:"Iowan Old Style",Palatino,Georgia,ui-serif,serif;
+    font-weight:600; text-wrap:balance; letter-spacing:-.01em; margin:0}
+  h1{font-size:clamp(2rem,4.4vw,3rem); line-height:1.1}
+  h2{font-size:1.55rem; margin:56px 0 8px}
+  h3{font-size:1.12rem; margin:0 0 4px; font-family:ui-monospace,"SF Mono",Menlo,monospace;
+    font-weight:600; letter-spacing:0}
+  .eyebrow{font:600 11px/1 ui-monospace,"SF Mono",Menlo,monospace;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin-bottom:18px}
+  .lede{color:var(--muted); font-size:1.08rem; max-width:64ch; margin:18px 0 0}
+  hr{border:0; border-top:1px solid var(--rule); margin:44px 0}
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+    gap:1px; background:var(--rule); border:1px solid var(--rule); margin:40px 0 0}
+  .stat{background:var(--surface); padding:20px 22px}
+  .stat b{display:block; font:600 1.85rem/1.15 ui-monospace,"SF Mono",Menlo,monospace;
+    font-variant-numeric:tabular-nums; color:var(--accent)}
+  .stat span{display:block; color:var(--muted); font-size:.82rem; margin-top:6px}
+  p{max-width:70ch}
+  .cap{color:var(--muted); font-size:.92rem; margin:2px 0 14px; max-width:78ch}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:1px;
+    background:var(--rule); border:1px solid var(--rule)}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}}
+  .pane{background:var(--surface); min-width:0; display:flex; flex-direction:column}
+  .pane-h{display:flex; justify-content:space-between; gap:12px; align-items:baseline;
+    padding:11px 15px; border-bottom:1px solid var(--rule); background:var(--bg)}
+  .pane-t{font:600 .78rem/1 ui-monospace,"SF Mono",Menlo,monospace;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--accent)}
+  .pane-s{font:.72rem/1 ui-monospace,"SF Mono",Menlo,monospace; color:var(--muted);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  pre{margin:0; padding:15px; overflow-x:auto; background:var(--code); flex:1}
+  code{font:12px/1.55 ui-monospace,"SF Mono",Menlo,monospace; white-space:pre}
+  .pair{margin:34px 0 0}
+  .tw{overflow-x:auto; border:1px solid var(--rule); margin-top:20px}
+  table{border-collapse:collapse; width:100%; background:var(--surface); font-size:.86rem}
+  th{text-align:left; font:600 .72rem/1 ui-monospace,"SF Mono",Menlo,monospace;
+    letter-spacing:.09em; text-transform:uppercase; color:var(--muted);
+    padding:11px 13px; border-bottom:1px solid var(--rule); background:var(--bg);
+    white-space:nowrap}
+  td{padding:8px 13px; border-bottom:1px solid var(--rule)}
+  tr:last-child td{border-bottom:0}
+  td.n{font-family:ui-monospace,"SF Mono",Menlo,monospace; font-variant-numeric:tabular-nums;
+    text-align:right; white-space:nowrap}
+  td.q{font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:.8rem}
+  .v{display:inline-block; padding:2px 8px; border-radius:2px;
+    font:600 .72rem/1.5 ui-monospace,"SF Mono",Menlo,monospace}
+  .v.ok{background:var(--ok-bg); color:var(--ok-fg)}
+  .v.bad{background:var(--bad-bg); color:var(--bad-fg)}
+  .find{border-left:2px solid var(--warn); padding:2px 0 2px 18px; margin:22px 0}
+  .find h4{margin:0 0 4px; font-size:.98rem}
+  .find p{margin:0; color:var(--muted); font-size:.94rem}
+  .note{background:var(--surface); border:1px solid var(--rule); padding:18px 20px; margin:26px 0}
+  .note p{margin:0; font-size:.94rem}
+  strong{font-weight:650}
+</style>
+<div class="wrap">
+  <div class="eyebrow">aciR &middot; verification record</div>
+  <h1>Parity Ledger</h1>
+  <p class="lede">The authors' MATLAB and the R package, run on the same data and
+  compared quantity by quantity. The reference publishes seven scripts and no
+  function library, so its kernels are hoisted into callable functions as
+  byte-exact slices &mdash; nothing retyped.</p>
+
+  <div class="stats">
+    <div class="stat"><b>88 / 88</b><span>extract outputs reproducing the reference's own workspace, difference 0</span></div>
+    <div class="stat"><b>796</b><span>verbatim reference lines, 15 extracts, zero retyped</span></div>
+    <div class="stat"><b>0</b><span>fixture disagreement at published settings (dyad, 8 quantities)</span></div>
+    <div class="stat"><b>1.5e-14</b><span>worst core disagreement on arbitrary data</span></div>
+  </div>
+
+  <h2>Side by side</h2>
+  <p>Each pair below is the reference on the left, read from the published
+  script at the line range the manifest declares, and aciR on the right. Both
+  panes are pulled at render time, so this page cannot drift from the code it
+  documents.</p>
+{{PAIRS}}
+
+  <h2>Measured agreement</h2>
+  <p>Criterion <code>|a&nbsp;&minus;&nbsp;b|&nbsp;&le;&nbsp;atol&nbsp;+&nbsp;rtol&middot;|b|</code>
+  with <code>atol&nbsp;=&nbsp;1e-12</code>. <em>Headroom</em> is the reciprocal
+  of the fraction of the permitted budget the worst element used, so it
+  separates a comfortable pass from one that squeaked through.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Dataset</th><th>Quantity</th><th>n</th><th>max |diff|</th><th>Headroom</th><th>Verdict</th></tr></thead>
+    <tbody>
+{{ROWS}}
+    </tbody>
+  </table></div>
+
+  <div class="note"><p><strong>The rows that exceed are not failures of either
+  implementation.</strong> They are one mechanism: for each reporting time the
+  reference integrates and searches the lagged sequence only as far as
+  <code>last_idx</code>, where aciR runs to the end of the record. Restricted to
+  the region the reference itself reports, the peak divergence agrees to
+  <strong>9.28e-15</strong>. The consequence is that aciR cannot presently
+  reproduce the published CIR figures, because it has no argument with which to
+  adopt the reference's horizon.</p></div>
+
+  <h2>Findings</h2>
+
+  <div class="find"><h4>F1 &mdash; the CIR horizon, and an oracle that shared the convention under test</h4>
+  <p>The package's own CIR harness loops <code>obs = j:(N+1)</code> &mdash; aciR's
+  convention, not the reference's. Every CIR grading the package owns was taken
+  against a harness sharing the convention being tested, so this divergence was
+  structurally invisible to it. Repair specified, not applied: it changes an
+  exported signature.</p></div>
+
+  <div class="find"><h4>F2 &mdash; the exact objective CIR is absent from aciR</h4>
+  <p>The reference computes the objective range both as an efficient
+  underestimate and by its definition. aciR implements the first and documents
+  the second. This corrects an earlier claim that capability parity was
+  complete.</p></div>
+
+  <div class="find"><h4>F6 &mdash; the predator-prey script cannot be run top to bottom</h4>
+  <p>Fourteen blocks, seven per causal direction, all assigning the same names.
+  <code>filter_mean</code> is written for direction one and overwritten by
+  direction two before anything consumes it, so the direction-one smoother reads
+  direction two's filter &mdash; silently, with plausible numbers. Each direction
+  is therefore composed from its own declared line ranges, guarded by a condition
+  that holds in one direction only.</p></div>
+
+  <div class="find"><h4>F3, F4, F5 &mdash; a silent empty, a vacuous pass, and three interface asymmetries</h4>
+  <p>The reference's exact objective CIR evaluates to an empty range rather than
+  erroring on a short window. This harness had the same disease and it was fixed:
+  an empty comparison reported <em>ok</em> for having compared nothing, because
+  <code>max(numeric(0))</code> is <code>-Inf</code>. It is now a named failure,
+  and it fired on the next run.</p></div>
+
+  <hr>
+  <p class="cap">MATLAB R2025b (25.2.0.3042426 Update 1), macOS arm64, 32&nbsp;GB.
+  Excerpts between the VERBATIM markers are Copyright &copy; 2025 Marios Andreou,
+  reproduced under the MIT Licence. Scope: the dyad in full; predator-prey filter,
+  smoother and metric in both directions. The five ENSO scripts are not yet
+  extracted, so <code>aci_conditional</code> and the ENSO constructors have no
+  parity row.</p>
+</div>
