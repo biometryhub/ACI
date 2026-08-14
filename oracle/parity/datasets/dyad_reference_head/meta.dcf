@@ -1,0 +1,17 @@
+Name: dyad_reference_head
+Description: First 3001 steps of the published dyad signal, generated
+        by the reference's own rng(333) through
+        ref_dyad_setup_and_signals.
+Provenance: dyad_interaction_model.m lines 48-125, unmodified
+Kind: scalar
+N: 3000
+dt: 0.001
+CIRStart: 0.5
+CIREnd: 1.5
+mu0: 2
+R0: 0.1
+L_y: -0.5
+Sx_1: 0.5
+Sx_2: 0
+Sy_1: 0
+Sy_2: 1

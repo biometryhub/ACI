@@ -1,0 +1,114 @@
+## Reference kernels hoisted into callable MATLAB functions.
+##
+## `Lines` addresses the UNMODIFIED reference script. tools/extract.R copies
+## that range byte for byte between VERBATIM markers and adds nothing but a
+## signature, comments and `end`; tools/check_extraction re-reads the source and
+## fails if a generated file drifted by a byte.
+##
+## `ConsumedOnly: v=i` asserts the slice touches input `v` at index `i` and
+## nowhere else, which is what makes it safe to supply a stub for it on a
+## dataset that has no such variable.
+##
+## Generated functions are NOT committed -- they reproduce code from a
+## repository this project does not vendor (matlab_reference/ is gitignored as
+## re-clonable). Run tools/run_parity.R to regenerate.
+
+Function: ref_filter_scalar
+Script: dyad_interaction_model.m
+Lines: 131-172
+Inputs: x, y, L_x, f_x, f_y, L_y, Sx_1, Sx_2, Sy_1, Sy_2, N, dt
+Outputs: filter_mean, filter_cov, S_xoS_x, S_xoS_x_inv, S_yoS_y, S_yoS_x,
+ S_xoS_y
+ConsumedOnly: y=1
+Pairs: aci_filter
+Note: The forward CGNS filter, together with the four noise Grammians it
+ derives on the way in. Two initial conditions are literals inside this range
+ rather than arguments: the mean starts at y(1), the true latent value, and
+ the covariance at a hardcoded 0.1. The mean is reachable -- `y` is consumed
+ only at index 1, asserted above, so a one-element stub selects it -- but the
+ covariance is not. R0 is therefore pinned at 0.1 for every paired comparison,
+ and aciR's R0 argument is an interface extension, not a matched parameter.
+
+Function: ref_smoother_scalar
+Script: dyad_interaction_model.m
+Lines: 178-241
+Inputs: x, filter_mean, filter_cov, L_x, f_x, f_y, L_y, S_xoS_x_inv, S_yoS_y,
+ S_yoS_x, S_xoS_y, N, dt
+Outputs: smoother_mean, smoother_cov, E_j_matrices, F_j_matrices
+Pairs: aci_smoother, .aci_online_aux
+Note: One reference range, two aciR functions. The backward smoother and the
+ online smoother's per-step auxiliary matrices E_j and F_j are computed in the
+ same loop here; aciR factors the auxiliaries into .aci_online_aux() because
+ the online smoother needs them without the backward pass. The pairing is
+ therefore not one-to-one, and both aciR functions are graded against this one
+ extract.
+
+Function: ref_aci_metric_scalar
+Script: dyad_interaction_model.m
+Lines: 305-308
+Inputs: filter_mean, filter_cov, smoother_mean, smoother_cov
+Outputs: ACI_metric, signal_smoother_filter, cov_ratio_smoother_filter,
+ dispersion_smoother_filter
+Pairs: aci_metric
+Note: The scalar ACI metric as a relative entropy of the smoother from the
+ filter, split into its signal and dispersion parts. The parts are returned as
+ well as the total so that a disagreement can be attributed to one of them
+ rather than to their sum.
+
+Function: ref_online_smoother_scalar
+Script: dyad_interaction_model.m
+Lines: 326-431
+Inputs: x, L_x, f_x, f_y, L_y, filter_mean, filter_cov, E_j_matrices,
+ F_j_matrices, fixed_lag, N, dt
+Outputs: online_fixed_mean, online_fixed_cov, update_matrices_fixed
+Pairs: aci_online_smoother
+Note: The fixed-lag online smoother, storing the full staggered triangle of
+ posteriors as nested cell arrays. `fixed_lag` is an input because the
+ reference sets it to N+1 one line above this range and never varies it; taking
+ it as an argument is what allows the lag boundaries to be graded. The memory
+ is quadratic in N -- at the published N = 30000 the three cell arrays come to
+ roughly 10.8 GB, which is why the harness runs at reduced sizes.
+
+Function: ref_cir_scalar
+Script: dyad_interaction_model.m
+Lines: 433-546
+Inputs: dt, T, time_start_plot, time_end_plot, online_fixed_mean,
+ online_fixed_cov
+Outputs: subjective_CIR, approx_objective_CIR, RE_metric, max_RE_metric,
+ eps_ord_values, epsilon_resolution, lookahead_tolerance, first_idx, last_idx,
+ plot_len
+Pairs: aci_cir
+Note: Subjective CIR over a grid of thresholds, and the computationally
+ efficient objective CIR approximation. The epsilon grid is fixed inside this
+ range at 513 logarithmically spaced points, where aciR defaults to 129, so the
+ driver passes the reference grid explicitly. RE_metric is allocated
+ plot_len-squared and reaches 3.40 GB at the published settings; aciR reduces
+ each row on the spot and never forms it.
+
+Function: ref_objective_cir_exact
+Script: dyad_interaction_model.m
+Lines: 549-561
+Inputs: eps_ord_values, subjective_CIR, max_RE_metric, lookahead_tolerance, dt
+Outputs: defn_objective_CIR
+Pairs: [absent in aciR]
+Note: The objective CIR by its DEFINITION -- the subjective ranges integrated
+ over the threshold grid and normalised by the peak divergence -- as distinct
+ from the efficient underestimate computed inside ref_cir_scalar. aciR
+ implements the underestimate and documents the definition, but does not
+ compute this quantity. Recorded as a capability gap, not a divergence; see the
+ findings section of the parity report.
+
+Function: ref_dyad_setup_and_signals
+Script: dyad_interaction_model.m
+Lines: 48-125
+Inputs:
+Outputs: x, y, L_x, f_x, f_y, L_y, Sx_1, Sx_2, Sy_1, Sy_2, N, dt, T, gamma,
+ d_x, d_y, F_x, F_y, sigma_x, sigma_y
+Pairs: aci_dyad_model, aci_dyad_components, aci_simulate
+Note: Model setup and the Euler-Maruyama signal generation, including the
+ reference's own rng(333). It takes no arguments and fixes N = 30000 inside the
+ range, which is the point: it reproduces the PUBLISHED dataset exactly. That
+ matters because the filter and smoother are O(N) and can therefore be graded
+ at full scale even though the online smoother and CIR cannot. Its random draws
+ are MATLAB's and are not reproducible in R, so it is never compared against
+ aci_simulate() numerically -- only the components map is.

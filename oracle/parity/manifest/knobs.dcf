@@ -1,0 +1,51 @@
+## Problem-size knobs for the reference scripts.
+##
+## Each record declares one (script, profile) pair and the literal assignments
+## substituted to bring the script to a size that completes on a workstation.
+## The substitution is applied by tools/reduce.R, which asserts that
+##
+##   (a) each knob name matches EXACTLY ONE top-level assignment line,
+##   (b) the number of lines that differ from the reference equals the number
+##       of knobs, and no other line differs,
+##   (c) every changed line is a bare `<name> = <literal>;` on both sides,
+##
+## so no substitution can reach a line that carries algebra. Line NUMBERING is
+## preserved -- one line in, one line out, no inserted header -- because the
+## extraction manifest addresses the reference by line range.
+##
+## Why this exists: at the published settings the dyad script allocates
+## RE_metric as 20601 x 20601 (3.40 GB) and three online-smoother cell
+## triangles at N = 30001 (~10.8 GB), then scans 513 epsilon x 20601 j over
+## rows up to 20601 long. That does not complete on a 32 GB workstation in a
+## usable time, so a full-scale unmodified run is not available as a gate.
+## Recorded in ledger/infrastructure/2026-08-14-minimal-substitution-gate.cairn.md
+
+Script: dyad_interaction_model.m
+Profile: small
+Knobs: N=3000; time_start_plot=0.5; time_end_plot=1.5
+Requires: plot_len > lookahead_tolerance/dt; ~isempty(defn_objective_CIR);
+ last_idx == round((time_end_plot+lookahead_tolerance)/dt)+1
+Rationale: T = 3.0 keeps time_end_plot + lookahead_tolerance = 2.1 strictly
+ below T, which selects the LOOKAHEAD branch of the last_idx conditional --
+ the branch the published settings select. plot_len = 1601, so RE_metric is
+ 20 MB and the online-smoother triangles are 36 MB each. epsilon_resolution is
+ left at its published 513: it is affordable at this size, and every knob left
+ alone is one fewer difference to defend.
+
+Script: dyad_interaction_model.m
+Profile: tiny
+Knobs: N=1200; time_start_plot=0.1; time_end_plot=0.8
+Requires: plot_len > lookahead_tolerance/dt; ~isempty(defn_objective_CIR);
+ last_idx == round(time_end_plot/dt)+1
+Rationale: A second size, and deliberately the OTHER branch of the last_idx
+ conditional: time_end_plot + lookahead_tolerance = 1.4 exceeds T = 1.2, so
+ the truncating branch is taken. A parity that holds at one problem size only
+ is a coincidence that has not been tested, and a conditional graded on one
+ side only is half-graded.
+ .
+ The window is 0.7 rather than the 0.2 first tried. At 0.2 the window is
+ shorter than the lookahead, and the reference's exact objective CIR indexes
+ `subjective_CIR(:, 1:end-lookahead_tolerance/dt)`, which MATLAB evaluates to
+ an EMPTY range rather than an error -- so defn_objective_CIR came back 1x0
+ and would have been "graded" against nothing. The Requires field above exists
+ because of that, and is checked after every capture.

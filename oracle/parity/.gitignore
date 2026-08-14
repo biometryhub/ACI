@@ -1,0 +1,11 @@
+# Generated, not authored.
+#
+# `matlab/extracted/` reproduces code from a repository this project does not
+# vendor (matlab_reference/ is itself gitignored as re-clonable), and
+# `workspaces/` holds reduced scripts and captured .mat files running to
+# hundreds of megabytes. Both are one command away: tools/run_parity.R.
+#
+# manifest/, tools/, reports/ and datasets/ ARE committed -- they are the
+# authored part, and the reports are what a reviewer without MATLAB reads.
+matlab/extracted/
+workspaces/
