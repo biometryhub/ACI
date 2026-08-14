@@ -81,6 +81,10 @@ reference:
   - print.summary.aci
   - as.data.frame.aci
   - plot.aci
+  - print.aci_cir
+  - summary.aci_cir
+  - as.data.frame.aci_cir
+  - plot.aci_cir
 - title: Package
   contents:
   - aciR-package
