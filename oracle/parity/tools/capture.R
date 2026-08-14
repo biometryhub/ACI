@@ -15,8 +15,12 @@
 #' @returns A data frame with one row per (script, profile).
 capture_all <- function(manifest_path,
                         reference_dir = "matlab_reference",
-                        out_dir = file.path("oracle", "parity", "workspaces")) {
+                        out_dir = file.path("oracle", "parity", "workspaces"),
+                        profiles = NULL) {
   records <- read_manifest(manifest_path)
+  if (!is.null(profiles)) {
+    records <- records[records[, "Profile"] %in% profiles, , drop = FALSE]
+  }
   results <- list()
 
   for (i in seq_len(nrow(records))) {

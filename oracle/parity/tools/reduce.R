@@ -72,8 +72,43 @@
 #' @param target_path Where to write the reduced script.
 #'
 #' @returns A data frame of the substitutions actually made, one row per knob.
-reduce_script <- function(source_path, knobs, target_path) {
+reduce_script <- function(source_path, knobs, target_path, sections = NULL) {
   source_file <- .read_lines_preserving(source_path)
+
+  # ---- section selection -----------------------------------------------------
+  #
+  # Some reference scripts are not written to be run top to bottom. The
+  # predator-prey script carries fourteen blocks headed "RUN THIS CODE SECTION
+  # TO STUDY THE CAUSAL RELATIONSHIP", seven per causal direction, and every one
+  # of them assigns the same names: `filter_mean` is written for direction one
+  # and overwritten by direction two before anything consumes it, so a
+  # top-to-bottom run computes direction one's smoother from direction two's
+  # filter. Silently, with plausible numbers. `f_x` is even a scalar in one
+  # direction and an array in the other.
+  #
+  # A runner is therefore composed from declared line ranges of the reference,
+  # in file order -- the same lines a user executes when following the script's
+  # own instructions. Nothing is retyped or reordered; only selected.
+  header <- character(0)
+  if (!is.null(sections)) {
+    index <- unlist(lapply(sections, function(range) seq.int(range[1L],
+                                                             range[2L])))
+    if (is.unsorted(index)) {
+      stop("section ranges must be given in ascending file order.",
+           call. = FALSE)
+    }
+    header <- c(
+      sprintf("%% Runner composed from %s by oracle/parity/tools/reduce.R.",
+              basename(source_path)),
+      "% Verbatim lines of the reference, in file order, selected per its own",
+      "% \"RUN THIS CODE SECTION\" instructions. Ranges:",
+      paste0("%   ", paste(vapply(sections, function(r)
+        sprintf("%d-%d", r[1L], r[2L]), character(1L)), collapse = ", ")),
+      "%"
+    )
+    source_file$lines <- source_file$lines[index]
+  }
+
   original <- source_file$lines
   reduced <- original
   hits <- integer(length(knobs))
@@ -103,12 +138,18 @@ reduce_script <- function(source_path, knobs, target_path) {
     stop("reduction changed the line count; line ranges would shift.",
          call. = FALSE)
   }
+  # Every changed line must be a declared one. The converse is NOT required: a
+  # knob may restate the value the reference already has, which changes nothing
+  # and is a legitimate way to record that the value is deliberate rather than
+  # inherited. What must never happen is a line changing that no knob declared.
   changed <- which(reduced != original)
-  if (!identical(sort(changed), sort(hits))) {
+  undeclared <- setdiff(changed, hits)
+  if (length(undeclared) > 0L) {
     stop(
       sprintf(
-        "reduction changed lines %s but declared %s.",
-        paste(sort(changed), collapse = ", "), paste(sort(hits), collapse = ", ")
+        "reduction changed undeclared line(s) %s; declared %s.",
+        paste(sort(undeclared), collapse = ", "),
+        paste(sort(hits), collapse = ", ")
       ),
       call. = FALSE
     )
@@ -128,7 +169,7 @@ reduce_script <- function(source_path, knobs, target_path) {
 
   dir.create(dirname(target_path), recursive = TRUE, showWarnings = FALSE)
   .write_lines_preserving(
-    reduced, target_path, source_file$eol, source_file$trailing
+    c(header, reduced), target_path, source_file$eol, source_file$trailing
   )
 
   data.frame(
@@ -154,8 +195,18 @@ reduce_all <- function(manifest_path, reference_dir, out_dir) {
     script <- records[i, "Script"]
     profile <- records[i, "Profile"]
     knobs <- .parse_knobs(records[i, "Knobs"])
+    sections <- NULL
+    if ("Sections" %in% colnames(records) && !is.na(records[i, "Sections"])) {
+      pieces <- trimws(strsplit(gsub("[\r\n]+", " ", records[i, "Sections"]),
+                                ",", fixed = TRUE)[[1L]])
+      pieces <- pieces[nzchar(pieces)]
+      sections <- lapply(pieces, function(p) {
+        as.integer(trimws(strsplit(p, "-", fixed = TRUE)[[1L]]))
+      })
+    }
     target <- file.path(out_dir, profile, script)
-    result <- reduce_script(file.path(reference_dir, script), knobs, target)
+    result <- reduce_script(file.path(reference_dir, script), knobs, target,
+                            sections = sections)
     result$script <- script
     result$profile <- profile
     made[[length(made) + 1L]] <- result

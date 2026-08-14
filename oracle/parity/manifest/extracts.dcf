@@ -112,3 +112,93 @@ Note: Model setup and the Euler-Maruyama signal generation, including the
  at full scale even though the online smoother and CIR cannot. Its random draws
  are MATLAB's and are not reproducible in R, so it is never compared against
  aci_simulate() numerically -- only the components map is.
+
+Function: ref_pp_filter_dir1
+Script: noisy_predator_prey_model.m
+Lines: 214-255
+Inputs: x, y, L_x, L_y, f_x, f_y, Sx_1, Sx_2, Sy_1, Sy_2, N, dt
+Outputs: filter_mean, filter_cov, S_yoS_y, S_yoS_y_inv, S_xoS_x, S_xoS_y,
+ S_yoS_x
+ConsumedOnly: x=1
+Pairs: aci_filter
+Note: Predator-prey, causal direction x(t) -> y. The PREY y is observed and the
+ PREDATOR x is unobserved, so the roles of x and y are the mirror of the dyad's
+ and the Grammian names read the other way round. The initial filter mean is
+ the true unobserved value x(1), consumed at that index alone.
+
+Function: ref_pp_smoother_dir1
+Script: noisy_predator_prey_model.m
+Lines: 320-384
+Inputs: y, filter_mean, filter_cov, L_x, L_y, f_x, f_y, S_yoS_y_inv, S_xoS_x,
+ S_xoS_y, S_yoS_x, N, dt
+Outputs: smoother_mean, smoother_cov, E_j_matrices, F_j_matrices
+Pairs: aci_smoother, .aci_online_aux
+Note: Backward smoother and online-smoother auxiliaries for direction one, in
+ one loop as in the dyad.
+
+Function: ref_pp_metric_dir1
+Script: noisy_predator_prey_model.m
+Lines: 598-601
+Inputs: filter_mean, filter_cov, smoother_mean, smoother_cov
+Outputs: signal_smoother_filter, cov_ratio_smoother_filter,
+ dispersion_smoother_filter, ACI_metric
+Pairs: aci_metric
+Note: ACI metric for direction one.
+
+Function: ref_pp_filter_dir2
+Script: noisy_predator_prey_model.m
+Lines: 265-306
+Inputs: x, y, L_x, L_y, f_x, f_y, Sx_1, Sx_2, Sy_1, Sy_2, N, dt
+Outputs: filter_mean, filter_cov, S_xoS_x, S_xoS_x_inv, S_yoS_y, S_yoS_x,
+ S_xoS_y
+ConsumedOnly: y=1
+Pairs: aci_filter
+Note: Predator-prey, causal direction y(t) -> x. The PREDATOR x is observed and
+ the PREY y unobserved. Same algebra as ref_pp_filter_dir1 with the labels
+ exchanged -- which is precisely why the script's two directions collide: they
+ assign the same names, so a top-to-bottom run leaves only this one standing.
+
+Function: ref_pp_smoother_dir2
+Script: noisy_predator_prey_model.m
+Lines: 394-457
+Inputs: x, filter_mean, filter_cov, L_x, L_y, f_x, f_y, S_xoS_x_inv, S_yoS_y,
+ S_yoS_x, S_xoS_y, N, dt
+Outputs: smoother_mean, smoother_cov, E_j_matrices, F_j_matrices
+Pairs: aci_smoother, .aci_online_aux
+Note: Backward smoother and online-smoother auxiliaries for direction two. One
+ line shorter than its direction-one mirror, which is why the ranges are read
+ off the file rather than derived by offset.
+
+Function: ref_pp_metric_dir2
+Script: noisy_predator_prey_model.m
+Lines: 865-868
+Inputs: filter_mean, filter_cov, smoother_mean, smoother_cov
+Outputs: signal_smoother_filter, cov_ratio_smoother_filter,
+ dispersion_smoother_filter, ACI_metric
+Pairs: aci_metric
+Note: ACI metric for direction two.
+
+Function: ref_pp_setup_dir1
+Script: noisy_predator_prey_model.m
+Lines: 54-88, 93-114, 155-174
+Inputs:
+Outputs: x, y, L_x, L_y, f_x, f_y, Sx_1, Sx_2, Sy_1, Sy_2, N, dt, T, alpha,
+ beta, gamma, delta, sigma_x, sigma_y
+Pairs: aci_predprey_model, aci_predprey_components
+Note: Common model setup, direction-one components, and direction-one signal
+ generation, including the reference's own rng(42). Three ranges rather than
+ one because the script interleaves its two causal directions; taking them in
+ file order is exactly what a user does following its "RUN THIS CODE SECTION"
+ instructions. N = 12000 is fixed inside the range, so this reproduces the
+ PUBLISHED dataset -- which is what allows the committed fixtures to be
+ re-graded at full scale, the filter and smoother both being O(N).
+
+Function: ref_pp_setup_dir2
+Script: noisy_predator_prey_model.m
+Lines: 54-88, 122-143, 182-201
+Inputs:
+Outputs: x, y, L_x, L_y, f_x, f_y, Sx_1, Sx_2, Sy_1, Sy_2, N, dt, T, alpha,
+ beta, gamma, delta, sigma_x, sigma_y
+Pairs: aci_predprey_model, aci_predprey_components
+Note: The direction-two mirror. Shares the common setup range with
+ ref_pp_setup_dir1, so both see the same rng(42) and the same realisation.

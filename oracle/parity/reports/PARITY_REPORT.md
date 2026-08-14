@@ -1,6 +1,7 @@
 # MATLAB / aciR parity report
 
-Generated from `oracle/parity/`, 2026-08-14. Scope: the scalar dyad path.
+Generated from `oracle/parity/`, 2026-08-14. Scope: the dyad path in full,
+and the predator-prey filter/smoother/metric in both causal directions.
 MATLAB R2025b (25.2.0.3042426 Update 1), macOS arm64, 32 GB.
 
 Reproduce with `tools/run_parity.R`; every number below comes from a file in
@@ -40,7 +41,9 @@ factors the auxiliaries out.
 Each extract is called with the inputs the script itself used, and every output
 must **equal** -- not approximate -- the value the script itself produced.
 
-> **58 of 58 outputs, two profiles, maximum absolute difference 0.**
+> **88 of 88 outputs across four profiles, maximum absolute difference 0.**
+> 58 for the dyad (two problem sizes), 30 for predator-prey (two causal
+> directions).
 
 ## 3. The fixture re-grade
 
@@ -54,6 +57,21 @@ The setup, signal, filter and smoother are all O(N), so this was settled at the
 
 > **All 8 quantities over 301 rows, maximum absolute difference exactly 0.**
 > The transcription introduced no error.
+
+The same was then done for both predator-prey fixtures at the published
+N = 12000, which matters more because that script cannot be run top to bottom
+(see F6):
+
+| Fixture | Direction | Agreement |
+|---|---|---|
+| `predprey_reference_predator_to_prey.csv` | dir1, x(t) -> y | **exactly 0** |
+| `predprey_reference_prey_to_predator.csv` | dir2, y(t) -> x | 1.5e-13 |
+
+dir1 is bit-identical; dir2 agrees only to round-off, so the transcription
+reproduced dir1's expression tree exactly and dir2's only up to reassociation
+over 12,000 steps. Benign -- and the informative part is the scale: had the
+transcription conflated the two directions, the hazard that script's structure
+creates, the disagreement would be of order one rather than 1e-13.
 
 ## 4. Core parity on arbitrary datasets
 
@@ -155,6 +173,35 @@ nothing. Fixed: an empty comparison is now the verdict
 `EMPTY -- nothing compared` and is a failure. It fired on the first run
 afterwards, on `dyad_reference_head`'s objective CIR.
 
+### F6 -- `noisy_predator_prey_model.m` cannot be run top to bottom
+
+**Severity: high, and it is a property of the reference, not of aciR.**
+
+The script carries fourteen blocks headed "RUN THIS CODE SECTION TO STUDY THE
+CAUSAL RELATIONSHIP", seven per causal direction, and every one assigns the
+same names:
+
+```
+225  filter_mean = dir1     ->   276  filter_mean = dir2   (dir1 destroyed, unused)
+321  smoother dir1   <- consumes filter_mean, which is now dir2's
+601  ACI metric dir1 <- built on that
+```
+
+So a top-to-bottom run computes direction one's smoother and ACI metric from
+direction two's filter. Nothing raises; the numbers look plausible. The split
+reaches into the model setup, where `f_x` is a scalar in one direction and an
+array in the other under the same name.
+
+This is not a defect when the script is used as documented -- its own banners
+tell the reader to run one section at a time. It is a hazard for anyone
+automating it, and the dyad's linear structure makes a whole-script capture
+look like the general method when it is not.
+
+**Handled**, not merely reported: each direction is captured from a runner
+composed of that direction's declared line ranges, in file order, and every
+profile declares a discriminating condition (`numel(f_x) == 1` holds only in
+direction one) checked before anything is graded.
+
 ### F5 -- Interface differences, documented not repaired
 
 - The reference hardcodes the initial covariance as `0.1` inside the filter
@@ -176,11 +223,11 @@ carried through it.
 | Reference script | Status |
 |---|---|
 | `dyad_interaction_model.m` | **complete** -- 7 extracts, G1 58/58, parity run |
-| `noisy_predator_prey_model.m` (1,332 lines) | not extracted |
+| `noisy_predator_prey_model.m` (1,332 lines) | **filter / smoother / metric, both directions** -- G1 30/30, fixtures re-graded. Online smoother and CIR not yet extracted |
 | 5 x `ENSO_model_cond_ACI_*.m` (~2,000 lines each) | not extracted |
 
-Consequently `aci_conditional`, `aci_predprey_*` and `aci_enso_*` have **no
-parity row yet**. They are graded only by the existing transcription-based
+Consequently `aci_conditional` and `aci_enso_*` have **no parity row yet**, and
+`aci_predprey_*` has one for the core but not for the range. They are graded only by the existing transcription-based
 fixtures -- which, per F1, is exactly the grading whose blind spot this
 exercise demonstrated. Extending the manifest to those scripts is the next
 step; the generator, gate and driver need no changes.

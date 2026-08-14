@@ -49,3 +49,48 @@ Rationale: A second size, and deliberately the OTHER branch of the last_idx
  an EMPTY range rather than an error -- so defn_objective_CIR came back 1x0
  and would have been "graded" against nothing. The Requires field above exists
  because of that, and is checked after every capture.
+
+Script: noisy_predator_prey_model.m
+Profile: predprey_dir1
+Knobs: N=3000; time_start_plot=0; time_end_plot=6
+Sections: 54-88, 93-114, 155-174, 213-256, 319-385, 472-473, 596-855
+Requires: numel(f_x) == 1; plot_len > lookahead_tolerance/dt;
+ ~isempty(defn_objective_CIR);
+ last_idx == round((time_end_plot+lookahead_tolerance)/dt)+1
+Rationale: Causal direction x(t) -> y: the prey y is OBSERVED, the predator x
+ is unobserved.
+ .
+ This script must not be run top to bottom. It carries fourteen blocks headed
+ "RUN THIS CODE SECTION TO STUDY THE CAUSAL RELATIONSHIP", seven per direction,
+ and every one assigns the same names. `filter_mean` is written for direction
+ one at line 225 and overwritten by direction two at line 276 before anything
+ consumes it, so the direction-one smoother at line 321 reads direction TWO's
+ filter -- silently, with plausible numbers. The runner therefore composes only
+ this direction's blocks, which is what the script's own instructions tell a
+ user to do.
+ .
+ The first Requires condition is the discriminator: `f_x` is a SCALAR in
+ direction one (line 97) and an ARRAY in direction two (line 126). If the
+ runner ever picked up the wrong blocks, that assertion fails before anything
+ is graded.
+ .
+ Lines 472-473 are carried in from the plotting block because the reporting
+ window is defined there and the ACI block consumes it. The rest of the
+ plotting is skipped: it is not needed, and a plotting failure would abort the
+ runner before the ACI section.
+ .
+ lookahead_tolerance is 5 here, not the dyad's 0.6, and dt is 0.005, so the
+ guard is 1000 steps. T = 15 and the window ends at 6, giving plot_len = 2201
+ and keeping both the lookahead branch and a non-empty defn_objective_CIR.
+
+Script: noisy_predator_prey_model.m
+Profile: predprey_dir2
+Knobs: N=3000; time_start_plot=0; time_end_plot=6
+Sections: 54-88, 122-143, 182-201, 264-307, 393-458, 533-534, 863-1122
+Requires: numel(f_y) == 1; plot_len > lookahead_tolerance/dt;
+ ~isempty(defn_objective_CIR);
+ last_idx == round((time_end_plot+lookahead_tolerance)/dt)+1
+Rationale: Causal direction y(t) -> x: the predator x is OBSERVED, the prey y
+ is unobserved. Mirror of predprey_dir1; see its rationale for why the script
+ is composed rather than run. The discriminator is mirrored too -- `f_y` is the
+ scalar in this direction (line 134).
