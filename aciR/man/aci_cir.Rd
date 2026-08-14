@@ -13,6 +13,7 @@ aci_cir(
   epsilon = 10^seq(-6, 0.5, length.out = 129L),
   threshold = 1e-05,
   margin = 0.1,
+  horizon = NULL,
   mu0 = NULL,
   R0 = NULL
 )
@@ -47,12 +48,26 @@ resolved. A time whose range consumes more than \code{1 - margin} of the record
 available after it is marked saturated and its ranges returned as \code{NA}.
 Defaults to \code{0.1}.}
 
+\item{horizon}{Integer scalar or \code{NULL}. How many steps of the record each
+reported time may look forward across, counted from the start of the
+record rather than from the reported time. \code{NULL}, the default, uses the
+whole record.
+
+The reference implementation truncates this comparison at the end of its
+reporting window, which biases both the integral and the range low near
+that end; supplying the same value here reproduces its numbers. The
+truncation applies only to how far forward the comparison looks, never to
+the fully informed posterior it is compared against, which is always taken
+over the whole record.}
+
 \item{mu0, R0}{Numeric scalars. Initial filtered mean and covariance, used
 only when \code{filt} is \code{NULL}.}
 }
 \value{
 An object of class \code{aci_cir}, a list with the reported \code{time}, the
-\code{objective} range at each time, the \code{subjective} range as a matrix with
+\code{objective} range at each time, the \code{objective_exact} range obtained by
+integrating the subjective ranges over the whole threshold grid rather
+than by the efficient approximation, the \code{subjective} range as a matrix with
 one row per threshold and one column per time, the \code{epsilon} grid, the
 \code{peak} divergence at each time, and the logical \code{saturated} marking times
 the record is too short to resolve.

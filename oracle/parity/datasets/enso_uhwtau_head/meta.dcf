@@ -1,0 +1,10 @@
+Name: enso_uhwtau_head
+Kind: vector
+Description: First 2001 steps of the reference ENSO run, (T_C,T_E,I) observed and (u,h_W,tau) unobserved.
+Provenance: ENSO_model_cond_ACI_u_h_W_tau_unobs.m lines 880-1163, unmodified
+N: 2000
+dt: 0.0050000000000000001
+k: 3
+l: 3
+R0: 0.1
+NoiseCoupling: disjoint

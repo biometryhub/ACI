@@ -1,0 +1,6 @@
+"dataset","quantity","n","max_abs","max_rel","rtol","atol","headroom","verdict"
+"enso_uhwtau_head","filter_mean",6003,5.72875080706581e-14,1.69578551066312e-10,1e-12,1e-12,35.5,"ok"
+"enso_uhwtau_head","filter_cov",18009,9.15933995315754e-16,5.35350561236822e-12,1e-12,1e-12,1240,"ok"
+"enso_uhwtau_head","smoother_mean",6003,3.10862446895044e-14,2.30648245146621e-11,1e-12,1e-12,66.3,"ok"
+"enso_uhwtau_head","smoother_cov",18009,8.18789480661053e-16,1.39520908492116e-12,1e-12,1e-12,1350,"ok"
+"enso_uhwtau_head","ACI_metric",2001,6.15063555642337e-14,9.01904370648989e-13,1e-11,1e-12,53.4,"ok"

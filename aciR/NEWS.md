@@ -2,6 +2,32 @@
 
 ## New features
 
+* `aci_cir()` gains a `horizon` argument, and returns `objective_exact`
+  alongside `objective`.
+
+  Both come from grading the package against the authors' own MATLAB rather
+  than against a transcription of it. The reference truncates its comparison
+  sequence at the end of its reporting window; this implementation runs to the
+  end of the record, which is the more faithful reading of the definition but
+  means the two do not produce the same numbers. `horizon` makes the
+  reference's convention available, and with it the subjective range agrees to
+  **2.2e-16** where it differed by 1.16 time units at the default.
+
+  `objective_exact` is the objective range by its definition -- the subjective
+  ranges integrated over the whole threshold grid -- as distinct from the
+  efficient underestimate `objective` already reported. The source paper gives
+  both; only the second was implemented. It agrees with the reference's
+  `defn_objective_CIR` to **1.6e-14** once the horizons match.
+
+  The default is unchanged: `horizon = NULL` uses the whole record, so existing
+  results are not affected.
+
+* A reported time whose comparison sequence is too short to support a range --
+  which `horizon` can produce near the end of a window -- is now marked
+  saturated and returns `NA`, rather than being integrated over two points. The
+  reference records a zero there, which reads as "no detectable influence" when
+  it means "not measured".
+
 * The fixed-lag online smoother and the causal influence range now run on
   **vector-valued states**. `aci_online_smoother()` and `aci_cir()` dispatch on
   the shape of the components exactly as the core does.

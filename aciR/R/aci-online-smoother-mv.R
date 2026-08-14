@@ -167,12 +167,15 @@
 #' @param j Integer scalar. The reported step.
 #' @param n Integer scalar. Length of the observed signal.
 #' @param tol Numeric scalar. Truncation tolerance.
+#' @param horizon Integer scalar. How far forward the comparison may look. The
+#'   fully informed posterior it is compared against is unaffected and is
+#'   always taken over the whole record.
 #'
 #' @returns A numeric vector of divergences, or `NULL` at the final step.
 #'
 #' @noRd
 #' @keywords internal
-.aci_cir_row_mv <- function(aux, filt, j, n, tol) {
+.aci_cir_row_mv <- function(aux, filt, j, n, tol, horizon = n) {
   if (j >= n) {
     return(NULL)
   }
@@ -203,11 +206,14 @@
 
   mu_end <- mu[, count]
   r_end <- rr[, , count]
-  .aci_metric_mv(
+  value <- .aci_metric_mv(
     list(mean = mu, cov = rr),
     list(
       mean = matrix(rep(mu_end, count), n_y, count),
       cov = array(rep(as.numeric(r_end), count), c(n_y, n_y, count))
     )
   )$value
+  # Truncated only after mu_end and r_end have been taken over the whole
+  # record; see the note in the scalar .aci_cir_row().
+  value[seq_len(min(count, horizon - j + 1L))]
 }

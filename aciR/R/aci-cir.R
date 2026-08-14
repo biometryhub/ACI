@@ -69,11 +69,24 @@
 #'   resolved. A time whose range consumes more than `1 - margin` of the record
 #'   available after it is marked saturated and its ranges returned as `NA`.
 #'   Defaults to `0.1`.
+#' @param horizon Integer scalar or `NULL`. How many steps of the record each
+#'   reported time may look forward across, counted from the start of the
+#'   record rather than from the reported time. `NULL`, the default, uses the
+#'   whole record.
+#'
+#'   The reference implementation truncates this comparison at the end of its
+#'   reporting window, which biases both the integral and the range low near
+#'   that end; supplying the same value here reproduces its numbers. The
+#'   truncation applies only to how far forward the comparison looks, never to
+#'   the fully informed posterior it is compared against, which is always taken
+#'   over the whole record.
 #' @param mu0,R0 Numeric scalars. Initial filtered mean and covariance, used
 #'   only when `filt` is `NULL`.
 #'
 #' @returns An object of class `aci_cir`, a list with the reported `time`, the
-#'   `objective` range at each time, the `subjective` range as a matrix with
+#'   `objective` range at each time, the `objective_exact` range obtained by
+#'   integrating the subjective ranges over the whole threshold grid rather
+#'   than by the efficient approximation, the `subjective` range as a matrix with
 #'   one row per threshold and one column per time, the `epsilon` grid, the
 #'   `peak` divergence at each time, and the logical `saturated` marking times
 #'   the record is too short to resolve.
@@ -99,7 +112,8 @@
 #' @export
 aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
                     epsilon = 10^seq(-6, 0.5, length.out = 129L),
-                    threshold = 1e-5, margin = 0.1, mu0 = NULL, R0 = NULL) {
+                    threshold = 1e-5, margin = 0.1, horizon = NULL,
+                    mu0 = NULL, R0 = NULL) {
   .aci_check_positive(dt, "dt")
   .aci_check_positive(threshold, "threshold")
   is_mv <- .aci_is_mv(comp)
@@ -124,6 +138,16 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
   .aci_check_scalar(margin, "margin")
   if (margin <= 0 || margin >= 1) {
     stop("`margin` must lie strictly between zero and one.", call. = FALSE)
+  }
+  if (!is.null(horizon)) {
+    .aci_check_scalar(horizon, "horizon")
+    if (horizon != trunc(horizon) || horizon < 1) {
+      stop("`horizon` must be a whole number of at least one, or `NULL`.",
+           call. = FALSE)
+    }
+    horizon <- min(as.integer(horizon), n)
+  } else {
+    horizon <- n
   }
   if (is.null(filt)) {
     .aci_check_scalar(mu0, "mu0")
@@ -151,6 +175,7 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
   n_eps <- length(epsilon)
 
   objective <- numeric(length(window))
+  objective_exact <- rep(NA_real_, length(window))
   peak <- numeric(length(window))
   saturated <- logical(length(window))
   subjective <- matrix(NA_real_, nrow = n_eps, ncol = length(window))
@@ -158,14 +183,26 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
   for (i in seq_along(window)) {
     j <- window[i]
     re <- if (is_mv) {
-      .aci_cir_row_mv(aux, filt, j, n, tol = 1e-18)
+      .aci_cir_row_mv(aux, filt, j, n, tol = 1e-18, horizon = horizon)
     } else {
-      .aci_cir_row(aux, filt, j, n)
+      .aci_cir_row(aux, filt, j, n, horizon = horizon)
     }
     if (is.null(re)) {
       # The final step has no later observation to be compared against.
       saturated[i] <- TRUE
       peak[i] <- 0
+      next
+    }
+    if (length(re) < 3L) {
+      # Too few later observations to support a range at all. This arises when
+      # `horizon` stops the comparison close to the reported time.
+      #
+      # The reference wraps its quadrature in a try/catch and records zero
+      # here, which a reader cannot distinguish from "no detectable
+      # influence" -- the two mean opposite things. The time is marked
+      # unresolved instead, and its ranges returned as NA.
+      saturated[i] <- TRUE
+      peak[i] <- max(re)
       next
     }
     peak[i] <- max(re)
@@ -195,6 +232,21 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
     # objective range does, and condemning the objective range because the
     # most demanding threshold was unresolved would discard the quantity the
     # method leads with.
+    # ---- Objective range by its definition ---------------------------------
+    #
+    # The source paper defines the objective range as the subjective ranges
+    # averaged over all thresholds, and gives the integral above as an
+    # efficient underestimate of it. Both are reported.
+    #
+    # This is computed from the UNMASKED counts, deliberately. A quadrature
+    # over the threshold grid needs every node; masking one because its range
+    # ran past the retained margin would not make the integral conservative,
+    # it would make it undefined. The `saturated` flag still marks the time,
+    # and is what a caller should test.
+    if (peak[i] > threshold) {
+      objective_exact[i] <- .aci_simpson(counts * dt, eps_sorted) / peak[i]
+    }
+
     room <- (1 - margin) * length(re)
     counts[counts > room] <- NA_integer_
     subjective[order(epsilon), i] <- counts * dt
@@ -204,12 +256,14 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
   }
 
   objective[saturated] <- NA_real_
+  objective_exact[saturated] <- NA_real_
 
   structure(
     list(
       time = (window - 1L) * dt,
       index = window,
       objective = objective,
+      objective_exact = objective_exact,
       subjective = subjective,
       epsilon = epsilon,
       peak = peak,
@@ -237,7 +291,7 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
 #'
 #' @noRd
 #' @keywords internal
-.aci_cir_row <- function(aux, filt, j, n) {
+.aci_cir_row <- function(aux, filt, j, n, horizon = n) {
   if (j >= n) {
     return(NULL)
   }
@@ -265,7 +319,14 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
   }
   delta <- r_end / rr - 1
   value <- 0.5 * (mu_end - mu)^2 / rr + 0.5 * (delta - log1p(delta))
-  pmax(value, 0)
+
+  # The horizon truncates how far forward the comparison looks, but NOT the
+  # fully informed posterior it is compared against: `mu_end` and `r_end` above
+  # are taken over the whole record either way. That asymmetry is the point.
+  # The quantity being measured is how far one must look before the estimate
+  # stops changing, and the thing it must stop changing towards is the estimate
+  # informed by everything available.
+  pmax(value, 0)[seq_len(min(length(value), horizon - j + 1L))]
 }
 
 #' Validate a reporting window
