@@ -27,8 +27,6 @@ sim <- aci_simulate(model, n = 900, seed = 1)
 comp <- aci_dyad_components(sim$x, model$parameters)
 rng <- aci_cir(sim$x, comp, dt = 0.001, window = 50:150,
                mu0 = model$y0, R0 = 0.1)
-old <- graphics::par(mfrow = c(2, 1))
 plot(rng)
-graphics::par(old)
 
 }

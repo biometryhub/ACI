@@ -151,6 +151,11 @@ print.summary.aci_cir <- function(x, ...) {
 #' The per-time quantities only. The subjective matrix is left behind because
 #' it is threshold-by-time and does not belong in the same rectangle.
 #'
+#' `monotone` is carried because it is the condition under which `objective`
+#' and `objective_exact` are the same functional, and it is what
+#' [summary.aci_cir()] tells the reader to look at; a diagnostic reachable only
+#' through a print method is not much of a diagnostic.
+#'
 #' @param x An object of class `aci_cir`.
 #' @param row.names,optional Passed through to the data frame.
 #' @param ... Ignored.
@@ -173,6 +178,7 @@ as.data.frame.aci_cir <- function(x, row.names = NULL, optional = FALSE, ...) {
     objective_exact = x$objective_exact,
     peak = x$peak,
     status = x$status,
+    monotone = x$monotone,
     saturated = x$saturated,
     row.names = row.names, stringsAsFactors = FALSE
   )
@@ -196,12 +202,15 @@ as.data.frame.aci_cir <- function(x, row.names = NULL, optional = FALSE, ...) {
 #' comp <- aci_dyad_components(sim$x, model$parameters)
 #' rng <- aci_cir(sim$x, comp, dt = 0.001, window = 50:150,
 #'                mu0 = model$y0, R0 = 0.1)
-#' old <- graphics::par(mfrow = c(2, 1))
 #' plot(rng)
-#' graphics::par(old)
 #'
 #' @export
 plot.aci_cir <- function(x, y, ...) {
+  # The method draws two panels, so it owns the layout. Leaving that to the
+  # caller means an interactive `plot(rng)` paints the objective panel and
+  # immediately overwrites it, which is what happened before.
+  old <- graphics::par(mfrow = c(2L, 1L), mar = c(4.1, 4.1, 2.1, 1.1))
+  on.exit(graphics::par(old), add = TRUE)
   censored <- x$status == "censored"
   graphics::plot(
     x$time, x$objective, type = "n",

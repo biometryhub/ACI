@@ -9,18 +9,22 @@
 # therefore part of reproducing the published quantity rather than an
 # implementation detail.
 #
-# Simpson's rule carries its own oracle. It is exact for polynomials up to
-# cubic, which is a statement about the rule rather than about any
-# implementation of it, so the tests grade this code against integrals whose
+# Simpson's rule carries its own oracle. On an even interval count it is exact
+# for polynomials up to cubic, and the closing interval of an odd count is
+# exact for quadratics -- statements about the rules rather than about any
+# implementation of them, so the tests grade this code against integrals whose
 # values are known in closed form and which no implementation here produced.
 
 #' Composite Simpson quadrature
 #'
 #' Integrates sampled values by the composite Simpson 1/3 rule. With an even
-#' number of intervals the rule applies throughout. With an odd number the
-#' rule is applied to all but the final interval, which is closed with the
-#' Simpson 3/8 rule over the last three, so the result stays third-order
-#' accurate rather than dropping to the trapezoidal order at the tail.
+#' number of intervals the rule applies throughout. With an odd number it runs
+#' over the longest even prefix and the final interval is closed by
+#' integrating the quadratic through the last three samples over that interval
+#' alone -- the reference implementation's rule, and the reason the objective
+#' causal influence range reproduces the published number. Exactness is
+#' therefore cubic on an even interval count and quadratic on the closing
+#' interval of an odd one. Both handle unequal spacing exactly.
 #'
 #' @param y Numeric vector. The sampled integrand; at least two values.
 #' @param x Numeric vector or `NULL`. The abscissae, the same length as `y`

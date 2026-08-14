@@ -159,45 +159,51 @@ and both files reproduced byte-for-byte, with identical hashes to the committed
 copies. A test checks the shipped bytes against the recorded hashes on every
 run, so a fixture cannot drift silently.
 
-Fixtures are never regenerated in place. The refresh procedure generates into a
-scratch directory and diffs the hashes, and replacing a shipped file is a
-deliberate maintainer step with a `NEWS.md` entry. A fixture whose hash changes
-without that step is a defect, not an update.
+## What is graded, and what is not
 
-## What is not validated
+An oracle grades the paths its parameters exercise and no others. Two lists,
+because the distinction that matters is not whether a thing works but whether
+the evidence for it comes from the authors.
 
-An oracle grades the paths its parameters exercise and no others. The following
-are outside the current evidence, and are listed here rather than left for a
-reader to discover.
+### Graded, with the scope named
+
+* **A time-varying self-drift**, in both causal directions, against the noisy
+  predator-prey model -- the system whose latent damping is set by the observed
+  population. The dyad and cross fixtures cannot reach this path, since both
+  pin the self-drift at a constant.
+* **The noise cross-covariance of the online smoother and the causal influence
+  range**, against the `cir_cross` fixture. This is a second independent
+  implementation rather than the authors' own numbers: every scalar model
+  upstream sets the cross-covariance to zero, so no reference fixture can reach
+  these terms.
+* **Vector filter, smoother and metric**, against the ENSO fixture and against
+  block-diagonal algebraic Riccati fixed points solved in closed form, which
+  depend on neither implementation.
+* **The vector online smoother and causal influence range**, by collapse onto
+  the graded scalar path at every lag and by an independent transcription of
+  equations (3.5) to (3.7) in full generality. Not against the authors' ENSO
+  scripts.
+
+The matrix noise-cross-covariance terms deserve their own sentence. They have
+**no upstream counterpart at all**: every scalar model in the reference sets
+the cross-covariance to zero, and the ENSO scripts state in as many words that
+the cross-interaction terms are absent. The analytic identities are the primary
+grounding there, and a second implementation refutes a transcription error
+without being an authors'-reference grounding.
+
+### Still open
 
 * **Simulation.** `aci_simulate()` draws from R's generator, which differs from
   MATLAB's, so a simulated path does not correspond to the reference path even
   at a matching seed. The oracle grade runs on the MATLAB signal, never on a
   fresh simulation. Simulation is checked for reproducibility and for its
   contract, not against a reference path.
-* **A time-varying self-drift.** Implemented and graded, in both causal
-  directions, against the noisy predator-prey model of the reference
-  implementation -- the system whose latent damping is set by the observed
-  population. The dyad and cross fixtures cannot reach this path, since both
-  pin the self-drift at a constant.
-* **The noise cross-covariance of the online smoother.** Implemented and
-  reachable, but *not* graded against the reference. The causal-influence-range
-  fixture, like every scalar model upstream, sets the cross-covariance to zero,
-  so the terms carrying it execute on every run with the term annihilated. This
-  is the same gap the `cross` fixture closes for the filter and the smoother,
-  and it is not yet closed here. Treat the online smoother's correlated-noise
-  path as unverified.
-* **Vector states and the conditional construction.** Implemented and graded,
-  but read the scope carefully. The matrix noise-cross-covariance terms have
-  **no upstream counterpart at all**: every scalar model in the reference sets
-  the cross-covariance to zero, and all five ENSO scripts state that the
-  cross-interaction terms are absent. They are graded against a second
-  independent implementation, which refutes a transcription error but is not an
-  authors'-reference grounding, and against block-diagonal algebraic Riccati
-  fixed points solved in closed form, which depend on neither implementation.
-  The analytic identities are the primary grounding here.
-* **The online smoother and the causal influence range on vector states.** Not
-  implemented, so not graded.
+* **`aci_conditional()`** against the one reference script that has conditional
+  ACI enabled. The construction is tested; the numbers are not compared.
+* **The predator-prey causal influence range.** Filter, smoother and metric are
+  graded in both directions; the range is not.
+* **Four of the five ENSO scripts**, whose workspaces are captured and
+  validated but whose extracted kernels are not yet gated.
 * **Model adequacy.** No oracle can grade this, and none pretends to. Whether
   the system you supplied describes your data is a scientific question, treated
   in the companion article *Assumptions and interpretation*.

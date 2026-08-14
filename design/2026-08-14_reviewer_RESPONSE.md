@@ -261,3 +261,104 @@ predator-prey execution hazard, and that exactly one of the five ENSO scripts
 ships with conditional ACI enabled — remain **internal**. They have not been
 raised with the authors. That decision is the maintainer's and has not been
 taken.
+
+
+---
+
+# Addendum: response to the second-round review
+
+**Date** 2026-08-14 · **Responding to** `design/2026-08-14_reviewer_ROUND2.md`
+
+All seven checkable claims were verified independently before acting. All hold.
+Everything in F1 to F7 and both vignette passes is done. Version bumped to
+**0.2.0**; the `aci_cir()` return and quadrature changes are breaking, so this
+is a minor bump rather than a patch.
+
+## The two corrections, accepted
+
+**A1 was not done.** `aciR.Rmd` and `validation.Rmd` still denied capabilities.
+Fixed.
+
+**The grade is 1.37e-14, not 3.57e-15.** Fixed in `NEWS.md`, the cairn, and
+this document. Worth recording *why*, so it does not recur: these were two
+different measurements, not one number mistyped. Mine used `margin = 0.001`,
+which censors more times and so takes a maximum over a **subset**; the harness
+uses `margin = 1e-9` over the full reported region. The quoted figure is now
+the maximum **and the set it is over** -- 1.37e-14 across 751 reported times on
+the cross-noise record, 1.24e-14 across 1001 on the dyad.
+
+## The pattern behind both, fixed as a mechanism
+
+Round 1 caught a `summary.aci_cir()` docstring claiming a diagnostic the code
+did not compute. Round 2 caught A1 marked done from four surfaces without a
+search over the rest. Same error: **asserting completeness from the surfaces
+edited rather than from a search over the surfaces that could carry the claim.**
+
+`tests/testthat/test-retired-claims.R` now fails the build if any of six
+retired sentences reappears in `R/`, `man/`, the vignettes, `DESCRIPTION`,
+`README.Rmd`, `NEWS.md` or the oracle manifest. Entries are retired
+*sentences*, not keywords, because the package is often obliged to discuss a
+rule it no longer uses; what it may not do is assert one in the present tense.
+
+It caught `aciR.Rmd` on its first run, which is the item F1 names.
+
+## F1 to F7
+
+| | |
+|---|---|
+| F1 | Done. `aciR.Rmd` scope note trimmed to one sentence; `validation.Rmd` "What is not validated" replaced by two lists, graded and open, as specified |
+| F2 | Done. `plot.aci_cir()` sets `mfrow` with `on.exit`, matching `plot.aci()`; the example's outer `par()` removed, since it was the workaround |
+| F3 | Done. `@param margin`, the `.aci_simpson` roxygen, and the file-header cubic claim, which your note did not list but is the same defect |
+| F4 | Done. `as.data.frame.aci_cir()` carries `monotone` |
+| F5 | Done, with the set named |
+| F6 | Done. The Rd example converts a time to `last_idx` exactly as your two lines do |
+| F7 | Done, to all four of your constraints |
+
+Vignettes: the KL display formula added to the dyad on-ramp; a
+*Reading the causal influence range* subsection added to
+*Assumptions and interpretation* covering last-exit, the two objective ranges,
+and censoring; the maintainer-procedure paragraph removed from
+*Validation and the independent oracle*.
+
+Not taken from §5.1: the optional `plot(rng)` demo in the dyad article. On a
+short dyad record the range saturates completely -- at `n = 600`,
+`window = 50:250` it is 201 of 201 -- so every point would render hollow and
+teach a first-time reader that the range never resolves. It works at
+`n = 2500` (11 resolved, 6 censored). If it goes in, it needs the longer
+record; it did not go in this pass.
+
+## Your Q1 and Q2 answers
+
+Both adopted. Q1's decisive point was one I had missed: now that a censored
+time returns a bound, `margin` governs the flag rather than whether a number is
+reported, which makes a slightly wrong 0.1 cheap and removes the urgency from
+per-model defaults. The calibration figure stays on the cairn's review trigger,
+with your plot specification recorded.
+
+Q2's constraint that the fixture must go through `.aci_online_aux_mv` rather
+than a hand-built `E` array is the one that made the test worth having.
+
+## One thing back to you, from F7
+
+Building that fixture surfaced something bearing on S6. You measured spectral
+radii in `[0.9920, 0.9951]` on your two-dimensional fixture -- all below one --
+and noted that stopping while a non-normal product is still in a
+transient-growth regime is "possible in principle and not visible on the
+fixtures I ran".
+
+It is visible on this one. The first two factors have spectral radius **1.200
+and 1.100**, settling to 0.700 by about step 20. The cause is mundane: the
+filter covariance starts at `R0 = 0.1` rather than at its fixed point, so
+`S_yoS_y R_f^{-1}` is briefly large enough to flip the sign of the drift term
+in `E`. The paper's bound describes the settled filter.
+
+The consequence for S6 is concrete. A `lag_cap` derived from a contraction rate
+estimated over all steps -- your `quantile(radius, 0.9)` sketch -- would be
+contaminated by the transient on any system started away from its covariance
+fixed point, which is every system a user supplies. The current
+`max(abs(d)) < tol` test cannot have this failure, because the accumulated
+product is the thing that contracts and is the thing tested. That is now
+asserted in `test-online-truncation.R` rather than left as a remark.
+
+If S6 is ever built, the rate wants estimating over the settled portion, and
+the settling point itself needs detecting.

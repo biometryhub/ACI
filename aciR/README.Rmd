@@ -119,7 +119,7 @@ precisely, lists the conditions under which the method is valid, and sets out
 what an ACI peak does and does not support. Read it before drawing a causal
 conclusion from a peak.
 
-Current scope: a scalar observed process, a scalar unobserved component, and a
+Current scope: observed and unobserved components of any dimension, and a
 complete signal on a regular grid. Both published quantities are implemented --
 the causal-information metric and, via `aci_cir()`, the causal influence range
 -- and the unobserved component's self-drift may vary in time, which the noisy

@@ -207,6 +207,28 @@ phrase "causal inference" suggests to a reader arriving from the
 potential-outcomes literature. The distinction is worth making explicitly in
 anything you publish from it.
 
+## Reading the causal influence range
+
+The range is a **last-exit time, not a duration**. It is the last moment at
+which the divergence still exceeds a threshold, which is at least the amount of
+time spent above that threshold and is strictly more whenever the sequence
+rises again after falling.
+
+That distinction decides how the two objective ranges relate. `objective`, the
+efficient integral, and `objective_exact`, the average of the subjective ranges
+over the threshold grid, are the same functional only when the comparison
+sequence decreases with lag. `summary()` reports how often that holds; where it
+does not, seeing one below the other is a definitional gap rather than a
+numerical defect in either.
+
+A time marked `censored` is a **lower bound, not a missing value**. Its range
+consumed more of the record than the retained margin allows, so the record
+cannot settle it -- but the record does support the statement that the range is
+at least this long, and that statement is what is returned.
+
+`aci_conditional()` carries its own estimand note; see `?aci_conditional` for
+what conditioning does and does not mean.
+
 ## Diagnostics worth reporting
 
 For a result intended for publication, report at least the following, all of

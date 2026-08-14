@@ -20,6 +20,12 @@ A data frame with one row per reported time.
 The per-time quantities only. The subjective matrix is left behind because
 it is threshold-by-time and does not belong in the same rectangle.
 }
+\details{
+\code{monotone} is carried because it is the condition under which \code{objective}
+and \code{objective_exact} are the same functional, and it is what
+\code{\link[=summary.aci_cir]{summary.aci_cir()}} tells the reader to look at; a diagnostic reachable only
+through a print method is not much of a diagnostic.
+}
 \examples{
 model <- aci_dyad_model()
 sim <- aci_simulate(model, n = 900, seed = 1)

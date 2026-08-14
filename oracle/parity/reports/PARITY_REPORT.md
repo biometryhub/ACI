@@ -157,8 +157,8 @@ measurement at the point where the argument was load-bearing.
 `.aci_simpson()` now closes an odd interval count the way the reference does --
 the quadratic through the last three samples, integrated over the last interval
 -- derived rather than transcribed, and asserted to reduce to
-`h/12 * (-y0 + 8*y1 + 5*y2)` at equal spacing. `objective` went from **4.58e-09
-to 3.57e-15**.
+`h/12 * (-y0 + 8*y1 + 5*y2)` at equal spacing. `objective` went from **4.58e-09 to 1.37e-14**, the maximum over the full
+reported region of both graded datasets.
 
 The same change removed a latent defect: the old 3/8 panel assumed equal
 spacing, and `objective_exact` integrates a logarithmic grid. Neither the

@@ -1,4 +1,4 @@
-# aciR (development version)
+# aciR 0.2.0
 
 ## Breaking changes
 
@@ -8,7 +8,8 @@
 
   This changes `objective`. It is the rule the reference implementation uses,
   and adopting it takes agreement with the published numbers from **4.58e-09
-  to 3.57e-15** on a truncated comparison horizon. The 3/8 panel is the
+  to 1.37e-14** on a truncated comparison horizon, taken as the maximum over
+  the full reported region of both graded datasets. The 3/8 panel is the
   slightly more accurate rule on an equally spaced grid, measurably so, and it
   was chosen for that reason; transcription fidelity on the quantity the method
   leads with was judged to matter more.
@@ -34,6 +35,30 @@
   individual thresholds whose range ran past the retained margin.
 
 ## New features
+
+* A synthetic fast-contracting fixture exercises the online smoother's
+  truncation branch for the first time. On every system this package ships the
+  update product never reaches `tol` inside a record it can hold, so the branch
+  was dead on all real fixtures; the new fixture reaches it in 121 steps of 400
+  and checks that truncating leaves the answer where an untruncated walk leaves
+  it.
+
+  It also recorded something worth knowing. The source paper bounds the
+  spectral radius of each per-step factor below one, and that bound describes
+  the **settled** filter: here the first two factors have radius 1.200 and
+  1.100, because the covariance starts away from its fixed point, before
+  settling at 0.700. A lag bound estimated from a contraction rate measured
+  over all steps would be misled by that transient. The implementation's test
+  is on the accumulated product rather than on the factors, which is the form
+  that cannot be.
+
+* A regression guard, `tests/testthat/test-retired-claims.R`, fails the build if
+  a retired claim reappears anywhere in `R/`, `man/`, the vignettes,
+  `DESCRIPTION`, `README.Rmd`, `NEWS.md` or the oracle manifest. Two review
+  rounds each found documentation asserting something that had ceased to be
+  true, corrected on the surfaces the author had touched and left standing on
+  the others. The check costs one search and was not being run, so it is a test
+  rather than a habit.
 
 * `aci_cir()` gains `print()`, `summary()`, `as.data.frame()` and `plot()`
   methods. The returned object was previously a classed list with no behaviour,

@@ -35,7 +35,11 @@ a residual I had wrongly closed.
 `.aci_simpson()` closes an odd interval count with the quadratic through the
 last three samples integrated over the last interval, which is the reference's
 rule. It previously used a Simpson 3/8 panel over the last three intervals.
-`objective` moved from **4.58e-09 to 3.57e-15** against the authors' numbers.
+`objective` moved from **4.58e-09 to 1.37e-14** against the authors'
+numbers -- the maximum over the full reported region of both graded datasets
+(751 and 1001 times). An earlier draft quoted 3.57e-15, which was a maximum
+over a SUBSET: it was measured at `margin = 0.001`, which censors more times
+and so compares fewer of them. Quote the maximum, and say what it is over.
 
 The 3/8 panel is the more accurate rule on an equally spaced grid, measurably:
 against the exact integral its error is about a third of the reference's at

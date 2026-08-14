@@ -47,9 +47,14 @@ zero rather than as the ratio of two negligible quantities. Defaults to
 
 \item{margin}{Numeric scalar in \verb{(0, 1)}. The fraction of each comparison
 sequence that must remain unused for the range at that time to count as
-resolved. A time whose range consumes more than \code{1 - margin} of the record
-available after it is marked saturated and its ranges returned as \code{NA}.
-Defaults to \code{0.1}.}
+resolved. A time whose range consumes more than \code{1 - margin} of the
+sequence it was measured against is marked \code{status = "censored"}; its
+ranges are still returned, as lower bounds. Defaults to \code{0.1}.
+
+Because a censored time yields a bound rather than a hole, \code{margin}
+governs the flag rather than whether a number is reported at all, so a
+slightly wrong value is cheap. It is this package's device: the reference
+guards the same problem with an absolute lookahead chosen for one figure.}
 
 \item{horizon}{Integer scalar or \code{NULL}. How many steps of the record each
 reported time may look forward across, counted from the start of the
@@ -129,6 +134,16 @@ comp <- aci_dyad_components(sim$x, model$parameters)
 rng <- aci_cir(sim$x, comp, dt = 0.001, window = 50:250,
                mu0 = model$y0, R0 = 0.1)
 summary(rng$objective)
+
+# `horizon` is an index into the record, not a lookahead from each reported
+# time, so reproducing a published panel means converting from a time. This
+# is the conversion the reference performs to obtain its `last_idx`.
+dt <- 0.001
+time_end <- 0.25
+lookahead <- 0.05
+last_idx <- as.integer(round((time_end + lookahead) / dt)) + 1L
+aci_cir(sim$x, comp, dt = dt, window = 50:250, mu0 = model$y0, R0 = 0.1,
+        horizon = last_idx)
 
 }
 \references{
