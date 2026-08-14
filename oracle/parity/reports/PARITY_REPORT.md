@@ -405,3 +405,18 @@ the reviewer's own probe showed the *filter* fails at step 2 on the motivating
 case, so the escape would not have rescued it), and the S6 algorithm change,
 whose `O(n)` prefix-sum form requires `exp(+/- cum_log)` reaching `e^{+/-60}`
 over a published-scale record and needs blocked rescaling to be safe.
+
+---
+
+## Disclosure status — RELEASED 2026-08-14
+
+The maintainer has released the hold. The two observations about the reference
+implementation's own behaviour -- that `noisy_predator_prey_model.m` computes
+direction one's smoother from direction two's filter when run top to bottom,
+and that exactly one of the five ENSO scripts ships with conditional ACI
+enabled -- may now be published with the rest of the project's findings.
+
+Both are reported as properties of published code, reproducible from the
+manifests in `oracle/parity/`, and neither is a defect when the scripts are
+used as their own instructions direct. Contacting the authors remains a
+separate decision.

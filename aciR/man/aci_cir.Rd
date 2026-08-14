@@ -75,8 +75,9 @@ only when \code{filt} is \code{NULL}.}
 An object of class \code{aci_cir}, a list with the reported \code{time}, the
 \code{objective} range at each time, the \code{objective_exact} range obtained by
 integrating the subjective ranges over the whole threshold grid rather
-than by the efficient approximation, the \code{subjective} range as a matrix with
-one row per threshold and one column per time, the \code{epsilon} grid, the
+than by the efficient approximation, the \code{subjective} range as a
+than by the efficient approximation, the \code{subjective} range as a
+matrix with one row per threshold and one column per time,
 \code{peak} divergence at each time, the logical matrix \code{subjective_censored}
 marking thresholds whose range ran past the retained margin, the character
 \code{status} (\code{"resolved"}, \code{"censored"}, \code{"below_threshold"} or

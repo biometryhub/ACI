@@ -362,3 +362,18 @@ asserted in `test-online-truncation.R` rather than left as a remark.
 
 If S6 is ever built, the rate wants estimating over the settled portion, and
 the settling point itself needs detecting.
+
+---
+
+## Disclosure status — RELEASED 2026-08-14
+
+The maintainer has released the hold. The two observations about the reference
+implementation's own behaviour -- that `noisy_predator_prey_model.m` computes
+direction one's smoother from direction two's filter when run top to bottom,
+and that exactly one of the five ENSO scripts ships with conditional ACI
+enabled -- may now be published with the rest of the project's findings.
+
+Both are reported as properties of published code, reproducible from the
+manifests in `oracle/parity/`, and neither is a defect when the scripts are
+used as their own instructions direct. Contacting the authors remains a
+separate decision.

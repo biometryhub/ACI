@@ -106,8 +106,9 @@
 #' @returns An object of class `aci_cir`, a list with the reported `time`, the
 #'   `objective` range at each time, the `objective_exact` range obtained by
 #'   integrating the subjective ranges over the whole threshold grid rather
-#'   than by the efficient approximation, the `subjective` range as a matrix with
-#'   one row per threshold and one column per time, the `epsilon` grid, the
+#'   than by the efficient approximation, the `subjective` range as a
+#'   than by the efficient approximation, the `subjective` range as a
+#'   matrix with one row per threshold and one column per time,
 #'   `peak` divergence at each time, the logical matrix `subjective_censored`
 #'   marking thresholds whose range ran past the retained margin, the character
 #'   `status` (`"resolved"`, `"censored"`, `"below_threshold"` or

@@ -218,7 +218,7 @@ informed only up to that instant.
 
 $$
 \mathrm{ACI}(t)
-  = \mathrm{KL}\!\bigl(p(y_t \mid x_{0:T}) \,\|\, p(y_t \mid x_{0:t})\bigr).
+  = \mathrm{KL}\left( p(y_t \mid x_{0:T}) \,\middle\|\, p(y_t \mid x_{0:t}) \right).
 $$
 
 The Gaussian closed form this reduces to, and the identities it is graded

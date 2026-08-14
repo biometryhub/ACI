@@ -135,10 +135,10 @@ print.summary.aci_cir <- function(x, ...) {
                 format(x$exact, digits = 4L)))
     cat(sprintf("    peak divergence  median %s\n",
                 format(x$peak, digits = 4L)))
-    cat(sprintf("\n  divergence monotone at %.0f%% of reported times\n",
+    cat(sprintf("\n  divergence monotone at %.0f%% of times\n",
                 100 * x$monotone))
     if (isTRUE(x$monotone < 1)) {
-      cat("  Where it is not, `objective` and `objective_exact` are different\n")
+      cat("  Where it is not, the two objective ranges are different\n")
       cat("  functionals rather than two quadratures of one: the range is\n")
       cat("  measured as a last exit, which exceeds the superlevel measure.\n")
     }

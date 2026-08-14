@@ -27,7 +27,10 @@
   ),
   list(
     phrase = "still does not implement",
-    why = "Used to introduce the vector and conditional cases, both of which exist."
+    why = paste(
+      "Used to introduce the vector and conditional cases, both of which",
+      "exist."
+    )
   ),
   list(
     phrase = "Not implemented, so not graded",
@@ -40,7 +43,7 @@
   list(
     phrase = "ranges returned as `NA`",
     why = paste(
-      "A censored time returns a lower bound. Only `status == \"insufficient\"`",
+      "A censored time returns a lower bound. Only insufficient status",
       "yields NA."
     )
   ),
@@ -97,8 +100,9 @@
   # The installed manual is an Rd database, not a directory of files.
   manual <- tryCatch(tools::Rd_db("aciR"), error = function(e) list())
   if (length(manual) > 0L) {
-    rd <- vapply(manual, function(entry) paste(as.character(entry),
-                                               collapse = " "), character(1L))
+    rd <- vapply(manual, function(entry) {
+      paste(as.character(entry), collapse = " ")
+    }, character(1L))
     names(rd) <- paste0("Rd:", names(manual))
     texts <- c(texts, rd)
   }
