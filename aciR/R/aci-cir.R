@@ -106,8 +106,10 @@
 #'   `peak` divergence at each time, the logical matrix `subjective_censored`
 #'   marking thresholds whose range ran past the retained margin, the character
 #'   `status` (`"resolved"`, `"censored"`, `"below_threshold"` or
-#'   `"insufficient"`), and the logical `saturated`, which is `status ==
-#'   "censored"`.
+#'   `"insufficient"`), the logical `monotone` marking times whose divergence
+#'   sequence decreases with lag -- the condition under which `objective` and
+#'   `objective_exact` are the same functional -- and the logical `saturated`,
+#'   which is `status == "censored"`.
 #'
 #' @references
 #' Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
@@ -223,6 +225,7 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
   objective_exact <- rep(NA_real_, length(window))
   peak <- numeric(length(window))
   status <- rep("resolved", length(window))
+  monotone <- rep(NA, length(window))
   subjective <- matrix(NA_real_, nrow = n_eps, ncol = length(window))
   subjective_censored <- matrix(FALSE, nrow = n_eps, ncol = length(window))
 
@@ -254,6 +257,13 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
       next
     }
     peak[i] <- max(re)
+    # Whether the divergence decreases with lag decides whether `objective` and
+    # `objective_exact` are two quadratures of one functional or two different
+    # functionals. The layer-cake identity that makes the efficient integral an
+    # underestimate of the threshold average needs a decreasing sequence; the
+    # range itself is measured as a LAST exit, which exceeds the measure of the
+    # superlevel set the moment the sequence is not monotone.
+    monotone[i] <- !is.unsorted(rev(re))
 
     # ---- Objective range ----------------------------------------------------
     if (peak[i] > threshold) {
@@ -342,6 +352,7 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
       subjective = subjective,
       subjective_censored = subjective_censored,
       status = status,
+      monotone = monotone,
       epsilon = epsilon,
       peak = peak,
       saturated = saturated,

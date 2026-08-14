@@ -103,7 +103,8 @@ summary.aci_cir <- function(object, ...) {
         NA_real_
       },
       peak = stats::median(object$peak),
-      censored_cells = mean(object$subjective_censored)
+      censored_cells = mean(object$subjective_censored),
+      monotone = mean(object$monotone, na.rm = TRUE)
     ),
     class = "summary.aci_cir"
   )
@@ -134,8 +135,13 @@ print.summary.aci_cir <- function(x, ...) {
                 format(x$exact, digits = 4L)))
     cat(sprintf("    peak divergence  median %s\n",
                 format(x$peak, digits = 4L)))
-    cat("\n  The two objective ranges are different functionals wherever the\n")
-    cat("  divergence sequence is not monotone; they coincide only then.\n")
+    cat(sprintf("\n  divergence monotone at %.0f%% of reported times\n",
+                100 * x$monotone))
+    if (isTRUE(x$monotone < 1)) {
+      cat("  Where it is not, `objective` and `objective_exact` are different\n")
+      cat("  functionals rather than two quadratures of one: the range is\n")
+      cat("  measured as a last exit, which exceeds the superlevel measure.\n")
+    }
   }
   invisible(x)
 }

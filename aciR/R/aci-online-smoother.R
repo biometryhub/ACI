@@ -38,12 +38,19 @@
 #' geometrically, which the source paper establishes by bounding the spectral
 #' radius of each factor below one, so the influence of an observation on
 #' distant earlier steps falls away exponentially. The implementation exploits
-#' this: it accumulates the products in logarithms and stops extending them
-#' once they fall below `tol` relative to the leading term, which bounds the
-#' work at `O(n * lag_effective)` and the memory at `O(n)` rather than forming
-#' the full `O(n^2)` triangle. `tol` is a numerical tolerance on a converged
-#' geometric series, not a modelling choice; the default is far below the
-#' precision of the recursion it truncates.
+#' this: it accumulates the products in logarithms rather than forming the full
+#' `O(n^2)` triangle, which is what keeps the memory at `O(n)`.
+#'
+#' `tol` stops the accumulation once the product falls below it. Be clear about
+#' what that buys. It is a safety catch on a product that has already
+#' underflowed, not a bound on the work: at a typical per-step contraction of
+#' `0.998` the product needs some 26,000 steps to reach the default `1e-18`,
+#' and published records are shorter than that, so on the systems this package
+#' ships the loop is not cut and the cost is quadratic in the record length.
+#' The test is also `max(abs(d)) < tol` on the accumulated product, which is a
+#' sufficient condition that the next innovation cannot move the estimate at
+#' double precision -- not the spectral-radius argument above. Erring that way
+#' costs work, never accuracy.
 #'
 #' @param x Numeric vector. The observed signal, one value per time step; at
 #'   least two complete, finite observations.

@@ -75,7 +75,10 @@ one row per threshold and one column per time, the \code{epsilon} grid, the
 \code{peak} divergence at each time, the logical matrix \code{subjective_censored}
 marking thresholds whose range ran past the retained margin, the character
 \code{status} (\code{"resolved"}, \code{"censored"}, \code{"below_threshold"} or
-\code{"insufficient"}), and the logical \code{saturated}, which is \code{status == "censored"}.
+\code{"insufficient"}), the logical \code{monotone} marking times whose divergence
+sequence decreases with lag -- the condition under which \code{objective} and
+\code{objective_exact} are the same functional -- and the logical \code{saturated},
+which is \code{status == "censored"}.
 }
 \description{
 Computes the subjective and objective causal influence range of the
