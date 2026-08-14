@@ -89,16 +89,42 @@ test_that("the fully informed posterior ignores the horizon", {
   expect_equal(cut, full[seq_along(cut)], tolerance = 0)
 })
 
-test_that("a horizon too close to the reported time marks the time unresolved", {
+test_that("a horizon too close to the reported time yields no number at all", {
   f <- .cir_fixture()
-  # Two later observations is not a range. The reference records zero here,
-  # which cannot be told apart from "no detectable influence"; this must be
-  # marked instead.
+  # Fewer than three later observations admits no quadrature, so this is the
+  # one status with genuinely nothing behind it. The reference records zero
+  # here, which cannot be told apart from "no detectable influence"; NA and an
+  # explicit status say what is meant.
   r <- aci_cir(f$x, f$comp, f$dt, filt = f$filt, window = c(100L, 101L),
-               horizon = 102L, margin = 0.001)
-  expect_true(all(r$saturated))
+               horizon = 101L, margin = 0.001)
+  expect_identical(r$status, rep("insufficient", 2L))
   expect_true(all(is.na(r$objective)))
   expect_true(all(is.na(r$objective_exact)))
+  # "insufficient" is not "censored": the flag must not claim a bound exists.
+  expect_false(any(r$saturated))
+})
+
+test_that("a censored time reports a lower bound, not a hole", {
+  f <- .cir_fixture()
+  window <- seq.int(60L, 300L, by = 30L)
+  r <- aci_cir(f$x, f$comp, f$dt, filt = f$filt, window = window,
+               horizon = 700L)
+  censored <- r$status == "censored"
+  expect_true(any(censored))
+  expect_true(all(is.finite(r$objective[censored])))
+  expect_true(all(r$objective[censored] > 0))
+  expect_identical(r$saturated, censored)
+
+  # Every status must be one of the four the contract names; an unlisted value
+  # would mean a branch fell through.
+  expect_true(all(r$status %in%
+                    c("resolved", "censored", "below_threshold",
+                      "insufficient")))
+
+  # A censored subjective entry is a bound on that threshold alone, so the
+  # matrix flag has to be per cell rather than inherited from the time.
+  expect_identical(dim(r$subjective_censored), dim(r$subjective))
+  expect_true(any(r$subjective_censored))
 })
 
 test_that("`horizon` rejects values that are not whole and at least one", {

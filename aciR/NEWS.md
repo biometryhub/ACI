@@ -1,6 +1,48 @@
 # aciR (development version)
 
+## Breaking changes
+
+* `aci_cir()` closes an odd interval count with the quadratic through the last
+  three samples, where it previously used a Simpson 3/8 panel over the last
+  three intervals.
+
+  This changes `objective`. It is the rule the reference implementation uses,
+  and adopting it takes agreement with the published numbers from **4.58e-09
+  to 3.57e-15** on a truncated comparison horizon. The 3/8 panel is the
+  slightly more accurate rule on an equally spaced grid, measurably so, and it
+  was chosen for that reason; transcription fidelity on the quantity the method
+  leads with was judged to matter more.
+
+  It also removes a latent defect. The 3/8 panel assumed equal spacing, and
+  `objective_exact` integrates over a **logarithmic** threshold grid. Neither
+  the 129-point default nor the reference's 513-point grid triggered it -- both
+  have an even interval count -- but any even-length `epsilon` would have. The
+  replacement is exact for unequal spacing.
+
+* A reported time whose range is not resolved now returns a **right-censored
+  lower bound** rather than `NA`, with the caveat carried in a new `status`
+  field (`"resolved"`, `"censored"`, `"below_threshold"`, `"insufficient"`).
+  `saturated` is retained and equals `status == "censored"`.
+
+  Such a time is not unmeasured: the record supports the statement that the
+  range is at least this long. Returning `NA` discarded it, and did so at the
+  end of the record, which is where a user studying a recent event looks. Only
+  `"insufficient"` -- fewer than three later observations, where no quadrature
+  exists -- still returns `NA`.
+
+* `aci_cir()` returns the logical matrix `subjective_censored`, marking the
+  individual thresholds whose range ran past the retained margin.
+
 ## New features
+
+* `aci_cir()` gains `print()`, `summary()`, `as.data.frame()` and `plot()`
+  methods. The returned object was previously a classed list with no behaviour,
+  so printing it dumped a threshold-by-time matrix over the three scalars a
+  reader needs.
+
+* The README carries a recipe for reproducing the published causal-influence-
+  range panels: `horizon`, `margin` stood down, and the reference's 513-point
+  threshold grid.
 
 * `aci_cir()` gains a `horizon` argument, and returns `objective_exact`
   alongside `objective`.

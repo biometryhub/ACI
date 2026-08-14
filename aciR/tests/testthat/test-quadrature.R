@@ -6,9 +6,11 @@
 # transcription error that still produced a plausible-looking quadrature would
 # fail exactness on a cubic almost surely.
 
-test_that("Simpson is exact for polynomials up to cubic", {
-  # Both parities of interval count, since the odd case takes the 3/8 branch.
-  for (n in c(5L, 6L, 21L, 22L)) {
+test_that("Simpson is exact for cubics when the interval count is even", {
+  # With an even interval count the composite 1/3 rule applies throughout and
+  # the classical exactness holds. The closed-form integrals are an oracle this
+  # package did not author.
+  for (n in c(5L, 21L, 33L)) {
     x <- seq(-1.3, 2.7, length.out = n)
     for (cf in list(c(2, 0, 0, 0), c(1, -3, 0, 0), c(0.5, 1, -2, 0),
                     c(-1, 2, 0.5, -3))) {
@@ -18,6 +20,51 @@ test_that("Simpson is exact for polynomials up to cubic", {
       }
       exact <- anti(max(x)) - anti(min(x))
       expect_equal(aciR:::.aci_simpson(y, x), exact, tolerance = 1e-10)
+    }
+  }
+})
+
+test_that("an odd interval count is exact for quadratics, on any spacing", {
+  # The odd case closes the final interval with the quadratic through the last
+  # three samples, so exactness drops from cubic to quadratic there. That is
+  # the reference implementation's rule and is a deliberate choice, recorded in
+  # .aci_simpson_closure(); asserting cubic exactness here would be asserting a
+  # rule this package does not use.
+  #
+  # Unequal spacing is the case that matters: the exact objective range
+  # integrates over a LOGARITHMIC threshold grid, and the closure this replaced
+  # assumed equal spacing and was silently wrong there.
+  grids <- list(
+    seq(-1.3, 2.7, length.out = 6L),
+    seq(-1.3, 2.7, length.out = 22L),
+    c(0, 0.1, 0.4, 0.45, 1.0, 2.0),
+    10^seq(-6, 0.5, length.out = 8L)
+  )
+  for (x in grids) {
+    expect_true(length(x) %% 2L == 0L)          # odd interval count
+    for (cf in list(c(2, 0, 0), c(1, -3, 0), c(0.5, 1, -2))) {
+      y <- cf[1L] + cf[2L] * x + cf[3L] * x^2
+      anti <- function(t) cf[1L] * t + cf[2L] * t^2 / 2 + cf[3L] * t^3 / 3
+      exact <- anti(max(x)) - anti(min(x))
+      expect_equal(aciR:::.aci_simpson(y, x), exact,
+                   tolerance = 1e-10 * max(1, abs(exact)))
+    }
+  }
+})
+
+test_that("the closure reduces to the equal-spacing rule it generalises", {
+  # Derived, not transcribed: integrating the Lagrange basis through the last
+  # three abscissae over the final interval must collapse to h/12 * (-y0 + 8 y1
+  # + 5 y2) when the two spacings agree. A regression here means the general
+  # weights have drifted from the rule they are supposed to generalise.
+  for (h in c(0.25, 1, 3.5)) {
+    for (y in list(c(2.1, -0.7, 3.3), c(0, 1, 0), c(-4, -4, -4))) {
+      x <- c(0, h, 2 * h)
+      expect_equal(
+        aciR:::.aci_simpson_closure(y, x, 3L),
+        h / 12 * (-y[1L] + 8 * y[2L] + 5 * y[3L]),
+        tolerance = 1e-12
+      )
     }
   }
 })

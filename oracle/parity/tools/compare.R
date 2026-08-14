@@ -232,38 +232,55 @@ compare_dataset <- function(dataset_dir,
   # argument with which to adopt the reference's horizon.
   plot_end <- round(as.numeric(meta$CIREnd) / meta$dt) + 1L
   reported <- theirs$index <= plot_end
-  guard <- !reported
+  last_idx <- max(theirs$index)
+
+  # ---- like for like: the reference's own conventions ----------------------
+  #
+  # Until `horizon` existed this comparison could not be made at all, and the
+  # harness compared aciR's whole-record answer against the reference's
+  # truncated one -- two different questions, reported as a disagreement. The
+  # three arguments below are the documented figure-parity recipe: stop the
+  # comparison where the reference stops it, stand the resolution test down,
+  # and use the reference's threshold grid.
+  same <- aciR::aci_cir(
+    x, comp, meta$dt, filt = filt, window = theirs$index, epsilon = epsilon,
+    margin = 1e-9, horizon = last_idx
+  )
+  ours_sub <- same$subjective[order(epsilon), reported, drop = FALSE]
+  their_sub <- their_subjective[order(epsilon), reported, drop = FALSE]
+  both <- is.finite(ours_sub) & is.finite(their_sub)
 
   out <- list(
-    .compare_vectors("cir_peak (reported region)", ours$peak[reported],
+    .compare_vectors("cir_peak [reference conventions]", same$peak[reported],
                      theirs$peak[reported], 1e-11, meta$Name),
-    .compare_vectors("cir_peak (reference guard region)", ours$peak[guard],
-                     theirs$peak[guard], 1e-11, meta$Name)
+    .compare_vectors("cir_objective [reference conventions]",
+                     same$objective[reported], theirs$objective[reported],
+                     1e-11, meta$Name),
+    .compare_vectors("cir_subjective [reference conventions]",
+                     ours_sub[both], their_sub[both], 1e-11, meta$Name)
   )
 
-  keep <- reported & !ours$saturated & is.finite(theirs$objective)
-  out <- c(out, list(.compare_vectors(
-    "cir_objective (reported region)", ours$objective[keep],
-    theirs$objective[keep], 1e-11, meta$Name
-  )))
-
-  # The reference's subjective grid is ordered by its own descending exponent
-  # vector; aciR orders by the epsilon it was handed. Both are put on ascending
-  # epsilon before comparison.
-  our_subjective <- ours$subjective[order(epsilon), reported, drop = FALSE]
-  their_ordered <- their_subjective[order(epsilon), reported, drop = FALSE]
-  both <- is.finite(our_subjective) & is.finite(their_ordered)
-  out <- c(out, list(.compare_vectors(
-    "cir_subjective (reported region)", our_subjective[both],
-    their_ordered[both], 1e-11, meta$Name
-  )))
+  # ---- aciR's defaults: a designed difference, measured not hidden ---------
+  #
+  # The default runs the comparison to the end of the record, which is the more
+  # faithful reading of the definition and is NOT what the reference computes.
+  # The magnitude is reported so the size of the design choice is on the record;
+  # the tolerance is infinite because this is not a test of agreement.
+  default <- aciR::aci_cir(
+    x, comp, meta$dt, filt = filt, window = theirs$index, epsilon = epsilon
+  )
+  out <- c(out, list(
+    .compare_vectors("cir_objective [aciR default -- by design]",
+                     default$objective[reported], theirs$objective[reported],
+                     Inf, meta$Name)
+  ))
 
   message(sprintf(
     paste0(
-      "   CIR: %d times computed, %d reported, %d in the reference's guard; ",
-      "aciR marked %d saturated; subjective %d of %d cells compared"
+      "   CIR: %d times, %d reported; at reference conventions %d censored, ",
+      "%d of %d subjective cells compared"
     ),
-    length(ours$peak), sum(reported), sum(guard), sum(ours$saturated),
+    length(same$peak), sum(reported), sum(same$status == "censored"),
     sum(both), length(both)
   ))
   out

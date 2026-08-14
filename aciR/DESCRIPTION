@@ -28,8 +28,8 @@ Description: Reimplements the assimilative causal inference (ACI) method of
     which measures how far ahead in the observed record the estimate of the
     unobserved state keeps improving, and the noisy predator-prey model in
     either causal direction. Vector-valued states and the conditional
-    construction are supported by the numerical core; the online smoother and
-    causal influence range remain scalar-only.
+    construction are supported throughout, including the fixed-lag online
+    smoother and the causal influence range built on it.
 License: MIT + file LICENSE
 URL: https://github.com/max578/aciR
 BugReports: https://github.com/max578/aciR/issues

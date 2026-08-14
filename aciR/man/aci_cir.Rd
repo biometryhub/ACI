@@ -34,8 +34,11 @@ the range is reported. When \code{NULL}, the whole signal is used, which is
 quadratic in its length and is rarely what is wanted for a long record.}
 
 \item{epsilon}{Numeric vector. Thresholds at which the subjective range is
-evaluated, in nats. Defaults to a logarithmic grid from \code{1e-6} to
-\code{10^0.5}, the grid of the reference implementation.}
+evaluated, in nats. Defaults to a 129-point logarithmic grid from \code{1e-6}
+to \code{10^0.5}. The reference implementation spans the same range with 513
+points; the cheaper grid is this package's default, and
+\code{10^seq(-6, 0.5, length.out = 513L)} reproduces the reference's
+\code{objective_exact}.}
 
 \item{threshold}{Numeric scalar. A peak divergence below this value is
 treated as no detectable influence, and the objective range is reported as
@@ -69,8 +72,10 @@ An object of class \code{aci_cir}, a list with the reported \code{time}, the
 integrating the subjective ranges over the whole threshold grid rather
 than by the efficient approximation, the \code{subjective} range as a matrix with
 one row per threshold and one column per time, the \code{epsilon} grid, the
-\code{peak} divergence at each time, and the logical \code{saturated} marking times
-the record is too short to resolve.
+\code{peak} divergence at each time, the logical matrix \code{subjective_censored}
+marking thresholds whose range ran past the retained margin, the character
+\code{status} (\code{"resolved"}, \code{"censored"}, \code{"below_threshold"} or
+\code{"insufficient"}), and the logical \code{saturated}, which is \code{status == "censored"}.
 }
 \description{
 Computes the subjective and objective causal influence range of the
@@ -98,9 +103,21 @@ figure at the scale of the published one is a batch computation rather than
 an interactive one.
 
 A reported time close to the end of the record cannot be resolved, because
-the observations that would settle it do not exist. Rather than return the
-truncated value such a time yields, the result marks it as saturated and
-returns \code{NA} for its ranges.
+the observations that would settle it do not exist. Such a time is not
+unmeasured, though: its range is \strong{right-censored}, and the truncated value
+is a lower bound on the true one. The result therefore returns the value and
+records the caveat in \code{status}, rather than discarding what the record does
+support. Only a time with fewer than three later observations, where no
+quadrature is possible at all, returns \code{NA}.
+
+\code{objective} and \code{objective_exact} are different functionals, not two
+quadratures of one. They coincide when the divergence decreases with lag, by
+the layer-cake identity. Both this package and the reference measure the
+range as the \strong{last} time the divergence exceeds a threshold, which is at
+least the measure of the superlevel set and is strictly larger the moment
+the sequence is not monotone -- which is the common case on a truncated
+\code{horizon}. Seeing \code{objective} below \code{objective_exact} is that definitional
+gap, not a numerical defect in either.
 }
 \examples{
 model <- aci_dyad_model()

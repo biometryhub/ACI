@@ -268,8 +268,10 @@ fixtures:
       different language and runtime. Agreement refutes an R-side transcription
       error; it is NOT an authors'-reference grounding, and must not be cited
       as one. The primary grounding for these terms is analytic; see
-      `analytic_oracles`. Also not graded: the online smoother and causal
-      influence range in the vector case, which remain scalar-only.
+      `analytic_oracles`. Also not graded against the authors: the online
+      smoother and causal influence range in the vector case, which ARE
+      implemented but whose grounding is collapse onto the graded scalar path
+      plus an independent transcription, not the reference's own numbers.
     measured_max_abs_error:
       all_series: 5.773160e-15
     measured_on: 2026-08-13
@@ -352,9 +354,10 @@ fixtures:
       reproduce -- see design/2026-08-13_milstein_anomaly.md. A filter is
       graded on whatever signal drives it, so this grades the coefficients and
       the recursions and NOT the particular path upstream would produce. Also
-      not graded: the noise cross-covariance, which this model sets to zero as
+      not graded here: the noise cross-covariance, which this model sets to zero as
       every model in the reference does, and the online smoother and causal
-      influence range, which remain scalar-only.
+      influence range, which ARE implemented for vector states but are graded
+      by collapse onto the scalar path rather than against this script.
     measured_max_abs_error:
       all_series: 8.509859e-14
     measured_on: 2026-08-13

@@ -126,8 +126,31 @@ the causal-information metric and, via `aci_cir()`, the causal influence range
 predator-prey model needs. The numerical core also takes vector-valued states
 and the conditional construction, in which the causal question is asked of one
 observed component given the others. The online smoother and the causal
-influence range remain scalar-only; see `NEWS.md`. API stability is declared
-per export in `API_STABILITY.md`.
+influence range dispatch on the components the same way the core does. API
+stability is declared per export in `API_STABILITY.md`.
+
+### Reproducing the published causal-influence-range panels
+
+The defaults are chosen for a reusable package rather than for transcription,
+so out of the box they will *not* match the figures in the source paper. Three
+arguments recover them:
+
+```{r cir-figure-parity, eval = FALSE}
+rng <- aci_cir(
+  x, comp, dt,
+  filt    = filt,
+  window  = first_idx:last_idx,
+  horizon = last_idx,                              # the paper truncates here
+  margin  = 1e-9,                                  # stand the margin down
+  epsilon = 10^seq(-6, 0.5, length.out = 513L)     # the paper's 513-point grid
+)
+```
+
+`horizon` stops the comparison where the reference stops it; `margin` stands
+down the resolution test, which the reference does not apply; and the 513-point
+grid is the one the reference integrates `objective_exact` over. The quadrature
+already follows the reference. With all three, `objective` and the subjective
+ranges agree with the published implementation to machine precision.
 
 ## Citation
 

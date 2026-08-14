@@ -97,12 +97,15 @@ dimension and an unobserved one of any dimension, with matrix coefficients that
 may vary in time. The filter, smoother and metric all dispatch on the shape of
 the components you supply.
 
-Two things remain scalar-only, and they are the ones a reader is most likely to
-assume otherwise. The fixed-lag online smoother and the causal influence range
-built on it are not implemented for vector states. And the matrix
-noise-cross-covariance terms, while implemented, are graded more weakly than
-anything else in the package -- the reference implementation contains no model
-that exercises them at all. The validation article says exactly how weakly.
+The fixed-lag online smoother and the causal influence range built on it
+dispatch the same way, so a vector system is carried end to end.
+
+One thing is graded more weakly than the rest, and it is the one a reader is
+most likely to assume otherwise. The matrix noise-cross-covariance terms are
+implemented, but the reference implementation contains no model that exercises
+them at all -- its ENSO script says so in as many words -- so they are graded
+by collapse onto the scalar path and by analytic fixed points rather than
+against the authors' numbers. The validation article says exactly how weakly.
 
 ### Conditional questions
 

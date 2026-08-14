@@ -71,6 +71,22 @@
 #' conditioned$S_xoS_x_inv
 #'
 #' @seealso [aci_components], [aci_filter()], [aci_metric()]
+#' @section Estimand:
+#'
+#' The metric is the relative entropy
+#' \eqn{KL(p(y_t \mid x_{0:T}, M) \| p(y_t \mid x_{0:t}, M))}: a property of
+#' a pair of model-conditional posteriors. It is not \eqn{p(y \mid do(x))},
+#' not a Granger test, and not transfer entropy, although all four can be large
+#' at the same instants on a conditional Gaussian system.
+#'
+#' Conditioning here changes the **observation the filter assimilates**, not
+#' the system that generated the path. Masking a block of the inverse
+#' observation-noise Grammian means "stop updating on this channel"; it does
+#' not mean the channel was absent, and it is not an adjustment in the
+#' do-calculus sense. The non-target components still drive the drift, which is
+#' the entire point of the construction and the thing a reader arriving from
+#' the interventional literature is most likely to get backwards.
+#'
 #' @export
 aci_conditional <- function(comp, target) {
   if (!.aci_is_mv(comp)) {

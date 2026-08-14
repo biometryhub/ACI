@@ -131,26 +131,39 @@ was structurally invisible to it. The agreements previously reported for the
 CIR (2.67e-15, 7.08e-15) are real, but they graded aciR against itself on this
 axis.
 
-**IMPLEMENTED.** `aci_cir()` now takes `horizon`, defaulting to `NULL` = the
-whole record, so existing behaviour is unchanged. The fully informed posterior
+**CLOSED.** `aci_cir()` takes `horizon`, defaulting to `NULL` = the whole
+record, so existing behaviour is unchanged. The fully informed posterior
 is still taken over the whole record even when the comparison sequence is
 truncated, which is the part easiest to get wrong and is covered by a test
 asserting the truncated row is a prefix of the untruncated one.
 
 With the reference's horizon the subjective range agrees to **2.22e-16**,
-against 1.16 time units at the default. Two residuals remain visible rather
-than smoothed away:
+against 1.16 time units at the default.
 
-* At the reference's horizon aciR marks **every** reported time saturated --
-  within the truncated sequence the divergence never falls below threshold --
-  while the reference reports numbers anyway. Isolating the arithmetic from
-  that resolution policy requires `margin = 0.001`.
-* Doing so, `objective` agrees only to **4.58e-09**. The obvious suspect was
-  the odd-length Simpson closure, and that suspect was **eliminated by
-  measurement**: `.aci_simpson()` and `simps.m` do differ on odd interval
-  counts, by up to 4.3e-03 on a test function, but the CIR integrand decays to
-  ~0 at its endpoint so the closure term is multiplied by nothing. The cause of
-  the 4.58e-09 is **not yet identified** and is recorded as open.
+**The 4.58e-09 residual is resolved, and my elimination of the Simpson
+hypothesis was wrong.** An external review re-tested it properly and the
+closure *is* the cause. My argument had been that the CIR integrand decays to
+~0 at its endpoint so the closure term is multiplied by nothing. That holds for
+a comparison run to the end of the record, where the last entry is the
+divergence of a posterior from itself and is exactly zero. At the **reference
+horizon** the last entry is the divergence of a still-partial posterior from
+the fully informed one, and it is not small. Measured at `j = 408`: full-record
+row ends at 0.0000e+00, truncated row ends at 9.2541e-06, which is 2.7e-04 of
+the peak.
+
+The error was not the hypothesis. It was substituting an argument for a
+measurement at the point where the argument was load-bearing.
+
+`.aci_simpson()` now closes an odd interval count the way the reference does --
+the quadratic through the last three samples, integrated over the last interval
+-- derived rather than transcribed, and asserted to reduce to
+`h/12 * (-y0 + 8*y1 + 5*y2)` at equal spacing. `objective` went from **4.58e-09
+to 3.57e-15**.
+
+The same change removed a latent defect: the old 3/8 panel assumed equal
+spacing, and `objective_exact` integrates a logarithmic grid. Neither the
+129-point default nor the reference's 513 triggered it, both having an even
+interval count, but any even-length `epsilon` would have.
 
 A by-product of that measurement, against the exact integral: aciR's 3/8
 closure is consistently about three times more accurate than `simps.m`'s for
@@ -168,8 +181,7 @@ the definition, but does not compute it.
 This **corrects a claim I made in the previous session** that capability parity
 with the reference was complete. It was not.
 
-**IMPLEMENTED.** `aci_cir()` now returns `objective_exact` alongside
-`objective`. It agrees with the reference's `defn_objective_CIR` to
+**CLOSED.** `aci_cir()` returns `objective_exact` alongside `objective`. It agrees with the reference's `defn_objective_CIR` to
 **1.59e-14** once the horizons match.
 
 Cheaper than the earlier estimate in this report, which was wrong on a checkable
@@ -350,3 +362,46 @@ here.
 **aciR has not been compared against the reference on predator-prey.** The
 extracts and G1 are complete for both directions, but the aciR-side comparison
 was run only for the dyad (scalar) and ENSO (vector).
+
+
+## 8. Second-round results (2026-08-14, after external review)
+
+An external review of the tree corrected one finding of mine and raised eight
+more. Its central correction is recorded in F1 above. The parity numbers that
+changed:
+
+| Comparison | Before | After |
+|---|---|---|
+| `cir_objective`, reference conventions | 4.58e-09 | **1.37e-14** |
+| `cir_subjective`, reference conventions | 2.22e-16 | 2.22e-16 |
+| `cir_peak`, reference conventions | 9.28e-15 | 9.28e-15 |
+| Scalar core, both datasets | 26 / 26 | 26 / 26 |
+
+**The CIR is graded for the first time.** Before `horizon` existed the harness
+compared aciR's whole-record answer with the reference's truncated one and
+reported the gap as a disagreement; those are two different questions. The
+harness now grades on the reference's own conventions -- `horizon = last_idx`,
+`margin` stood down, the reference's threshold grid -- and reports aciR's
+default separately, with its magnitude, as a designed difference rather than a
+failure.
+
+Also changed, from the same review:
+
+* A time whose range is not resolved returns a **right-censored lower bound**
+  rather than `NA`, with a four-valued `status`. On the arbitrary dataset at
+  the reference horizon this is 1049 finite bounds where there were 1049 holes.
+* Every surface that still said the online smoother and CIR were "scalar-only"
+  -- `DESCRIPTION`, `README`, the assumptions vignette, two oracle-manifest
+  notes -- has been corrected. `DESCRIPTION` was CRAN-visible and denied a
+  capability that shipped in `e4cdc41`.
+* `aci_cir()` gained `print`, `summary`, `as.data.frame` and `plot`; a vector
+  `filt` is now validated; a `$` partial match that let a test pass for the
+  wrong reason is fixed and made un-reintroducible by
+  `warnPartialMatchDollar` in the test setup.
+
+Declined, with reasons, in `design/2026-08-14_reviewer_OUTPUT.md` order: S7
+(parallel CIR -- 0.082 s, and `mclapply` is Unix-only), S3 (`pinv` escape --
+the reviewer's own probe showed the *filter* fails at step 2 on the motivating
+case, so the escape would not have rescued it), and the S6 algorithm change,
+whose `O(n)` prefix-sum form requires `exp(+/- cum_log)` reaching `e^{+/-60}`
+over a published-scale record and needs blocked rescaling to be safe.

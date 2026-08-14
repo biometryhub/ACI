@@ -84,9 +84,17 @@ test_that("times the record cannot resolve are reported as unresolved", {
   expect_true(any(rng$saturated))
   expect_true(any(!rng$saturated))
   expect_gt(min(which(rng$saturated)), max(which(!rng$saturated)))
-  # An unresolved time returns no range rather than a truncated one.
-  expect_true(all(is.na(rng$objective[rng$saturated])))
+  # An unresolved time returns a right-censored LOWER BOUND, not a hole. The
+  # record does support a statement about such a time -- that the range is at
+  # least this long -- and discarding it loses information exactly at the end
+  # of the record, which is where a user studying a recent event looks.
+  expect_true(all(is.finite(rng$objective[rng$saturated])))
   expect_true(all(is.finite(rng$objective[!rng$saturated])))
+  expect_identical(rng$saturated, rng$status == "censored")
+
+  # The bound has to be a bound: a censored range must be at least as long as
+  # the margin that condemned it, or the flag is decoration.
+  expect_true(all(rng$objective[rng$saturated] > 0))
 })
 
 test_that("an uncoupled system has no causal influence range", {

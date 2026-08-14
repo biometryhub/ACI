@@ -160,7 +160,7 @@ test_that("the vector online smoother reproduces the oracle with cross-noise", {
         mu <- mu + d %*% aux$innov_mean[, k]
         r <- r + d %*% aux$innov_cov[, , k] %*% t(d)
         r <- (r + t(r)) / 2
-        d <- d %*% aux$E[, , k]
+        d <- d %*% aux$E_j[, , k]
       }
     }
     err_mean[i] <- max(abs(as.numeric(mu) - c(ref$om1[i], ref$om2[i])))

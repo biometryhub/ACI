@@ -44,9 +44,21 @@
 #' an interactive one.
 #'
 #' A reported time close to the end of the record cannot be resolved, because
-#' the observations that would settle it do not exist. Rather than return the
-#' truncated value such a time yields, the result marks it as saturated and
-#' returns `NA` for its ranges.
+#' the observations that would settle it do not exist. Such a time is not
+#' unmeasured, though: its range is **right-censored**, and the truncated value
+#' is a lower bound on the true one. The result therefore returns the value and
+#' records the caveat in `status`, rather than discarding what the record does
+#' support. Only a time with fewer than three later observations, where no
+#' quadrature is possible at all, returns `NA`.
+#'
+#' `objective` and `objective_exact` are different functionals, not two
+#' quadratures of one. They coincide when the divergence decreases with lag, by
+#' the layer-cake identity. Both this package and the reference measure the
+#' range as the **last** time the divergence exceeds a threshold, which is at
+#' least the measure of the superlevel set and is strictly larger the moment
+#' the sequence is not monotone -- which is the common case on a truncated
+#' `horizon`. Seeing `objective` below `objective_exact` is that definitional
+#' gap, not a numerical defect in either.
 #'
 #' @param x Numeric vector. The observed signal, one value per time step.
 #' @param comp A conditional Gaussian components list; see [aci_components].
@@ -58,8 +70,11 @@
 #'   the range is reported. When `NULL`, the whole signal is used, which is
 #'   quadratic in its length and is rarely what is wanted for a long record.
 #' @param epsilon Numeric vector. Thresholds at which the subjective range is
-#'   evaluated, in nats. Defaults to a logarithmic grid from `1e-6` to
-#'   `10^0.5`, the grid of the reference implementation.
+#'   evaluated, in nats. Defaults to a 129-point logarithmic grid from `1e-6`
+#'   to `10^0.5`. The reference implementation spans the same range with 513
+#'   points; the cheaper grid is this package's default, and
+#'   `10^seq(-6, 0.5, length.out = 513L)` reproduces the reference's
+#'   `objective_exact`.
 #' @param threshold Numeric scalar. A peak divergence below this value is
 #'   treated as no detectable influence, and the objective range is reported as
 #'   zero rather than as the ratio of two negligible quantities. Defaults to
@@ -88,8 +103,11 @@
 #'   integrating the subjective ranges over the whole threshold grid rather
 #'   than by the efficient approximation, the `subjective` range as a matrix with
 #'   one row per threshold and one column per time, the `epsilon` grid, the
-#'   `peak` divergence at each time, and the logical `saturated` marking times
-#'   the record is too short to resolve.
+#'   `peak` divergence at each time, the logical matrix `subjective_censored`
+#'   marking thresholds whose range ran past the retained margin, the character
+#'   `status` (`"resolved"`, `"censored"`, `"below_threshold"` or
+#'   `"insufficient"`), and the logical `saturated`, which is `status ==
+#'   "censored"`.
 #'
 #' @references
 #' Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
@@ -125,6 +143,33 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
         paste0(
           "`filt` must be supplied for a vector system: the initial mean and ",
           "covariance have no scalar defaults there."
+        ),
+        call. = FALSE
+      )
+    }
+    # Checked here rather than left to fail inside the row recursion. A
+    # malformed vector posterior used to surface as a subsetting error from
+    # three frames down, which tells a caller nothing about which argument was
+    # wrong.
+    if (!is.list(filt) || !is.matrix(filt$mean) ||
+          length(dim(filt$cov)) != 3L) {
+      stop(
+        paste0(
+          "`filt` must be a vector-valued posterior, as returned by ",
+          "`aci_filter()` on a vector system: `mean` a matrix and `cov` a ",
+          "three-dimensional array."
+        ),
+        call. = FALSE
+      )
+    }
+    if (ncol(filt$mean) != n || dim(filt$cov)[3L] != n) {
+      stop(
+        sprintf(
+          paste0(
+            "`filt` covers %d step(s) but the observed signal has %d. The ",
+            "posterior and the signal must be the same length."
+          ),
+          ncol(filt$mean), n
         ),
         call. = FALSE
       )
@@ -177,8 +222,9 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
   objective <- numeric(length(window))
   objective_exact <- rep(NA_real_, length(window))
   peak <- numeric(length(window))
-  saturated <- logical(length(window))
+  status <- rep("resolved", length(window))
   subjective <- matrix(NA_real_, nrow = n_eps, ncol = length(window))
+  subjective_censored <- matrix(FALSE, nrow = n_eps, ncol = length(window))
 
   for (i in seq_along(window)) {
     j <- window[i]
@@ -189,7 +235,8 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
     }
     if (is.null(re)) {
       # The final step has no later observation to be compared against.
-      saturated[i] <- TRUE
+      status[i] <- "insufficient"
+      objective[i] <- NA_real_
       peak[i] <- 0
       next
     }
@@ -199,9 +246,10 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
       #
       # The reference wraps its quadrature in a try/catch and records zero
       # here, which a reader cannot distinguish from "no detectable
-      # influence" -- the two mean opposite things. The time is marked
-      # unresolved instead, and its ranges returned as NA.
-      saturated[i] <- TRUE
+      # influence" -- the two mean opposite things. This is the one status
+      # that genuinely has no number behind it, so it alone returns NA.
+      status[i] <- "insufficient"
+      objective[i] <- NA_real_
       peak[i] <- max(re)
       next
     }
@@ -247,16 +295,43 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
       objective_exact[i] <- .aci_simpson(counts * dt, eps_sorted) / peak[i]
     }
 
+    # ---- Resolution: censoring, not deletion --------------------------------
+    #
+    # A range that consumes most of the record it was measured against is not
+    # a resolved range. It is also not "no measurement": it is a RIGHT-CENSORED
+    # one, and the record does support a statement about it -- that the range
+    # is at least this long. Earlier versions returned NA here, which threw
+    # that statement away, and did so at the end of the record, which is where
+    # a user studying a recent event looks.
+    #
+    # So the value stands and the status carries the caveat. `subjective`,
+    # `objective` and `objective_exact` are lower bounds wherever the status is
+    # "censored", and `subjective_censored` marks the individual thresholds
+    # that ran long.
+    #
+    # Resolution is judged per quantity rather than once for the whole time.
+    # The subjective ranges at small thresholds run far longer than the
+    # objective range does, and condemning the objective range because the most
+    # demanding threshold was unresolved would discard the quantity the method
+    # leads with.
     room <- (1 - margin) * length(re)
-    counts[counts > room] <- NA_integer_
+    subjective_censored[order(epsilon), i] <- counts > room
     subjective[order(epsilon), i] <- counts * dt
 
     settled <- length(suffix) - findInterval(threshold, rev(suffix))
-    saturated[i] <- settled > room
+    status[i] <- if (peak[i] <= threshold) {
+      "below_threshold"
+    } else if (settled > room) {
+      "censored"
+    } else {
+      "resolved"
+    }
   }
 
-  objective[saturated] <- NA_real_
-  objective_exact[saturated] <- NA_real_
+  # Retained with its original meaning -- a time whose objective range is not
+  # resolved -- so callers testing it keep working. What changed is that the
+  # number beside it is now a bound rather than a hole.
+  saturated <- status == "censored"
 
   structure(
     list(
@@ -265,6 +340,8 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
       objective = objective,
       objective_exact = objective_exact,
       subjective = subjective,
+      subjective_censored = subjective_censored,
+      status = status,
       epsilon = epsilon,
       peak = peak,
       saturated = saturated,

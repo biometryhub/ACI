@@ -626,16 +626,6 @@
 
 # -- runtime diagnostics ------------------------------------------------------
 
-#' Report a covariance that left the admissible domain during a recursion
-#'
-#' Called only from the failure branch of the filter and smoother loops, so
-#' the per-step cost of the guard is one comparison.
-#'
-#' @param algorithm Either `"filter"` or `"smoother"`.
-#' @param index The step index at which the covariance failed.
-#' @param time The time corresponding to `index`.
-#' @param value The offending covariance.
-#'
 #' Expand a possibly-constant coefficient to one value per observation
 #'
 #' The unobserved component's self-drift is admitted either as a scalar,
@@ -689,6 +679,16 @@
   invisible(value)
 }
 
+#' Report a covariance that left the admissible domain during a recursion
+#'
+#' Called only from the failure branch of the filter and smoother loops, so
+#' the per-step cost of the guard is one comparison.
+#'
+#' @param algorithm Either `"filter"` or `"smoother"`.
+#' @param index The step index at which the covariance failed.
+#' @param time The time corresponding to `index`.
+#' @param value The offending covariance.
+#'
 #' @returns Never returns; raises an error.
 #'
 #' @noRd
