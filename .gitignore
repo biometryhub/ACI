@@ -6,3 +6,7 @@ matlab_reference/
 .Rhistory
 .RData
 .Rproj.user/
+# pkgdown site: built by .github/workflows/pkgdown.yaml, deployed to gh-pages
+aciR/docs/
+# working notes (charter: never enter shared history)
+aciR_uplift_proposals_*.md
