@@ -202,3 +202,64 @@ Outputs: x, y, L_x, L_y, f_x, f_y, Sx_1, Sx_2, Sy_1, Sy_2, N, dt, T, alpha,
 Pairs: aci_predprey_model, aci_predprey_components
 Note: The direction-two mirror. Shares the common setup range with
  ref_pp_setup_dir1, so both see the same rng(42) and the same realisation.
+
+Function: ref_enso_setup_and_signals
+Script: ENSO_model_cond_ACI_u_h_W_tau_unobs.m
+Lines: 880-1163
+Inputs:
+Outputs: u, h_W, T_C, T_E, tau, I, L_x, L_y, f_x, f_y, S_x, S_y, N, dt, T, k_dt
+Pairs: aci_enso_parameters, aci_enso_components, aci_enso_model
+Note: Model setup and simulation for the configuration in which (T_C, T_E, I)
+ are observed and (u, h_W, tau) are not. Every coefficient is matrix-valued and
+ seasonally modulated, and BOTH noise covariances vary in time -- the only
+ system in the reference for which that is true, and the reason aciR's
+ validators must invert every slice rather than the first. The simulation is
+ the reference's own, announced by its progress bar as a Milstein scheme; see
+ design/2026-08-13_milstein_anomaly.md for the open question about the
+ correction term it applies.
+
+Function: ref_enso_filter
+Script: ENSO_model_cond_ACI_u_h_W_tau_unobs.m
+Lines: 1209-1272
+Inputs: T_C, T_E, I, u, h_W, tau, L_x, L_y, f_x, f_y, S_x, S_y, N, dt
+Outputs: filter_mean, filter_cov, S_xoS_x_inv, S_yoS_y
+Pairs: aci_filter
+Note: The vector CGNS filter on a three-dimensional observed and
+ three-dimensional unobserved state. Two things are worth a reviewer's eye.
+ .
+ The observation-noise Grammian is inverted with pinv() -- a pseudoinverse,
+ chosen by the authors "for stability concerns" -- where aciR uses a Cholesky
+ inverse and its validator requires positive-definiteness at every step. On a
+ singular slice the reference returns a Moore-Penrose inverse and continues;
+ aciR refuses. aciR is the stricter of the two, and the difference is real
+ rather than cosmetic: sigma_I vanishes at the boundaries of I.
+ .
+ Line 1231 states outright that noise cross-interaction terms are absent from
+ this model and the associated matrix functionals are therefore not defined in
+ the script. That is the upstream confirmation, pinned to a line, that the
+ matrix cross-noise path has no counterpart to be graded against.
+ .
+ The unobserved paths u, h_W and tau enter only as the initial mean at index 1.
+ The initial covariance is the literal 0.1*eye(3), as in the dyad.
+
+Function: ref_enso_smoother
+Script: ENSO_model_cond_ACI_u_h_W_tau_unobs.m
+Lines: 1278-1338
+Inputs: T_C, T_E, I, filter_mean, filter_cov, L_x, L_y, f_x, f_y, S_yoS_y,
+ S_xoS_x_inv, N, dt
+Outputs: smoother_mean, smoother_cov, E_j_matrices, F_j_matrices
+Pairs: aci_smoother, .aci_online_aux
+Note: Backward vector smoother, again computing the online-smoother
+ auxiliaries in the same loop.
+
+Function: ref_enso_metric
+Script: ENSO_model_cond_ACI_u_h_W_tau_unobs.m
+Lines: 1524-1533
+Inputs: filter_mean_s, filter_cov_s, smoother_mean_s, smoother_cov_s
+Outputs: signal_smoother_filter, dispersion_smoother_filter, ACI_metric
+Pairs: aci_metric
+Note: The multivariate relative entropy, formed with det() and a right matrix
+ division where aciR uses a Cholesky factorisation -- algebraically the same
+ quantity, numerically a different route, so these two agree to round-off
+ rather than exactly. Operates on the windowed `_s` slices rather than the full
+ record.

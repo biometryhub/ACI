@@ -1,7 +1,8 @@
 # MATLAB / aciR parity report
 
 Generated from `oracle/parity/`, 2026-08-14. Scope: the dyad path in full,
-and the predator-prey filter/smoother/metric in both causal directions.
+the predator-prey filter/smoother/metric in both causal directions, and the
+ENSO vector filter/smoother.
 MATLAB R2025b (25.2.0.3042426 Update 1), macOS arm64, 32 GB.
 
 Reproduce with `tools/run_parity.R`; every number below comes from a file in
@@ -41,9 +42,10 @@ factors the auxiliaries out.
 Each extract is called with the inputs the script itself used, and every output
 must **equal** -- not approximate -- the value the script itself produced.
 
-> **88 of 88 outputs across four profiles, maximum absolute difference 0.**
+> **96 of 96 outputs across five profiles, maximum absolute difference 0.**
 > 58 for the dyad (two problem sizes), 30 for predator-prey (two causal
-> directions).
+> directions), 8 for the ENSO vector filter and smoother -- over **1,215
+> verbatim reference lines in 19 extracts**.
 
 ## 3. The fixture re-grade
 
@@ -202,6 +204,45 @@ composed of that direction's declared line ranges, in file order, and every
 profile declares a discriminating condition (`numel(f_x) == 1` holds only in
 direction one) checked before anything is graded.
 
+### F7 -- Conditional ACI has no executable counterpart upstream
+
+Previously logged as "pending extraction". That was wrong, and the correction
+matters for how `aci_conditional()` is described.
+
+`ENSO_model_cond_ACI_u_h_W_tau_unobs.m` lines 1214--1226 are **commented
+guidance**, not code. They tell the reader which single `S_xoS_x_inv` line to
+substitute by hand for each of three conditional analyses:
+
+```matlab
+% USE THIS DEFINITION OF S_xoS_x_inv INSTEAD FOR CONDITIONAL ACI.
+%   S_xoS_x_inv(1, 1, :) = 1/sigma_C^2;      % (u,h_W,tau) -> T_C | (T_E,I)
+%   S_xoS_x_inv(2, 2, :) = 1/sigma_E^2;      % ... -> T_E | (T_C,I)
+%   sigma_I = sqrt(lambda .* (4-I) .* I);    % ... -> I   | (T_C,T_E)
+```
+
+So there is nothing to extract and nothing to grade against. `aci_conditional()`
+is a generalisation of a documented manual edit, and its parity status is
+**absent-upstream**, not pending. It remains graded only by aciR's own tests.
+
+### F8 -- The reference pseudo-inverts where aciR refuses
+
+The ENSO filter forms `S_xoS_x_inv(:, :, j) = pinv(S_x * S_x')`, a Moore-Penrose
+pseudoinverse the authors chose "for stability concerns". aciR uses a Cholesky
+inverse and its validator requires positive-definiteness at **every** slice.
+
+On a singular slice the reference returns a pseudoinverse and continues; aciR
+errors. This is not hypothetical -- the reference's own conditional-ACI guidance
+computes `sigma_I = sqrt(lambda .* (4-I) .* I)`, which vanishes at `I = 0` and
+`I = 4`, and then patches the result with
+`S_xoS_x_inv(3, 3, sigma_I == 0) = 0`.
+
+aciR is the stricter of the two and rejects `I` outside `(0, 4)` at construction.
+That is a defensible choice and arguably the safer one, but it is a **behavioural
+divergence**, not an implementation detail: a system the reference will analyse,
+aciR will decline. Documented, not changed -- silently pseudo-inverting a
+singular observation-noise Grammian is exactly the kind of quiet degradation
+this package exists to avoid.
+
 ### F5 -- Interface differences, documented not repaired
 
 - The reference hardcodes the initial covariance as `0.1` inside the filter
@@ -224,10 +265,19 @@ carried through it.
 |---|---|
 | `dyad_interaction_model.m` | **complete** -- 7 extracts, G1 58/58, parity run |
 | `noisy_predator_prey_model.m` (1,332 lines) | **filter / smoother / metric, both directions** -- G1 30/30, fixtures re-graded. Online smoother and CIR not yet extracted |
-| 5 x `ENSO_model_cond_ACI_*.m` (~2,000 lines each) | not extracted |
+| `ENSO_model_cond_ACI_u_h_W_tau_unobs.m` (2,103 lines) | **vector filter / smoother** -- G1 8/8. Metric extracted, not yet compared; ACI/CIR sections not extracted |
+| 4 remaining `ENSO_model_cond_ACI_*.m` | not extracted (same linear structure; no F6 hazard) |
 
-Consequently `aci_conditional` and `aci_enso_*` have **no parity row yet**, and
-`aci_predprey_*` has one for the core but not for the range. They are graded only by the existing transcription-based
+Consequently `aci_conditional` has no parity row and never will have one from
+this reference (F7); `aci_enso_*` and `aci_predprey_*` have rows for the core
+but not for the range.
+
+The ENSO comparison of **aciR against the reference** is not yet run, only the
+extracts against the script (G1). It needs a vector form of the dataset
+contract, which is scalar-only today -- and it cannot be done as a fixture
+re-grade, because `oracle/aci_oracle_enso.m` deliberately generates its signal
+by plain Euler-Maruyama rather than the reference's Milstein scheme. The right
+test is to drive aciR with the reference's own captured signal. They are graded only by the existing transcription-based
 fixtures -- which, per F1, is exactly the grading whose blind spot this
 exercise demonstrated. Extending the manifest to those scripts is the next
 step; the generator, gate and driver need no changes.

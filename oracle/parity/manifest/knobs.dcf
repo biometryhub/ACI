@@ -94,3 +94,30 @@ Rationale: Causal direction y(t) -> x: the predator x is OBSERVED, the prey y
  is unobserved. Mirror of predprey_dir1; see its rationale for why the script
  is composed rather than run. The discriminator is mirrored too -- `f_y` is the
  scalar in this direction (line 134).
+
+Script: ENSO_model_cond_ACI_u_h_W_tau_unobs.m
+Profile: enso_uhwtau
+Knobs: T=100
+Sections: 880-1340
+Requires: size(filter_mean, 1) == 3; size(S_xoS_x_inv, 3) == N+1;
+ all(isfinite(filter_mean(:))); all(isfinite(smoother_mean(:)))
+Rationale: The configuration in which (T_C, T_E, I) are observed and
+ (u, h_W, tau) are not -- the one the committed enso fixture derives from.
+ .
+ Unlike the predator-prey script this one is linear: no "RUN THIS CODE SECTION"
+ blocks, one filter_mean assignment, one smoother_mean. The section selection
+ here is therefore for cost and dependency, not correctness. Lines 1-878 are
+ the observational-data loader, which reads NetCDF and CSV from ENSO_DATA and
+ is not needed to grade the recursions; lines 1341 onward are Hovmoeller
+ plotting and the ACI analysis. What remains, 880-1340, is model setup, signal
+ generation, monthly climatology, filter and smoother.
+ .
+ T is reduced from 15000 years to 100. At the published setting N = round(T/dt)
+ is 3,000,000 and the filter allocates 3x3x(N+1) arrays -- 216 MB each, several
+ of them. The recursions are O(N) and their correctness does not depend on the
+ record length; the ACI analysis that does depend on it runs on N_s = 16800 and
+ is outside the selected range.
+ .
+ The first Requires condition is the discriminator that this is the VECTOR path:
+ filter_mean must have three rows. A scalar result would mean the wrong script
+ or the wrong section had run.

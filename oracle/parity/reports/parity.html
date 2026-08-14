@@ -84,8 +84,8 @@
   byte-exact slices &mdash; nothing retyped.</p>
 
   <div class="stats">
-    <div class="stat"><b>88 / 88</b><span>extract outputs reproducing the reference's own workspace, difference 0</span></div>
-    <div class="stat"><b>796</b><span>verbatim reference lines, 15 extracts, zero retyped</span></div>
+    <div class="stat"><b>96 / 96</b><span>extract outputs reproducing the reference's own workspace, difference 0</span></div>
+    <div class="stat"><b>1,215</b><span>verbatim reference lines, 19 extracts, zero retyped</span></div>
     <div class="stat"><b>0</b><span>fixture disagreement at published settings (dyad, 8 quantities)</span></div>
     <div class="stat"><b>1.5e-14</b><span>worst core disagreement on arbitrary data</span></div>
   </div>
@@ -357,6 +357,15 @@ end</code></pre></div><div class="pane"><div class="pane-h"><span class="pane-t"
   is therefore composed from its own declared line ranges, guarded by a condition
   that holds in one direction only.</p></div>
 
+  <div class="find"><h4>F7 &mdash; conditional ACI has no executable counterpart upstream</h4>
+  <p>The ENSO script's conditional-ACI section is <em>commented guidance</em>,
+  telling the reader which single line to substitute by hand. There is nothing to
+  extract and nothing to grade against, so <code>aci_conditional()</code> is
+  absent-upstream rather than pending. Alongside it, the reference pseudo-inverts
+  the observation-noise Grammian where aciR requires positive-definiteness at
+  every slice and refuses &mdash; a system the reference will analyse, aciR
+  declines.</p></div>
+
   <div class="find"><h4>F3, F4, F5 &mdash; a silent empty, a vacuous pass, and three interface asymmetries</h4>
   <p>The reference's exact objective CIR evaluates to an empty range rather than
   erroring on a short window. This harness had the same disease and it was fixed:
@@ -368,7 +377,8 @@ end</code></pre></div><div class="pane"><div class="pane-h"><span class="pane-t"
   <p class="cap">MATLAB R2025b (25.2.0.3042426 Update 1), macOS arm64, 32&nbsp;GB.
   Excerpts between the VERBATIM markers are Copyright &copy; 2025 Marios Andreou,
   reproduced under the MIT Licence. Scope: the dyad in full; predator-prey filter,
-  smoother and metric in both directions. The five ENSO scripts are not yet
-  extracted, so <code>aci_conditional</code> and the ENSO constructors have no
-  parity row.</p>
+  smoother and metric in both directions; the ENSO vector filter and smoother.
+  The remaining four ENSO scripts are not extracted, and aciR has not yet been
+  compared against the reference on the ENSO model &mdash; only the extracts
+  against the script.</p>
 </div>
