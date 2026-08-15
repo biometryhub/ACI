@@ -1,3 +1,24 @@
+# aciR 0.2.1
+
+## Minor improvements and fixes
+
+* The vignettes typeset their mathematics as MathML, converted when the page is
+  built, rather than fetching MathJax when it is opened.
+
+  Two things were wrong with the previous arrangement. MathJax matches the
+  x-height of its own fonts to the surrounding text, and the vignette body is a
+  sans-serif face with a large x-height, so every displayed equation was scaled
+  up by about a third and sat out of proportion with the prose around it. Less
+  visibly, the mathematics was fetched from a remote host at read time: with no
+  network the equations did not render at all, and the reader saw the TeX
+  source. MathML is set by the browser at the surrounding size and needs
+  nothing external. `pkgdown` already defaults to it, so the two surfaces now
+  agree.
+
+* `inst/CITATION` derives the package version from the installed metadata
+  rather than repeating it as a literal, which is one fewer place for a release
+  to leave a stale number behind.
+
 # aciR 0.2.0
 
 ## Breaking changes

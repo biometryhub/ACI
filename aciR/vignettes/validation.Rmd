@@ -1,6 +1,8 @@
 ---
 title: "Validation and the independent oracle"
-output: rmarkdown::html_vignette
+output:
+  rmarkdown::html_vignette:
+    math_method: mathml
 vignette: >
   %\VignetteIndexEntry{Validation and the independent oracle}
   %\VignetteEngine{knitr::rmarkdown}
@@ -45,7 +47,7 @@ $$
 = \frac{1}{2}\left[
     \frac{(m_s - m_f)^2}{R_f}
     + \frac{R_s}{R_f} - 1
-    - \log\frac{R_s}{R_f}
+    - \log\,\frac{R_s}{R_f}
   \right],
 $$
 
