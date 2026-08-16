@@ -1,0 +1,6 @@
+profile,dim,slices,nnz_slice1,nnz_slice2,tail_constant,tail_spread,slice1_extra,entry_11,verdict
+enso_h_W,3,20001,3,1,1,0,3076.92307692308,961.538461538462,conditional
+enso_T_C,2,20001,2,1,1,0,7.83898271702637,3076.92307692308,conditional
+enso_tau,3,20001,3,3,0,144.542261204214,0,961.538461538462,unconditional
+enso_u,3,20001,3,1,1,0,3076.92307692308,961.538461538462,conditional
+enso_uhwtau,3,20001,3,3,0,144.542261204214,0,961.538461538462,unconditional

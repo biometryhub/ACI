@@ -1,0 +1,23 @@
+Name: predprey_dir1
+Kind: scalar
+Direction: 1
+Description: Predator-prey, causal direction x(t) -> y. The prey y is observed and the predator x is latent, so the reference columns are exchanged into aciR's observed-is-x orientation.
+Provenance: noisy_predator_prey_model.m, composed runner for profile predprey_dir1, captured workspace
+N: 3000
+dt: 0.0050000000000000001
+mu0: 4
+R0: 0.10000000000000001
+S_xoS_x: 0.089999999999999997
+S_yoS_y: 0.089999999999999997
+S_yoS_x: 0
+S_xoS_y: 0
+CIRStart: 0
+CIREnd: 6
+FirstIdx: 1
+LastIdx: 2201
+PlotLen: 2201
+PlotEndIdx: 1201
+Lookahead: 5
+EpsilonResolution: 513
+FixedLag: 3001
+DefnLen: 1201

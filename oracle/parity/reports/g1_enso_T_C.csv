@@ -1,0 +1,9 @@
+fun,quantity,same,maxabs,info
+ref_enso_T_C_filter,filter_mean,1,0,numeric[1 20001]
+ref_enso_T_C_filter,filter_cov,1,0,numeric[1 20001]
+ref_enso_T_C_filter,S_xoS_x_inv,1,0,numeric[2 2 20001]
+ref_enso_T_C_filter,S_yoS_y,1,0,numeric[1 1]
+ref_enso_T_C_smoother,smoother_mean,1,0,numeric[1 20001]
+ref_enso_T_C_smoother,smoother_cov,1,0,numeric[1 20001]
+ref_enso_T_C_smoother,E_j_matrices,1,0,numeric[1 20001]
+ref_enso_T_C_smoother,F_j_matrices,1,0,numeric[1 2 20001]

@@ -327,3 +327,135 @@ Pairs: aci_cir
 Note: The objective range by its definition for direction 2. aciR now
  computes this as `objective_exact`, so unlike the dyad's counterpart this pair
  is no longer absent on the R side.
+
+Function: ref_enso_h_W_filter
+Script: ENSO_model_cond_ACI_h_W_unobs.m
+Lines: 1194-1252
+Inputs: T_C, T_E, I, h_W, L_x, L_y, f_x, f_y, S_x, sigma_C, sigma_h, N, dt
+Outputs: filter_mean, filter_cov, S_xoS_x_inv, S_yoS_y
+ConsumedOnly: h_W=1
+Pairs: aci_filter, aci_conditional
+Note: The one ENSO configuration that ships with CONDITIONAL ACI enabled, and
+ the reason this record's input list could not be taken from the shared
+ template. Line 1202, `S_xoS_x_inv(1, 1, :) = 1/sigma_C^2;`, carries leading
+ whitespace rather than a comment marker and is live, so the block consumes
+ `sigma_C` -- a name no other ENSO filter block mentions -- and the extract
+ will not call without it. `sigma_h` is the second such name, consumed at line
+ 1211 to form the latent-noise Grammian, which the vector configuration takes
+ from a matrix instead.
+ .
+ What that live line does is the conditional analysis itself. The
+ pseudoinverse at line 1197 fills slice one, line 1202 then overwrites the
+ (1,1) entry across every slice, and the per-step pinv at line 1251 is
+ commented out as the script's own instructions direct -- so from step two the
+ observation-noise inverse is diag(1/sigma_C^2, 0, 0) and only the T_C channel
+ informs the latent state. This computes h_W(t) -> T_C | (u, T_E, tau, I),
+ where the other four scripts compute an unconditional ACI. `S_x` is therefore
+ consumed at slice one alone.
+ .
+ The latent state is a scalar against a three-dimensional observation, which
+ is the configuration the profile's `size(filter_mean, 1) == 1` discriminator
+ asserts.
+
+Function: ref_enso_h_W_smoother
+Script: ENSO_model_cond_ACI_h_W_unobs.m
+Lines: 1258-1318
+Inputs: filter_mean, filter_cov, L_x, L_y, f_y, S_yoS_y, S_xoS_x_inv, N, dt
+Outputs: smoother_mean, smoother_cov, E_j_matrices, F_j_matrices
+Pairs: aci_smoother, .aci_online_aux
+Note: Backward smoother and online-smoother auxiliaries for the h_W
+ configuration, in one loop as elsewhere. It consumes no observation at all --
+ the model carries no noise cross-interaction terms, so the backward mean
+ update is driven by the filter statistics and `f_y` alone and never forms an
+ observation increment. That is why the earlier attempt to derive its inputs
+ from the vector template failed in the other direction from the filter's: it
+ was handed T_C, T_E and I, which this range does not use.
+ .
+ `F_j_matrices` is 1 x 3 x (N+1) here rather than scalar, the latent state
+ being one-dimensional and the observation three-dimensional.
+
+Function: ref_enso_T_C_filter
+Script: ENSO_model_cond_ACI_T_C_unobs.m
+Lines: 1201-1257
+Inputs: T_C, T_E, I, L_x, L_y, f_x, f_y, S_x, sigma_C, sigma_E, N, dt
+Outputs: filter_mean, filter_cov, S_xoS_x_inv, S_yoS_y
+ConsumedOnly: T_C=1
+Pairs: aci_filter, aci_conditional
+Note: The configuration in which T_C alone is unobserved. Its observation is
+ TWO-dimensional, (T_E, I), so S_xoS_x_inv is 2x2 where the other four scripts
+ make it 3x3 -- and `L_y` is per-step here while `L_x` is constant, the mirror
+ of the tau and u cases. Both are reasons this input list could not be taken
+ from a shared template.
+ .
+ Line 1209, `S_xoS_x_inv(1, 1, :) = 1/sigma_E^2;`, is LIVE -- in column one,
+ with no comment marker -- and the per-step pinv at line 1255 is commented out.
+ This script therefore computes the CONDITIONAL quantity
+ T_C(t) -> T_E | (u, h_W, tau, I), not the unconditional ACI. See the
+ correction to F7 in the parity report; the earlier reading of this file was
+ wrong.
+
+Function: ref_enso_T_C_smoother
+Script: ENSO_model_cond_ACI_T_C_unobs.m
+Lines: 1263-1323
+Inputs: filter_mean, filter_cov, L_x, L_y, f_y, S_yoS_y, S_xoS_x_inv, N, dt
+Outputs: smoother_mean, smoother_cov, E_j_matrices, F_j_matrices
+Pairs: aci_smoother, .aci_online_aux
+Note: Backward smoother and online-smoother auxiliaries for the T_C
+ configuration. It consumes no observation: this model carries no noise
+ cross-interaction terms, so the backward mean update is driven by the filter
+ statistics and `f_y` alone. `F_j_matrices` is 1 x 2 x (N+1), the observation
+ being two-dimensional here.
+
+Function: ref_enso_tau_filter
+Script: ENSO_model_cond_ACI_tau_unobs.m
+Lines: 1197-1255
+Inputs: T_C, T_E, I, tau, L_x, L_y, f_x, f_y, S_x, S_y, N, dt
+Outputs: filter_mean, filter_cov, S_xoS_x_inv, S_yoS_y
+ConsumedOnly: tau=1
+Pairs: aci_filter
+Note: The configuration in which tau alone is unobserved. This one takes `S_y`
+ rather than a sigma scalar, because it forms the latent-noise Grammian as
+ `S_y.^2` from a time-varying feedback -- a third distinct shape for the same
+ quantity across five scripts, and the reason the shared template could not
+ supply it.
+ .
+ Every conditional-ACI line here is commented and the per-step pinv at line
+ 1253 is live, so this script computes the UNCONDITIONAL ACI. Its guidance
+ comments are nonetheless copied verbatim from the h_W script and still name
+ h_W as the latent variable; that is a documentation defect in the reference,
+ not a computational one.
+
+Function: ref_enso_tau_smoother
+Script: ENSO_model_cond_ACI_tau_unobs.m
+Lines: 1261-1321
+Inputs: filter_mean, filter_cov, L_x, L_y, f_y, S_yoS_y, S_xoS_x_inv, N, dt
+Outputs: smoother_mean, smoother_cov, E_j_matrices, F_j_matrices
+Pairs: aci_smoother, .aci_online_aux
+Note: Backward smoother and online-smoother auxiliaries for the tau
+ configuration, with `L_x` per-step as in its filter.
+
+Function: ref_enso_u_filter
+Script: ENSO_model_cond_ACI_u_unobs.m
+Lines: 1197-1255
+Inputs: T_C, T_E, I, u, L_x, L_y, f_x, f_y, S_x, sigma_C, sigma_u, N, dt
+Outputs: filter_mean, filter_cov, S_xoS_x_inv, S_yoS_y
+ConsumedOnly: u=1
+Pairs: aci_filter, aci_conditional
+Note: The configuration in which u alone is unobserved. Line 1205,
+ `S_xoS_x_inv(1, 1, :) = 1/sigma_C^2;`, is LIVE -- in column one, with no
+ comment marker -- and the per-step pinv at line 1253 is commented out, so
+ this script computes the CONDITIONAL quantity u(t) -> T_C | (h_W, T_E, tau, I).
+ See the correction to F7 in the parity report.
+ .
+ `sigma_u` is the name that distinguishes this input list: the latent-noise
+ Grammian is `sigma_u^2` here, where h_W uses `sigma_h`, T_C uses `sigma_C`
+ and tau uses a time-varying `S_y`.
+
+Function: ref_enso_u_smoother
+Script: ENSO_model_cond_ACI_u_unobs.m
+Lines: 1261-1321
+Inputs: filter_mean, filter_cov, L_x, L_y, f_y, S_yoS_y, S_xoS_x_inv, N, dt
+Outputs: smoother_mean, smoother_cov, E_j_matrices, F_j_matrices
+Pairs: aci_smoother, .aci_online_aux
+Note: Backward smoother and online-smoother auxiliaries for the u
+ configuration, with `L_x` per-step as in its filter.

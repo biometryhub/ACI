@@ -1,0 +1,3 @@
+quantity,n,step2_abs,max_abs,last_above_1e6,last_above_1e12,last_differing_step,scale
+filter_mean,20001,0.237625348767597,0.237625348767597,6256,15682,20001,0.324585047901514
+filter_cov,20001,0.0365625,0.0365625,1313,6008,11126,0.1
