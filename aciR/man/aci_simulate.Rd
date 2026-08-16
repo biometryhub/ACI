@@ -11,7 +11,8 @@ aci_simulate(
   seed = NULL,
   scheme = c("euler_maruyama", "milstein"),
   sigma_x = NULL,
-  d_sigma_x = NULL
+  d_sigma_x = NULL,
+  increments = NULL
 )
 }
 \arguments{
@@ -39,6 +40,14 @@ path generated this way cannot yet be assimilated by this package.}
 \item{d_sigma_x}{Optional function of the observed state, the derivative of
 \code{sigma_x}. Required by the Milstein scheme, and never estimated
 numerically on the caller's behalf.}
+
+\item{increments}{Optional named list of the standard normal variates to
+integrate, with elements \code{dW_x} and \code{dW_y}, each a complete finite numeric
+vector of length \code{n - 1}. Supplying it drives the integrator with those
+variates instead of drawing any, which is how a path captured from another
+implementation is reproduced here. The Wiener increment applied at a step
+is \code{sqrt(dt)} times the variate, following the reference implementation's
+own naming. Cannot be combined with \code{seed}.}
 }
 \value{
 A data frame with \code{n} rows and columns \code{t} (time), \code{x} (the
@@ -63,6 +72,17 @@ function exits, so a seeded call has no effect on the sequence a caller
 would otherwise have seen. Leaving \code{seed} as \code{NULL} consumes the global
 stream in the ordinary way.
 
+What a matching seed cannot buy, supplied increments can. \code{increments}
+takes the standard normal variates the integrator would otherwise draw, one
+per transition in each of \code{dW_x} and \code{dW_y}, and no random numbers are
+generated at all. This is what makes the integration scheme gradeable
+against another implementation. Euler-Maruyama is invertible, so the
+variates a reference run used are recoverable from its own captured path by
+subtracting the drift and dividing by the noise coefficient; feeding them
+back here reproduces that path itself, rather than merely a path with the
+same statistics. Supplying \code{increments} together with \code{seed} is an error,
+because the seed would govern nothing.
+
 Simulation supports independent noise, that is a model with zero noise
 cross-covariance.
 }
@@ -77,6 +97,14 @@ before <- runif(1)
 set.seed(1)
 invisible(aci_simulate(model, n = 10, seed = 99))
 identical(before, runif(1))
+
+# Supplied increments make the path a pure function of its input, which is
+# how a run captured elsewhere is reproduced here rather than only matched
+# in distribution.
+set.seed(7)
+z <- list(dW_x = rnorm(999), dW_y = rnorm(999))
+driven <- aci_simulate(model, n = 1000, increments = z)
+identical(driven$x, aci_simulate(model, n = 1000, increments = z)$x)
 
 }
 \references{

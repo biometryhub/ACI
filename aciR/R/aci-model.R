@@ -233,6 +233,17 @@ aci_dyad_model <- function(d_x = 0.5, d_y = 0.5, gamma = 2,
 #' would otherwise have seen. Leaving `seed` as `NULL` consumes the global
 #' stream in the ordinary way.
 #'
+#' What a matching seed cannot buy, supplied increments can. `increments`
+#' takes the standard normal variates the integrator would otherwise draw, one
+#' per transition in each of `dW_x` and `dW_y`, and no random numbers are
+#' generated at all. This is what makes the integration scheme gradeable
+#' against another implementation. Euler-Maruyama is invertible, so the
+#' variates a reference run used are recoverable from its own captured path by
+#' subtracting the drift and dividing by the noise coefficient; feeding them
+#' back here reproduces that path itself, rather than merely a path with the
+#' same statistics. Supplying `increments` together with `seed` is an error,
+#' because the seed would govern nothing.
+#'
 #' Simulation supports independent noise, that is a model with zero noise
 #' cross-covariance.
 #'
@@ -254,6 +265,13 @@ aci_dyad_model <- function(d_x = 0.5, d_y = 0.5, gamma = 2,
 #' @param d_sigma_x Optional function of the observed state, the derivative of
 #'   `sigma_x`. Required by the Milstein scheme, and never estimated
 #'   numerically on the caller's behalf.
+#' @param increments Optional named list of the standard normal variates to
+#'   integrate, with elements `dW_x` and `dW_y`, each a complete finite numeric
+#'   vector of length `n - 1`. Supplying it drives the integrator with those
+#'   variates instead of drawing any, which is how a path captured from another
+#'   implementation is reproduced here. The Wiener increment applied at a step
+#'   is `sqrt(dt)` times the variate, following the reference implementation's
+#'   own naming. Cannot be combined with `seed`.
 #'
 #' @returns A data frame with `n` rows and columns `t` (time), `x` (the
 #'   observed process) and `y` (the unobserved process).
@@ -274,11 +292,20 @@ aci_dyad_model <- function(d_x = 0.5, d_y = 0.5, gamma = 2,
 #' invisible(aci_simulate(model, n = 10, seed = 99))
 #' identical(before, runif(1))
 #'
+#' # Supplied increments make the path a pure function of its input, which is
+#' # how a run captured elsewhere is reproduced here rather than only matched
+#' # in distribution.
+#' set.seed(7)
+#' z <- list(dW_x = rnorm(999), dW_y = rnorm(999))
+#' driven <- aci_simulate(model, n = 1000, increments = z)
+#' identical(driven$x, aci_simulate(model, n = 1000, increments = z)$x)
+#'
 #' @seealso [aci_dyad_model()], [aci()]
 #' @export
 aci_simulate <- function(model, n, dt = 0.001, seed = NULL,
                          scheme = c("euler_maruyama", "milstein"),
-                         sigma_x = NULL, d_sigma_x = NULL) {
+                         sigma_x = NULL, d_sigma_x = NULL,
+                         increments = NULL) {
   if (!inherits(model, "aci_model")) {
     stop("`model` must be an `aci_model`; see `aci_cgns_model()`.",
       call. = FALSE
@@ -297,6 +324,22 @@ aci_simulate <- function(model, n, dt = 0.001, seed = NULL,
       "non-zero noise cross-covariance.",
       call. = FALSE
     )
+  }
+  # The increments are validated before the generator is touched, so a
+  # rejected call leaves the caller's random stream exactly as it found it.
+  supplied <- !is.null(increments)
+  if (supplied) {
+    if (!is.null(seed)) {
+      stop(
+        paste0(
+          "Supply `seed` or `increments`, not both: a path driven by supplied ",
+          "increments draws no random numbers, so the seed would govern ",
+          "nothing."
+        ),
+        call. = FALSE
+      )
+    }
+    .aci_check_increments(increments, as.integer(n))
   }
   if (!is.null(seed)) {
     .aci_check_scalar(seed, "seed")
@@ -363,9 +406,15 @@ aci_simulate <- function(model, n, dt = 0.001, seed = NULL,
   x[1L] <- model$x0
   y[1L] <- model$y0
   # The increments are exogenous, so they are drawn once rather than two at a
-  # time inside the recursion.
-  dw_x <- stats::rnorm(n - 1L)
-  dw_y <- stats::rnorm(n - 1L)
+  # time inside the recursion -- or taken as supplied, in which case the
+  # generator is not consulted at all and the path is a pure function of them.
+  if (supplied) {
+    dw_x <- increments$dW_x
+    dw_y <- increments$dW_y
+  } else {
+    dw_x <- stats::rnorm(n - 1L)
+    dw_y <- stats::rnorm(n - 1L)
+  }
   for (j in seq_len(n - 1L) + 1L) {
     l_x <- model$L_x(x[j - 1L])
     f_x <- model$f_x(x[j - 1L])

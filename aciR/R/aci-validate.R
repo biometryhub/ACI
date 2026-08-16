@@ -225,6 +225,90 @@
   dt
 }
 
+#' Validate a supplied pair of standardised increment vectors
+#'
+#' The simulator admits the standard normal variates it would otherwise draw,
+#' so a caller may drive the integrator with increments recovered from another
+#' implementation's captured path. Those increments are the exogenous input of
+#' the recursion, exactly as the observed signal is the exogenous input of the
+#' filter, and they are checked on the same terms: one complete finite value
+#' per transition in each of the two named vectors, with no recycling and no
+#' coercion.
+#'
+#' @param increments The supplied increments.
+#' @param n Integer scalar. The number of simulated time steps. The increments
+#'   drive the `n - 1` transitions between them.
+#' @param name The argument name, used in the error message.
+#'
+#' @returns `increments`, invisibly.
+#'
+#' @noRd
+#' @keywords internal
+.aci_check_increments <- function(increments, n, name = "increments") {
+  required <- c("dW_x", "dW_y")
+  if (!is.list(increments)) {
+    stop(
+      sprintf(
+        paste0(
+          "`%s` must be a named list of the standard normal variates the ",
+          "simulator would otherwise draw, with elements `dW_x` and `dW_y`; ",
+          "it is %s."
+        ),
+        name, .aci_describe(increments)
+      ),
+      call. = FALSE
+    )
+  }
+  absent <- setdiff(required, names(increments))
+  if (length(absent) > 0L) {
+    stop(
+      sprintf(
+        "`%s` is missing the element%s %s.",
+        name,
+        if (length(absent) > 1L) "s" else "",
+        paste(sprintf("`%s`", absent), collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+  steps <- n - 1L
+  for (entry in required) {
+    value <- increments[[entry]]
+    if (!is.numeric(value) || !is.null(dim(value))) {
+      stop(
+        sprintf(
+          "`%s$%s` must be a plain numeric vector; it is %s.",
+          name, entry, .aci_describe(value)
+        ),
+        call. = FALSE
+      )
+    }
+    if (length(value) != steps) {
+      stop(
+        sprintf(
+          paste0(
+            "`%s$%s` must hold one increment per transition: `n` is %d, so ",
+            "expected length %d, got %d. Increments are not recycled."
+          ),
+          name, entry, n, steps, length(value)
+        ),
+        call. = FALSE
+      )
+    }
+    bad <- which(!is.finite(value))
+    if (length(bad) > 0L) {
+      stop(
+        sprintf(
+          "`%s$%s` must be complete and finite; it holds %s at index %d.",
+          name, entry, .aci_bad_kind(value[bad[1L]]), bad[1L]
+        ),
+        call. = FALSE
+      )
+    }
+  }
+  invisible(increments)
+}
+
 #' Validate a model label
 #'
 #' @param label The label.
