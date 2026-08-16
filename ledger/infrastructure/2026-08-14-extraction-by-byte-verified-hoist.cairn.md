@@ -28,8 +28,17 @@ related:
 ## Status
 
 Decided and implemented 2026-08-14. The reference publishes seven top-to-bottom
-scripts and no function library -- only `simps.m` and `legendUnq.m` are
-callable, and both are third-party FileExchange code rather than the authors'.
+scripts and no function library -- three files are callable, and none of them
+carries any of the method. `simps.m` and `legendUnq.m` are third-party
+FileExchange code; `progress_bar.m` is the authors' own console progress
+indicator.
+
+> **Amended 2026-08-16.** The paragraph above previously read "only `simps.m`
+> and `legendUnq.m` are callable, and both are third-party". A coverage audit
+> against the reference source found `progress_bar.m`, a third callable file,
+> written by the authors and called from all six model scripts. The decision
+> this cairn records is unaffected: a progress indicator is not a kernel, so
+> the reference still offered nothing to grade `aci_filter()` against.
 To run the authors' algebra on a dataset other than the one their script
 generates, the computational passages have to become functions.
 
