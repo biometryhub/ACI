@@ -36,10 +36,21 @@
   '<div class="pane"><div class="pane-h"><span class="pane-t">%s</span><span class="pane-s">%s</span></div><pre><code>%s</code></pre></div>',
   .esc(title), .esc(sub), .esc(code))
 
-render_parity <- function(out = "oracle/parity/reports/parity.html") {
+# `companion` is the href to the development ledger, which differs by output
+# location: the in-tree record sits three levels below `public/`, the delivery
+# copy sits beside it. Rendering rather than copying is what keeps the two from
+# drifting apart.
+render_parity <- function(out = "oracle/parity/reports/parity.html",
+                          companion = paste0("../../../public/",
+                                             "aciR_development_ledger_2026-08-15.html")) {
   ex <- read_manifest("oracle/parity/manifest/extracts.dcf")
-  res <- utils::read.csv("oracle/parity/reports/parity_scalar.csv",
-                         stringsAsFactors = FALSE)
+  # Every results file in reports/ is tabulated, not just the scalar one. The
+  # predator-prey comparison was invisible on this page for exactly as long as
+  # the list was hard-coded to one file.
+  res_files <- c("parity_scalar.csv", "parity_predprey.csv")
+  res_files <- file.path("oracle", "parity", "reports", res_files)
+  res <- do.call(rbind, lapply(res_files[file.exists(res_files)],
+                               utils::read.csv, stringsAsFactors = FALSE))
 
   pairs <- list(
     list(m = "ref_filter_scalar", r = "aci_filter", f = "aciR/R/aci-core.R",
@@ -54,7 +65,10 @@ render_parity <- function(out = "oracle/parity/reports/parity.html") {
     i <- which(ex[, "Function"] == p$m)[1L]
     script <- ex[i, "Script"]; spec <- ex[i, "Lines"]
     sprintf('<section class="pair"><h3>%s</h3><p class="cap">%s</p><div class="grid">%s%s</div></section>',
-      .esc(sprintf("%s  ↔  %s()", p$m, p$r)), .esc(p$cap),
+      # The arrow is written as an entity, not as a literal, so the rendered
+      # page stays pure ASCII and cannot be mis-decoded by a browser that
+      # guesses the encoding. It sits outside .esc(), which would escape the &.
+      paste0(.esc(p$m), " &harr; ", .esc(paste0(p$r, "()"))), .esc(p$cap),
       .pane("MATLAB (reference)", sprintf("%s:%s", script, spec),
             .matlab_lines(script, spec)),
       .pane("R (aciR)", sprintf("%s :: %s()", basename(p$f), p$r),
@@ -77,6 +91,7 @@ render_parity <- function(out = "oracle/parity/reports/parity.html") {
   html <- sub("{{PAIRS}}", paste(blocks, collapse = "\n"), template,
               fixed = TRUE)
   html <- sub("{{ROWS}}", rows, html, fixed = TRUE)
+  html <- sub("{{COMPANION}}", companion, html, fixed = TRUE)
   writeLines(html, out)
   out
 }

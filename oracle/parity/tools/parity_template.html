@@ -1,3 +1,5 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Parity Ledger</title>
 <style>
   :root{
@@ -51,8 +53,16 @@
   .pane-s{font:.72rem/1 ui-monospace,"SF Mono",Menlo,monospace; color:var(--muted);
     overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   pre{margin:0; padding:15px; overflow-x:auto; background:var(--code); flex:1}
-  code{font:12px/1.55 ui-monospace,"SF Mono",Menlo,monospace; white-space:pre}
+  /* Soft wrap rather than clip: the longest reference line is 101 characters,
+     and a line a reader cannot see is worse than a line that wraps. */
+  code{font:12px/1.55 ui-monospace,"SF Mono",Menlo,monospace;
+    white-space:pre-wrap; overflow-wrap:break-word}
   .pair{margin:34px 0 0}
+  /* The side-by-side breaks out of the reading column: two panes of 100-column
+     code do not fit a 70ch measure, and the code is the point of the page. */
+  .pair .grid{width:min(1560px,calc(100vw - 48px)); margin-left:50%;
+    transform:translateX(-50%)}
+  @media (max-width:1216px){.pair .grid{width:auto; margin-left:0; transform:none}}
   .tw{overflow-x:auto; border:1px solid var(--rule); margin-top:20px}
   table{border-collapse:collapse; width:100%; background:var(--surface); font-size:.86rem}
   th{text-align:left; font:600 .72rem/1 ui-monospace,"SF Mono",Menlo,monospace;
@@ -73,6 +83,12 @@
   .find p{margin:0; color:var(--muted); font-size:.94rem}
   .note{background:var(--surface); border:1px solid var(--rule); padding:18px 20px; margin:26px 0}
   .note p{margin:0; font-size:.94rem}
+  .companion{display:flex; flex-wrap:wrap; gap:14px; align-items:baseline;
+    background:var(--surface); border:1px solid var(--rule); padding:16px 20px; margin:34px 0 0}
+  .companion b{font:600 .72rem/1.5 ui-monospace,"SF Mono",Menlo,monospace;
+    letter-spacing:.09em; text-transform:uppercase; color:var(--accent)}
+  .companion span{color:var(--muted); font-size:.94rem; max-width:78ch}
+  a{color:var(--accent)}
   strong{font-weight:650}
 </style>
 <div class="wrap">
@@ -84,10 +100,19 @@
   byte-exact slices &mdash; nothing retyped.</p>
 
   <div class="stats">
-    <div class="stat"><b>124 / 124</b><span>extract outputs reproducing the reference's own workspace, difference 0</span></div>
-    <div class="stat"><b>1,681</b><span>verbatim reference lines, 25 extracts, zero retyped</span></div>
+    <div class="stat"><b>156 / 156</b><span>extract outputs reproducing the reference's own workspace, difference 0</span></div>
+    <div class="stat"><b>2,159</b><span>verbatim reference lines, 33 extracts, zero retyped</span></div>
     <div class="stat"><b>0</b><span>fixture disagreement at published settings (dyad, 8 quantities)</span></div>
     <div class="stat"><b>1.4e-14</b><span>objective causal influence range vs the reference, was 4.6e-09</span></div>
+  </div>
+
+  <div class="companion">
+    <b>Companion document</b>
+    <span>How the package came to be, rather than whether its numbers are right:
+    the design decisions, the alternatives rejected, and the issues found, in the
+    <a href="{{COMPANION}}">Development
+    Ledger</a>. In the repository it is at
+    <code>public/aciR_development_ledger_2026-08-15.html</code>.</span>
   </div>
 
   <h2>Side by side</h2>
@@ -151,21 +176,42 @@
   is therefore composed from its own declared line ranges, guarded by a condition
   that holds in one direction only.</p></div>
 
-  <div class="find"><h4>F7 &mdash; conditional ACI is enabled in exactly one of the five ENSO scripts</h4>
-  <p>In <code>h_W_unobs.m</code>, <code>S_xoS_x_inv(1,1,:) = 1/sigma_C^2;</code>
-  is <em>live code</em>: it carries leading whitespace rather than a comment
-  marker, among five comment lines that read as guidance. Its four siblings leave
-  the equivalent line commented. So one script answers
-  <code>h_W &rarr; T_C | (u,T_E,&tau;,I)</code> where the others answer the
-  unconditional question, distinguished by one character of indentation. A
-  reproducibility hazard in the reference, and a correction to this finding's own
-  earlier wording, which claimed no executable counterpart existed.</p></div>
+  <div class="find"><h4>F7 &mdash; conditional ACI is enabled in three of the five ENSO scripts</h4>
+  <p>Corrected three times, and only this form was measured. The earlier answers
+  came from reading source lines, and the distinguishing feature of those lines
+  is a comment marker. This one comes from the observation-noise inverse each
+  script's filter actually consumed: with the per-step pseudoinverse live,
+  <code>S_xoS_x_inv</code> varies slice to slice and is dense; with it commented
+  out and one diagonal entry overwritten, every slice from the second onward is
+  the same matrix with exactly one non-zero entry.
+  <code>h_W_unobs.m</code>, <code>T_C_unobs.m</code> and <code>u_unobs.m</code>
+  are conditional; <code>tau_unobs.m</code> and <code>u_h_W_tau_unobs.m</code>
+  are not. The hazard is worse than "one character of indentation" suggested,
+  since two of the three live lines sit in column one. So
+  <code>aci_conditional()</code> does have upstream counterparts, three of
+  them.</p></div>
+
+  <div class="find"><h4>F9 &mdash; the conditional scripts leave their first filter step unmasked</h4>
+  <p>The pseudoinverse fills slice 1 before the single target entry is
+  overwritten, and the filter consumes slice 1 at <code>j = 2</code>. aciR masks
+  every slice. Measured on <code>h_W</code> by running the same byte-verified
+  extract twice and changing only its input, the filtered mean differs by
+  <b>0.2376 at step 2</b>, which is 73&nbsp;% of the largest value that state
+  ever takes, and stays above 1e-6 for 6,256 of 20,001 steps. A transient, and
+  not a negligible one. Recorded so that grading
+  <code>aci_conditional()</code> is set up like for like from the start rather
+  than reporting a 0.238 disagreement that is a convention difference.</p></div>
 
   <div class="find"><h4>F8 &mdash; the reference pseudo-inverts where aciR refuses</h4>
-  <p>Measured rather than argued: <code>pinv</code> and a Cholesky inverse differ
-  by at most <strong>1.14e-13</strong> over 2001 ENSO slices, worst condition
-  number 397.5, and Cholesky refused none of them. aciR is the stricter route and
-  is never driven to failure on this data.</p></div>
+  <p>The ENSO filter forms <code>pinv(S_x * S_x')</code>, a Moore-Penrose
+  pseudoinverse the authors chose for stability. aciR uses a Cholesky inverse
+  and requires positive-definiteness at every slice, so on a singular slice the
+  reference continues and aciR stops. This is a behavioural divergence rather
+  than an implementation detail, and it is documented rather than repaired.
+  <em>A quantitative comparison of the two inverses over the ENSO slices was
+  previously reported here. It is withdrawn: no artefact in
+  <code>reports/</code> supports those figures, and an unmeasured number does
+  not belong on this page. Re-measuring it is open work.</em></p></div>
 
   <div class="find"><h4>F3, F4, F5 &mdash; a silent empty, a vacuous pass, and three interface asymmetries</h4>
   <p>The reference's exact objective CIR evaluates to an empty range rather than
@@ -177,9 +223,11 @@
   <hr>
   <p class="cap">MATLAB R2025b (25.2.0.3042426 Update 1), macOS arm64, 32&nbsp;GB.
   Excerpts between the VERBATIM markers are Copyright &copy; 2025 Marios Andreou,
-  reproduced under the MIT Licence. Scope: the dyad in full; predator-prey filter,
-  predator-prey complete in both directions; the ENSO vector filter and smoother,
-  compared against aciR at 5/5. The four scalar-latent ENSO scripts are captured
-  but not gated, and aciR has not been compared against the reference on
-  predator-prey. Both are recorded as open in the report.</p>
+  reproduced under the MIT Licence. Scope: the dyad in full; predator-prey in
+  full in both causal directions, reference side and aciR side; the ENSO vector
+  filter and smoother, compared against aciR at 5/5; and the reference side of
+  all four scalar-latent ENSO configurations, gated at difference 0. What
+  remains open is the aciR side of those four, including
+  <code>aci_conditional()</code>, which is held up by the bundle export shape
+  and by F9. The report records it.</p>
 </div>
