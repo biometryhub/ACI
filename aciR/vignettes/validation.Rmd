@@ -34,6 +34,28 @@ overlooked -- what each one does *not* cover.
 library(aciR)
 ```
 
+### What an oracle is
+
+This article uses "oracle" and "grounded" throughout, and neither is everyday
+vocabulary.
+
+A test oracle is the mechanism that decides, for a given input, whether a
+program's output is correct (Barr et al., 2015,
+[doi:10.1109/TSE.2014.2372785](https://doi.org/10.1109/TSE.2014.2372785)).
+Most software has one close to hand -- a specification, a worked example, an
+answer that is obviously right. A program written to compute a quantity that is
+not otherwise known has none, and Weyuker (1982,
+[doi:10.1093/comjnl/25.4.465](https://doi.org/10.1093/comjnl/25.4.465)) called
+such a program non-testable. The usual recourse is a pseudo-oracle, a second
+implementation of the same specification, written independently, whose
+disagreement with the first exposes an error in one of them (Davis and Weyuker,
+1981, [doi:10.1145/800175.809889](https://doi.org/10.1145/800175.809889)).
+
+We use "grounded" for something narrower -- an oracle whose expected values
+come from a source that did not also produce the code under test. The term is
+ours rather than the literature's, and the distinction it draws is the one the
+rest of this article turns on.
+
 ## The three oracles
 
 aciR uses three, because no one of them is sufficient.
@@ -165,7 +187,8 @@ run, so a fixture cannot drift silently.
 
 An oracle grades the paths its parameters exercise and no others. Two lists,
 because the distinction that matters is not whether a thing works but whether
-the evidence for it comes from the authors.
+the evidence for it comes from the authors. After them, a boundary that belongs
+on neither.
 
 ### Graded, with the scope named
 
@@ -173,6 +196,16 @@ the evidence for it comes from the authors.
   predator-prey model -- the system whose latent damping is set by the observed
   population. The dyad and cross fixtures cannot reach this path, since both
   pin the self-drift at a constant.
+* **The whole predator-prey path, filter through causal influence range**, in
+  both causal directions, against byte-verified extracts of the reference
+  script. Twenty-six graded quantities, worst absolute difference `1.50e-12`
+  and tightest headroom 18.8 times the declared tolerance. Two further
+  comparisons report aciR's default horizon against the reference's, which is
+  a designed difference rather than a disagreement, and they are excluded from
+  those two figures. The subjective ranges
+  agree closely enough that the two implementations select the same index at
+  all 616,113 threshold-time cells in each direction, so what remains is
+  round-off in converting counts to time.
 * **The noise cross-covariance of the online smoother and the causal influence
   range**, against the `cir_cross` fixture. This is a second independent
   implementation rather than the authors' own numbers: every scalar model
@@ -185,6 +218,19 @@ the evidence for it comes from the authors.
   the graded scalar path at every lag and by an independent transcription of
   equations (3.5) to (3.7) in full generality. Not against the authors' ENSO
   scripts.
+* **The Euler-Maruyama integrator**, against the reference's own 3001-step dyad
+  capture. Path equality at a matching seed is impossible, since R and MATLAB
+  draw normal variates by different algorithms, so that is not what is graded.
+  The scheme is invertible -- subtract the drift from a captured transition and
+  divide by the noise coefficient, and the variate that produced it comes back
+  -- so the reference's own draws are recoverable from its own path. Driven
+  with them, `aci_simulate()` reproduces the observed component to `5.1e-15`
+  and the unobserved to `1.8e-15`, against a round-off bound of `1.15e-10`
+  derived from the arithmetic before the comparison was run. What this grades
+  is the update rule, and only that. The drift the recovery subtracts is the
+  drift the simulator adds back, so an error common to both would cancel here
+  and the path would still be reproduced. That common error is what the dyad
+  oracle catches, by grading the filter against the reference's own output.
 
 The matrix noise-cross-covariance terms deserve their own sentence. They have
 **no upstream counterpart at all**: every scalar model in the reference sets
@@ -193,22 +239,33 @@ the cross-interaction terms are absent. The analytic identities are the primary
 grounding there, and a second implementation refutes a transcription error
 without being an authors'-reference grounding.
 
-### Still open
+### Not yet graded
 
-* **Simulation.** `aci_simulate()` draws from R's generator, which differs from
-  MATLAB's, so a simulated path does not correspond to the reference path even
-  at a matching seed. The oracle grade runs on the MATLAB signal, never on a
-  fresh simulation. Simulation is checked for reproducibility and for its
-  contract, not against a reference path.
-* **`aci_conditional()`** against the one reference script that has conditional
-  ACI enabled. The construction is tested; the numbers are not compared.
-* **The predator-prey causal influence range.** Filter, smoother and metric are
-  graded in both directions; the range is not.
-* **Four of the five ENSO scripts**, whose workspaces are captured and
-  validated but whose extracted kernels are not yet gated.
-* **Model adequacy.** No oracle can grade this, and none pretends to. Whether
-  the system you supplied describes your data is a scientific question, treated
-  in the companion article *Assumptions and interpretation*.
+One item, and it is work not yet done rather than work that cannot be done.
+
+* **The aciR side of the four scalar-latent ENSO configurations, including
+  `aci_conditional()`.** The reference side is complete. All four scripts are
+  extracted and gated, at a maximum absolute difference of zero, and three of
+  the five ship with conditional ACI enabled, so a reference to grade
+  `aci_conditional()` against does exist. Two things stand between that and a
+  comparison. Firstly, the harness exports its bundles in a square
+  configuration with feedback-matrix noise, and these are three observed
+  against one latent, or two against one, with scalar latent noise. The package
+  itself accepts that shape, so the work is in the export rather than in aciR.
+  Secondly, the reference leaves the first filter step of a conditional run
+  unmasked where aciR masks every step, which moves the filtered mean by 0.238
+  at step two. That convention has to be matched deliberately, or the
+  comparison will report a difference that is not a disagreement.
+
+### A boundary, not a gap
+
+Model adequacy is not on that list, and it never will be. Every oracle in this
+article asks one question -- does the code compute the method it claims to
+compute. Whether that method describes your data is a separate question, and it
+belongs to the science rather than to the software. No fixture, no identity and
+no reference implementation can reach it, and none here pretends to. The
+companion article *Assumptions and interpretation* is where that question is
+treated.
 
 ## Reproducing the grade
 

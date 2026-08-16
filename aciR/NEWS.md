@@ -1,3 +1,43 @@
+# aciR 0.2.2
+
+## New features
+
+* `aci_simulate()` gains `increments`, which takes the standard normal variates
+  to integrate instead of drawing any. It defaults to `NULL`, and every
+  existing call keeps drawing its own exactly as before.
+
+  This closes the last ungraded piece of the numerical surface. The simulator
+  was the one component with no independent oracle, and the reason on record
+  was that R and MATLAB draw normal variates by different algorithms, so a
+  simulated path cannot coincide with the reference path even at a matching
+  seed. That is true of the two generators and says nothing about the
+  integrator, so what could not be graded was never the thing worth grading.
+  Euler-Maruyama is invertible: subtract the drift from a captured transition,
+  divide by the noise coefficient, and out comes the variate that produced it.
+  The variates the reference actually drew are therefore recoverable from its
+  own captured path, and driving the simulator with them reproduces that path
+  rather than another draw from the same law.
+
+  Run that way against the reference's 3001-step dyad capture, the integrator
+  reproduces the observed component to **5.1e-15** and the unobserved to
+  **1.8e-15**, against a round-off bound of **1.15e-10** derived from the
+  arithmetic before the comparison was made -- five ulps of the largest state
+  visited, summed over the steps and weighted by the amplification each
+  injection still has to pass through.
+
+  Two costs. The simulator now has two ways to obtain its increments, so the
+  seeded path's behaviour rests on an asserted identity -- supplied variates
+  equal to the seeded draws reproduce a seeded call bit for bit -- rather than
+  on there being only one route through the function. And the grade needs both
+  components of the reference path on the integration grid, which no packaged
+  oracle fixture carried: `inst/extdata/dyad_signal_x.csv` holds the observed
+  path alone and `inst/extdata/dyad_reference.csv` holds the pair only at every
+  hundredth step, so a 3001-step capture of both joins the test fixtures.
+
+  Supplying `increments` together with `seed` is an error. A seed governs
+  nothing on a path that draws no random numbers, and a silently inert argument
+  is not something this package does.
+
 # aciR 0.2.1
 
 ## Minor improvements and fixes
