@@ -30,7 +30,7 @@ each moment. The method reimplemented here is due to Andreou, Chen and Bollt
 (2026).
 
 This vignette walks through the whole workflow on the nonlinear dyad model
-with intermittent extreme events -- the conditional Gaussian nonlinear system
+with intermittent extreme events, the conditional Gaussian nonlinear system
 that the reference implementation uses as its worked example.
 
 ```{r library}
@@ -56,10 +56,10 @@ $$
 
 The observed process $x$ couples to the hidden process $y$ through the
 state-dependent term $\gamma\,x\,y$. That feedback is what makes $x$
-intermittently extreme -- the bursts in the observed signal are driven by the
-hidden component. The drift of $y$ is linear in $y$, which is the structural
-condition that keeps the conditional statistics of $y$ Gaussian and gives the
-filter and smoother their closed forms.
+intermittently extreme, since the bursts in the observed signal are driven by
+the hidden component. The drift of $y$ is linear in $y$, which is the
+structural condition that keeps the conditional statistics of $y$ Gaussian and
+gives the filter and smoother their closed forms.
 
 The constructor `aci_dyad_model()` builds the model object with the reference
 parameters.
@@ -73,7 +73,7 @@ model
 
 The dyad model is built so that the hidden $y$ drives the observed $x$. The
 question ACI answers is not merely whether that coupling exists but *when* it
-is informationally active -- at which moments does watching the future of $x$
+is informationally active. At which moments does watching the future of $x$
 tell us something new about $y$ that its past alone did not?
 
 ACI answers this by contrasting two estimates of the hidden component. The
@@ -90,7 +90,7 @@ strong causal coupling.
 `aci_simulate()` integrates the model's equations by an Euler-Maruyama step and
 returns the observed process $x$ together with the hidden process $y$. Because
 the hidden $y$ is known in a simulation, it can be laid alongside the inferred
-estimates as a ground truth -- a check that is never available with real data.
+estimates as a ground truth. That check is never available with real data.
 
 ```{r simulate}
 sim <- aci_simulate(model, n = 5000, seed = 333)
@@ -109,8 +109,8 @@ fit
 ```
 
 The returned `aci` object holds the model, the observed signal, the `filter`
-and `smoother` statistics -- each a list of the posterior `mean` and `cov` of
-the hidden component -- and the causal-information metric in `aci`.
+and `smoother` statistics (each a list of the posterior `mean` and `cov` of the
+hidden component) and the causal-information metric in `aci`.
 
 ## The filter and the smoother
 
@@ -158,8 +158,8 @@ The metric itself is a time series. Laying it under the observed signal shows
 where the two align. The spikes in causal information sit at the intermittent
 bursts of the observed $x$, which is exactly where the hidden $y$ is driving
 the observed process hardest and where the future of $x$ is most informative
-about $y$. The two series get a panel each because they are incommensurable
--- the signal is in its own units, the metric in nats -- so it is the timing
+about $y$. The two series get a panel each because they are incommensurable.
+The signal is in its own units and the metric is in nats, so it is the timing
 that aligns between the panels, never the magnitudes.
 
 ```{r metric, fig.height = 5, eval = requireNamespace("ggplot2", quietly = TRUE)}
@@ -189,11 +189,11 @@ ggplot(series, aes(x = t, y = value, colour = series)) +
   theme_minimal()
 ```
 
-The `summary()` method reports the metric alongside the diagnostics that say
-whether the numerical assumptions held: the smallest posterior covariances,
-which show how close the explicit Euler scheme came to losing positivity, and
-the terminal-identity residual, which is zero analytically and so measures
-accumulated numerical error.
+The `summary()` method reports the metric alongside two diagnostics that say
+whether the numerical assumptions held. The smallest posterior covariances show
+how close the explicit Euler scheme came to losing positivity. The
+terminal-identity residual is zero analytically, so it measures accumulated
+numerical error.
 
 ```{r metric-summary}
 summary(fit)
@@ -206,16 +206,17 @@ tidy starting point for a figure or an export.
 head(as.data.frame(fit), 3)
 ```
 
-A word of caution before reading too much into the peaks. The metric says that
-*under this model* the future of the observed signal is informative about the
-hidden component at those moments. It does not test the model, and it does not
-identify the effect of an intervention. Since the dyad model here is also the
-process that generated the data, the reading is safe. On real data it would not
-be, and the article *Assumptions and interpretation* sets out exactly what an
-ACI peak does and does not support.
+The peaks carry a bounded reading. The metric says that *under this model* the
+future of the observed signal is informative about the hidden component at
+those moments. It does not test the model, and it does not identify the effect
+of an intervention. Here the dyad model is also the process that generated the
+data, so the reading holds without further argument. On real data the model is
+an assumption rather than a fact, and the article *Assumptions and
+interpretation* sets out which claims an ACI peak supports and which it does
+not.
 
-The quantity plotted below is a relative entropy between two posteriors over
-the same instant: the one informed by the whole observed record, and the one
+The quantity plotted above is a relative entropy between two posteriors over
+the same instant, the one informed by the whole observed record and the one
 informed only up to that instant.
 
 $$
@@ -226,20 +227,21 @@ $$
 The Gaussian closed form this reduces to, and the identities it is graded
 against, are in the companion article *Validation and the independent oracle*.
 
-One scope note. This vignette walks through the causal-information metric,
-which answers *how much* the future of the observed signal says about the
-unobserved state. The paper defines a second quantity, the causal influence
-range, which answers *how far ahead* one must look before that answer stops
-changing. It is implemented as `aci_cir()` and graded against the same
-reference; it is not covered here because it is a different question rather
-than a further step in this one.
+One scope note closes the walk-through. This vignette covers the
+causal-information metric, which answers *how much* the future of the observed
+signal says about the unobserved state. The paper defines a second quantity,
+the causal influence range, which answers *how far ahead* one must look before
+that answer stops changing. That quantity is implemented as `aci_cir()` and
+graded against the same reference. It is not covered here because it asks a
+different question rather than extending this one, and `?aci_cir` is where to
+begin on it.
 
-## Under the hood: the general components path
+## The general components path
 
 `aci()` is a convenience layer over three core functions that work on any
 conditional Gaussian nonlinear system rather than on the dyad model alone.
-Each takes a components list -- the per-step coefficients of the governing
-equations -- so the same core serves a custom system once its components are
+Each takes a components list, the per-step coefficients of the governing
+equations, so the same core serves a custom system once its components are
 supplied. For the dyad model, `aci_dyad_components()` builds that list from the
 observed signal, and the filter, the smoother and the metric can be called in
 turn.

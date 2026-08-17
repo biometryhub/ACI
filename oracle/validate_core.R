@@ -1,10 +1,10 @@
-# validate_core.R — the aciR dyad ACI core (T3-T5), graded against the live oracle
+# validate_core.R, the aciR dyad ACI core (T3-T5), graded against the live oracle
 # `oracle.aci_matlab_reference` (T8). Proves the research->oracle->spec->implement->
 # grade loop closes GREEN: aciR's OWN filter/smoother/metric on the MATLAB input
 # signal must reproduce the MATLAB reference outputs to numerical tolerance (IOP).
 # These functions become aciR/R/ (the method core) after this passes.
 
-# -- the ACI method core (grounded from substrate.md §7; dyad CGNS) ------------
+# the ACI method core (grounded from substrate.md §7; dyad CGNS) ---------------
 
 aci_dyad_components <- function(x, p) {
   list(L_x = p$gamma * x,
@@ -55,7 +55,7 @@ aci_metric <- function(filt, smooth) {           # ACI relative-entropy metric (
   signal + dispersion
 }
 
-# -- T8: grade against oracle.aci_matlab_reference ----------------------------
+# T8: grade against oracle.aci_matlab_reference --------------------------------
 
 sig <- read.csv("dyad_signal_x.csv", header = FALSE)   # cols: t, x (no header)
 x   <- sig$V2
@@ -82,9 +82,9 @@ cat("max abs error vs MATLAB oracle (301 sampled points):\n")
 for (k in names(err)) cat(sprintf("  %-14s %.3e\n", k, err[k]))
 tol <- 1e-6
 if (max(err) < tol) {
-  cat(sprintf("\nORACLE-VALIDATED: GREEN — aciR core matches the MATLAB reference to < %.0e\n", tol))
+  cat(sprintf("\nORACLE-VALIDATED: GREEN, aciR core matches the MATLAB reference to < %.0e\n", tol))
   cat(sprintf("  (checksum sum(ACI)=%.10f vs registry 9933.0774195694)\n", sum(aci)))
 } else {
-  cat("\nMISMATCH — the reimplementation diverges from the oracle; investigate before the spec proceeds.\n")
+  cat("\nMISMATCH, the reimplementation diverges from the oracle; investigate before the spec proceeds.\n")
   quit(status = 1)
 }

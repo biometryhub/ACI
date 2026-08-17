@@ -1,4 +1,4 @@
-# -- independent-oracle grade: the stochastic ENSO model -----------------------
+# Independent-oracle grade of the stochastic ENSO model ------------------------
 #
 # The largest system the package expresses, and the only one whose observation
 # noise varies in time. That last property is why this grade matters beyond the
@@ -9,7 +9,7 @@
 #
 # Scope. The harness transcribes the reference's coefficient construction and
 # the vector recursions, but generates its observed path by plain
-# Euler-Maruyama rather than the reference's mixed scheme -- because the
+# Euler-Maruyama rather than the reference's mixed scheme, because the
 # reference's wind-burst update carries a correction this package does not
 # reproduce, for reasons recorded in design/2026-08-13_milstein_anomaly.md.
 # The filter is graded on whatever signal it is driven with, so this grades the
@@ -103,7 +103,7 @@ test_that("the conditional question runs on the ENSO system", {
 
   # The masked weight tracks the time-variation of the covariance it is
   # derived from. Conditioning on the central-Pacific temperature, whose own
-  # observation noise is constant, gives a constant weight -- correctly.
+  # observation noise is constant, correctly gives a constant weight.
   # Conditioning on the Walker circulation, whose noise is multiplicative in
   # its own state, must give a weight that moves. Building either from the
   # first step alone would be the defect this package already found once.

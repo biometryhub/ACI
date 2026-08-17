@@ -54,7 +54,7 @@ when simulating and as the default initial filtered mean.}
 define the model, retained for printing and reproducibility.}
 }
 \value{
-An \code{aci_model} object: a list of the model coefficients, noise
+An \code{aci_model} object, a list of the model coefficients, noise
 Grammians and initial state, with class \code{"aci_model"}.
 }
 \description{
@@ -86,9 +86,9 @@ zero for independent noise. For the scalar systems this package integrates
 the cross-covariance is symmetric, so the transpose \code{S_xoS_y} of the
 components schema is derived rather than supplied.
 
-The noise covariance must be mathematically admissible: \code{S_xoS_x} strictly
-positive (the filter inverts it), \code{S_yoS_y} non-negative, and the joint
-covariance positive semidefinite, that is
+The noise covariance must be mathematically admissible, with \code{S_xoS_x}
+strictly positive (the filter inverts it), \code{S_yoS_y} non-negative, and the
+joint covariance positive semidefinite, that is
 \code{S_xoS_x * S_yoS_y - S_yoS_x^2 >= 0}. A model that violates any of these
 cannot be constructed. A singular system, whose determinant is zero,
 describes perfectly correlated noise and is admissible, but it can drive the

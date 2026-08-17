@@ -50,19 +50,19 @@ product of the per-step auxiliary matrices. That product decays
 geometrically, which the source paper establishes by bounding the spectral
 radius of each factor below one, so the influence of an observation on
 distant earlier steps falls away exponentially. The implementation exploits
-this: it accumulates the products in logarithms rather than forming the full
+this by accumulating the products in logarithms rather than forming the full
 \code{O(n^2)} triangle, which is what keeps the memory at \code{O(n)}.
 
-\code{tol} stops the accumulation once the product falls below it. Be clear about
-what that buys. It is a safety catch on a product that has already
-underflowed, not a bound on the work: at a typical per-step contraction of
-\code{0.998} the product needs some 26,000 steps to reach the default \code{1e-18},
-and published records are shorter than that, so on the systems this package
-ships the loop is not cut and the cost is quadratic in the record length.
-The test is also \code{max(abs(d)) < tol} on the accumulated product, which is a
-sufficient condition that the next innovation cannot move the estimate at
-double precision -- not the spectral-radius argument above. Erring that way
-costs work, never accuracy.
+\code{tol} stops the accumulation once the product falls below it. It is a safety
+catch on a product that has already underflowed rather than a bound on the
+work. At a typical per-step contraction of \code{0.998} the product needs some
+26,000 steps to reach the default \code{1e-18}, and published records are shorter
+than that, so on the systems this package ships the loop is not cut and the
+cost is quadratic in the record length. The test applied is
+\code{max(abs(d)) < tol} on the accumulated product, a sufficient condition that
+the next innovation cannot move the estimate at double precision, rather
+than the spectral-radius argument above. Erring that way costs work, never
+accuracy.
 }
 \examples{
 model <- aci_dyad_model()

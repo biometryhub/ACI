@@ -19,9 +19,9 @@ The result \code{x}, invisibly. Called for the plot it draws.
 }
 \description{
 Draws the observed signal and the causal-information metric on a shared time
-axis, the pair of panels that carries the method's reading: bursts in the
-observed signal above, and the steps at which the future of that signal
-sharpens the estimate of the unobserved component below.
+axis. The upper panel shows bursts in the observed signal. The lower panel
+shows the steps at which the future of that signal sharpens the estimate of
+the unobserved component.
 }
 \details{
 The method uses base graphics so that plotting costs the package no

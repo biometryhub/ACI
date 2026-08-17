@@ -1,4 +1,4 @@
-# -- grading the Milstein scheme -----------------------------------------------
+# Grading the Milstein scheme --------------------------------------------------
 #
 # The oracle here is a theorem rather than a reference implementation. For a
 # stochastic differential equation with a state-dependent diffusion, the
@@ -8,7 +8,7 @@
 # against something this package did not author.
 #
 # The test system is geometric Brownian motion, whose solution is known in
-# closed form, driven by the SAME Wiener path the simulator uses -- so the
+# closed form, driven by the SAME Wiener path the simulator uses, so the
 # comparison is against the exact solution of the very realisation being
 # integrated, not against a different draw from the same law.
 #

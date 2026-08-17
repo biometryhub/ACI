@@ -1,4 +1,4 @@
-# -- binding independent-oracle grade: the causal influence range --------------
+# Binding independent-oracle grade of the causal influence range ---------------
 #
 # The online smoother and the causal influence range are graded against the
 # reference MATLAB implementation, transcribed in oracle/aci_oracle_cir.m.
@@ -96,14 +96,14 @@ test_that("the causal influence range reproduces the MATLAB oracle to 1e-6", {
   expect_gt(max(ref$objective), 0)
 })
 
-# -- the same grade, with the noise cross-covariance switched on ---------------
+# The same grade, with the noise cross-covariance switched on ------------------
 #
 # The fixtures above reuse the dyad signal, whose cross-covariance is zero, so
 # the online smoother's cross-noise terms execute annihilated there. The
 # package's grading register measured that gap; this closes it.
 #
 # Like aci_oracle_cross.m one layer down, this harness has no upstream
-# counterpart -- no scalar model in the reference exercises these terms -- so
+# counterpart (no scalar model in the reference exercises these terms), so
 # it is a second independent implementation rather than an authors' reference.
 
 .aci_cir_cross_setup <- function() {

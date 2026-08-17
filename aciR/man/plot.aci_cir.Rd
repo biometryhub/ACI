@@ -17,9 +17,9 @@
 \code{x}, invisibly.
 }
 \description{
-Two panels: the objective range against time, with censored times drawn
-hollow so a lower bound is not mistaken for a measurement, and the peak
-divergence beneath it.
+Draws two panels. The upper panel shows the objective range against time,
+with censored times drawn hollow so that a lower bound is not mistaken for a
+measurement. The lower panel shows the peak divergence.
 }
 \examples{
 model <- aci_dyad_model()

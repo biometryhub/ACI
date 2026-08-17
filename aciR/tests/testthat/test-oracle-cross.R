@@ -1,7 +1,7 @@
-# -- independent-oracle grade: the cross-noise path ---------------------------
+# Independent-oracle grade of the cross-noise path -----------------------------
 #
 # The dyad oracle grades the core against the authors' reference, but that
-# reference -- like every scalar model in the reference implementation -- sets
+# reference (like every scalar model in the reference implementation) sets
 # the noise cross-covariance to zero. The terms carrying it therefore execute on
 # every dyad run with the term annihilated, and the fixture never grades them,
 # while aci_cgns_model(S_yoS_x = ..) exposes those same terms publicly.
@@ -51,7 +51,7 @@
 test_that("the fixture actually exercises a non-zero cross-covariance", {
   # The point of the fixture is the term it switches on. If this ever reads
   # zero, the test below is grading nothing and must not be allowed to pass
-  # quietly -- which is exactly how the gap it closes came about.
+  # quietly, which is exactly how the gap it closes came about.
   p <- .aci_cross_params()
   expect_gt(abs(p$S_yoS_x), 0.5)
   expect_gt(p$S_xoS_x * p$S_yoS_y - p$S_yoS_x^2, 0)

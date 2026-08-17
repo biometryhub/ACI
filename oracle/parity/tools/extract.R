@@ -1,9 +1,9 @@
-# -- hoisting reference kernels into callable functions ------------------------
+# hoisting reference kernels into callable functions ---------------------------
 #
 # The reference is seven top-to-bottom scripts. To run its algebra on a dataset
 # other than the one the script generates, the computational passages have to
-# become functions -- and the moment we retype algebra we have re-implemented
-# it, which is precisely the failure the harness exists to detect.
+# become functions, and the moment we retype algebra we have re-implemented it,
+# which is precisely the failure the harness exists to detect.
 #
 # So nothing is retyped. Each generated function is a signature, a byte-exact
 # slice of the reference between two markers, and `end`. `check_extraction()`
@@ -40,7 +40,7 @@
   sprintf("%% <<< END VERBATIM %s:%s", script, spec)
 }
 
-# -- generation ----------------------------------------------------------------
+# generation -------------------------------------------------------------------
 
 #' Generate one extracted MATLAB function.
 #'
@@ -70,12 +70,12 @@ extract_function <- function(record, reference_dir, out_dir) {
   # ---- consumption assertions ------------------------------------------------
   #
   # An input the slice touches only at one index is safe to supply as a stub on
-  # an arbitrary dataset -- the reference's filter reads the true latent path
+  # an arbitrary dataset. The reference's filter reads the true latent path
   # `y` only at y(1), as its initial mean. Asserting that is what lets the
-  # dataset contract pass a one-element stand-in without hand-waving.
+  # dataset contract pass a one-element stand-in without assuming anything.
   consumed <- .split_list(record[["ConsumedOnly"]])
-  # Comments mention the variables they describe -- "% ... the latent variable
-  # y." -- so the check runs on code only. This drops anything after a `%`,
+  # Comments mention the variables they describe ("% ... the latent variable
+  # y."), so the check runs on code only. This drops anything after a `%`,
   # which would also truncate a `%` inside a string literal; none of the
   # extracted slices contain one, and the extraction check would fail loudly if
   # that ever changed.
@@ -173,7 +173,7 @@ extract_all <- function(manifest_path,
   do.call(rbind, out)
 }
 
-# -- verification --------------------------------------------------------------
+# verification -----------------------------------------------------------------
 
 #' Check every generated function still matches its source slice byte for byte.
 #'

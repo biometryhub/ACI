@@ -6,14 +6,14 @@ linters: linters_with_defaults(
         # The numerical core is written in the notation of the governing
         # equations of the method paper, and the correspondence is the point:
         # a reader diffing R/aci-core.R against the reference implementation
-        # must see the same symbols. Admitted deliberately and narrowly -- the
+        # must see the same symbols. Admitted deliberately and narrowly. The
         # drift coefficients, the noise Grammians, the smoother's per-step
         # terms, the filter and backward-sweep state, and the dyad parameters.
         # Widening this rule needs a reason; see CONTRIBUTING.md.
         # The online smoother adds a second set of paper symbols: the auxiliary
         # matrices E and F, the drift operators G, and the per-step offsets
         # b, H, K and P, all as Algorithm 1 of the online-smoother paper writes
-        # them (arXiv 2411.05870). Same reason as above -- a reader diffing
+        # them (arXiv 2411.05870). Same reason as above, a reader diffing
         # R/aci-online-smoother.R against that algorithm must see its symbols.
         equation_notation = paste0(
           "^(L_[xy]|f_[xy]|S_[xy]oS_[xy]|[AB]_j|mu[0T]?|R[0T]?",
@@ -25,7 +25,7 @@ linters: linters_with_defaults(
         # against Supplementary Information section 4.3 must see them: the two
         # sea-surface temperature anomalies, the Walker circulation, the
         # western-Pacific thermocline, and the parameters derived from them.
-        # Same standard as the two rules above -- narrow, enumerated, and here
+        # Same standard as the two rules above, narrow, enumerated, and here
         # because the correspondence to the published equations is the point.
         enso_notation = paste0(
           "^(T_[CE]|h_W|I|C_u|b_0|d_tau|r_[CE]|zeta_[CE]|gamma_[CE]",

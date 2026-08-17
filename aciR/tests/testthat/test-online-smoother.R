@@ -1,4 +1,4 @@
-# -- grading the fixed-lag online smoother -------------------------------------
+# Grading the fixed-lag online smoother ----------------------------------------
 #
 # The online smoother is graded three ways, none of which needs an external
 # reference implementation:
@@ -18,8 +18,8 @@
 #      the convergence RATE, not equality. A first-order rate is a sharp test:
 #      a mis-stated recursion does not converge at a clean order.
 #
-# Property 3 is the one that is easy to get wrong in the other direction --
-# asserting equality here would fail, and asserting nothing would let a wrong
+# Property 3 is the one that is easy to get wrong in the other direction.
+# Asserting equality here would fail, and asserting nothing would let a wrong
 # recursion through.
 
 .aci_test_dyad_params <- function() {
@@ -106,8 +106,8 @@ test_that("the update products are non-degenerate", {
 })
 
 test_that("full lag converges to the backward smoother at first order", {
-  # These are different objects -- the discrete smoother against the Euler
-  # discretisation of the continuous backward equation -- so equality is the
+  # These are different objects (the discrete smoother against the Euler
+  # discretisation of the continuous backward equation), so equality is the
   # wrong assertion and the rate is the right one.
   steps <- c(4e-3, 2e-3, 1e-3, 5e-4)
   gaps <- vapply(steps, function(dt) {

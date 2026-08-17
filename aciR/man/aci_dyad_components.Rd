@@ -30,8 +30,8 @@ constant linear self-drift \code{-d_y}. The two noise sources are independent, s
 the noise cross-covariances are zero.
 
 Most users should reach for \code{\link[=aci_dyad_model]{aci_dyad_model()}} and \code{\link[=aci]{aci()}} instead. This
-function is the worked example of the components schema: read it as the
-template for a conditional Gaussian system the package supplies no
+function is the worked example of the components schema, and it serves as
+the template for a conditional Gaussian system the package supplies no
 constructor for. See \link{aci_components} for the schema itself.
 }
 \examples{

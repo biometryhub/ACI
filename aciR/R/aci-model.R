@@ -1,15 +1,15 @@
-# -- conditional Gaussian nonlinear system as a model object ------------------
+# Conditional Gaussian nonlinear system as a model object ----------------------
 #
 # The functions below wrap a conditional Gaussian nonlinear system (CGNS) in a
 # small `aci_model` object and provide the two high-level entry points that a
-# user reaches for first: simulate a realisation of a model, and run the whole
-# assimilative causal inference workflow on an observed signal. The object holds
+# user reaches for first, namely simulating a realisation of a model and
+# running assimilative causal inference on an observed signal. The object holds
 # the model coefficients as functions of the observed signal, and the entry
 # points assemble the per-step components consumed by the numerical core in
 # aci-core.R. The core is unchanged; these functions are a convenience layer
 # over it.
 
-# -- constructors -------------------------------------------------------------
+# Constructors -----------------------------------------------------------------
 
 #' Conditional Gaussian nonlinear system model
 #'
@@ -40,9 +40,9 @@
 #' the cross-covariance is symmetric, so the transpose `S_xoS_y` of the
 #' components schema is derived rather than supplied.
 #'
-#' The noise covariance must be mathematically admissible: `S_xoS_x` strictly
-#' positive (the filter inverts it), `S_yoS_y` non-negative, and the joint
-#' covariance positive semidefinite, that is
+#' The noise covariance must be mathematically admissible, with `S_xoS_x`
+#' strictly positive (the filter inverts it), `S_yoS_y` non-negative, and the
+#' joint covariance positive semidefinite, that is
 #' `S_xoS_x * S_yoS_y - S_yoS_x^2 >= 0`. A model that violates any of these
 #' cannot be constructed. A singular system, whose determinant is zero,
 #' describes perfectly correlated noise and is admissible, but it can drive the
@@ -73,7 +73,7 @@
 #' @param parameters Optional named list of the finite numeric scalars that
 #'   define the model, retained for printing and reproducibility.
 #'
-#' @returns An `aci_model` object: a list of the model coefficients, noise
+#' @returns An `aci_model` object, a list of the model coefficients, noise
 #'   Grammians and initial state, with class `"aci_model"`.
 #'
 #' @references
@@ -105,9 +105,9 @@ aci_cgns_model <- function(L_x, f_x, L_y, f_y,
                            label = "conditional Gaussian nonlinear system",
                            parameters = NULL) {
   # The unobserved component's self-drift is admitted on the same terms as the
-  # other coefficients: a constant, or a vectorised function of the observed
-  # signal. A system whose latent damping is set by the observed state -- a
-  # predator whose growth rate depends on the prey it can see -- is still
+  # other coefficients, as a constant or as a vectorised function of the
+  # observed signal. A system whose latent damping is set by the observed state
+  # (a predator whose growth rate depends on the prey it can see) is still
   # conditionally Gaussian, because the coefficient is measurable with respect
   # to the observed path.
   l_y_is_constant <- !is.function(L_y)
@@ -212,7 +212,7 @@ aci_dyad_model <- function(d_x = 0.5, d_y = 0.5, gamma = 2,
   )
 }
 
-# -- simulation ---------------------------------------------------------------
+# Simulation -------------------------------------------------------------------
 
 #' Simulate a conditional Gaussian nonlinear system
 #'
@@ -223,17 +223,17 @@ aci_dyad_model <- function(d_x = 0.5, d_y = 0.5, gamma = 2,
 #'
 #' The random increments come from R's generator, which differs from that of
 #' the reference MATLAB implementation, so a simulated path here does not
-#' reproduce the reference path even at a matching seed. This is expected: the
-#' independent-oracle grade of the numerical core is run on the MATLAB signal
-#' itself, not on a fresh simulation.
+#' reproduce the reference path even at a matching seed. The independent-oracle
+#' grade of the numerical core is therefore run on the MATLAB signal itself,
+#' not on a fresh simulation.
 #'
 #' Supplying `seed` makes the path reproducible without disturbing the calling
-#' session: the generator state is saved before the draw and restored when the
+#' session. The generator state is saved before the draw and restored when the
 #' function exits, so a seeded call has no effect on the sequence a caller
 #' would otherwise have seen. Leaving `seed` as `NULL` consumes the global
 #' stream in the ordinary way.
 #'
-#' What a matching seed cannot buy, supplied increments can. `increments`
+#' Supplied increments provide what a matching seed cannot. `increments`
 #' takes the standard normal variates the integrator would otherwise draw, one
 #' per transition in each of `dW_x` and `dW_y`, and no random numbers are
 #' generated at all. This is what makes the integration scheme gradeable
@@ -259,8 +259,8 @@ aci_dyad_model <- function(d_x = 0.5, d_y = 0.5, gamma = 2,
 #'   requires `sigma_x` and `d_sigma_x`.
 #' @param sigma_x Optional function of the observed state. Supplying it makes
 #'   the observation noise multiplicative, overriding the model's constant
-#'   `S_xoS_x` **for the simulation only**. This is a simulation capability:
-#'   the filter still requires a constant observation-noise covariance, so a
+#'   `S_xoS_x` **for the simulation only**. This is a simulation capability.
+#'   The filter still requires a constant observation-noise covariance, so a
 #'   path generated this way cannot yet be assimilated by this package.
 #' @param d_sigma_x Optional function of the observed state, the derivative of
 #'   `sigma_x`. Required by the Milstein scheme, and never estimated
@@ -343,8 +343,8 @@ aci_simulate <- function(model, n, dt = 0.001, seed = NULL,
   }
   if (!is.null(seed)) {
     .aci_check_scalar(seed, "seed")
-    # Seeding is contained: the caller's generator state is restored on exit,
-    # so a reproducible path costs the caller nothing.
+    # Seeding is contained. The caller's generator state is restored on exit,
+    # so a reproducible path has no effect outside this call.
     if (!exists(".Random.seed", envir = globalenv(), inherits = FALSE)) {
       stats::runif(1L)
     }
@@ -359,7 +359,7 @@ aci_simulate <- function(model, n, dt = 0.001, seed = NULL,
   # ---- Noise coefficients ---------------------------------------------------
   #
   # The observation noise may be supplied as a function of the observed state,
-  # which makes it multiplicative. That is a SIMULATION capability: the filter
+  # which makes it multiplicative. That is a SIMULATION capability. The filter
   # still requires a constant observation-noise covariance, so a path
   # simulated this way cannot yet be assimilated by this package.
   #
@@ -406,7 +406,7 @@ aci_simulate <- function(model, n, dt = 0.001, seed = NULL,
   x[1L] <- model$x0
   y[1L] <- model$y0
   # The increments are exogenous, so they are drawn once rather than two at a
-  # time inside the recursion -- or taken as supplied, in which case the
+  # time inside the recursion. They may instead be supplied, in which case the
   # generator is not consulted at all and the path is a pure function of them.
   if (supplied) {
     dw_x <- increments$dW_x
@@ -423,7 +423,7 @@ aci_simulate <- function(model, n, dt = 0.001, seed = NULL,
     x[j] <- x[j - 1L] + (l_x * y[j - 1L] + f_x) * dt +
       s_x * root_dt * dw_x[j - 1L]
     if (identical(scheme, "milstein")) {
-      # The Milstein correction: half the diffusion times its own derivative,
+      # The Milstein correction is half the diffusion times its own derivative,
       # against the centred square of the increment. With dW = sqrt(dt) * z,
       # the bracket is dt * z^2 - dt.
       x[j] <- x[j] + 0.5 * s_x * d_sigma_x(x[j - 1L]) *
@@ -436,7 +436,7 @@ aci_simulate <- function(model, n, dt = 0.001, seed = NULL,
   data.frame(t = seq(0, by = dt, length.out = n), x = x, y = y)
 }
 
-# -- inference entry point ----------------------------------------------------
+# Inference entry point --------------------------------------------------------
 
 #' Run assimilative causal inference
 #'
@@ -447,7 +447,7 @@ aci_simulate <- function(model, n, dt = 0.001, seed = NULL,
 #' user-facing entry point that ties the numerical core together.
 #'
 #' The workflow assumes the observed signal is complete and sampled on a
-#' regular grid: the closed-form recursions integrate a fixed step, and there
+#' regular grid. The closed-form recursions integrate a fixed step, and there
 #' is no contract for missing observations or for an irregular grid. By default
 #' the time vector is constructed from `dt`; supply `time` instead to have the
 #' step derived from an observed grid and the regularity checked.
@@ -469,7 +469,7 @@ aci_simulate <- function(model, n, dt = 0.001, seed = NULL,
 #'   observation, strictly increasing and equally spaced. When supplied, `dt`
 #'   is derived from it.
 #'
-#' @returns An `aci` object: a list with the `model`, the time vector `t`, the
+#' @returns An `aci` object, a list with the `model`, the time vector `t`, the
 #'   observed signal `x`, the `filter` and `smoother` statistics (each a list of
 #'   `mean` and `cov`), the causal-information metric `aci`, the count
 #'   `n_clamped` of metric values clamped from a round-off negative to zero,

@@ -1,4 +1,4 @@
-# -- fixed-lag online smoother, vector case ------------------------------------
+# Fixed-lag online smoother, vector case ---------------------------------------
 #
 # The matrix counterpart of aci-online-smoother.R. One thing does not carry
 # over, and it is the thing that made the scalar version fast.
@@ -6,7 +6,7 @@
 # In one dimension the ordered product of the per-step auxiliary matrices is a
 # product of numbers, so it reduces to a difference of cumulative logarithms
 # and any range is recoverable in constant time. Matrices do not commute, so
-# there is no such reduction: the product over a range depends on the order of
+# there is no such reduction. The product over a range depends on the order of
 # its factors and cannot be recovered from endpoint summaries.
 #
 # What does carry over is the reason the reduction was worth having. The source
@@ -16,9 +16,9 @@
 # effective lag rather than the record length. That was the substance of the
 # scalar design; the logarithms were a constant factor on top of it.
 #
-# Symbols follow the source paper: E_j, F_j, G, H, K as equations (3.5) to
-# (3.7), b and P as (3.15) and (3.16), and the update matrix D accumulating on
-# the RIGHT as (3.12).
+# Symbols follow the source paper, with E_j, F_j, G, H and K as equations (3.5)
+# to (3.7), b and P as (3.15) and (3.16), and the update matrix D accumulating
+# on the RIGHT as (3.12).
 
 #' Per-step auxiliary matrices of the vector online smoother
 #'
@@ -83,7 +83,7 @@
     )
   }
 
-  # (3.13) to (3.16): the displacement each new observation imposes on the
+  # (3.13) to (3.16). The displacement each new observation imposes on the
   # step before it, which every earlier step then inherits, damped by D.
   for (k in seq_len(n - 1L)) {
     L_x <- .aci_slice(comp$L_x, k)

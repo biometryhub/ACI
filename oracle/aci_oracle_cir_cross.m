@@ -9,8 +9,8 @@
 %
 % Same transcription as aci_oracle_cir.m, driven by the correlated-noise signal
 % instead of the dyad one. Like aci_oracle_cross.m it has NO upstream
-% counterpart -- every scalar model in the reference sets the cross-covariance
-% to zero -- so it is a second independent implementation, not an
+% counterpart (every scalar model in the reference sets the cross-covariance to
+% zero), so it is a second independent implementation, not an
 % authors'-reference grounding.
 %
 % The observed signal is NOT regenerated here. It is read from the dyad signal

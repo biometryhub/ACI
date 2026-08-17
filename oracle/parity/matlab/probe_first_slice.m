@@ -14,8 +14,8 @@ function probe_first_slice(workspace_path, out_path)
 %
 %   The measurement changes no code. `S_x(:, :, 1)` is diagonal in this model,
 %   so zeroing its non-target entries makes the pseudoinverse of the slice-one
-%   Grammian vanish off the target block -- which is exactly the weight aciR
-%   supplies -- and the SAME byte-verified extract is then run twice, once on
+%   Grammian vanish off the target block (which is exactly the weight aciR
+%   supplies), and the SAME byte-verified extract is then run twice, once on
 %   each input.
 
 w = load(workspace_path);

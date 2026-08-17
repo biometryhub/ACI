@@ -1,20 +1,20 @@
-# -- methods for the model and result objects ---------------------------------
+# Methods for the model and result objects -------------------------------------
 #
 # The methods below are the reporting surface of the package. They exist so
 # that inspecting, plotting and exporting a result never requires the user to
 # index into the nested representation, and so that the quantities an ACI
-# result is sensitive to -- the smallest posterior covariances, the terminal
-# identity, the round-off clamps of the metric -- are surfaced rather than
-# left for the reader to discover.
+# result is sensitive to (the smallest posterior covariances, the terminal
+# identity, the round-off clamps of the metric) are surfaced rather than left
+# for the reader to discover.
 
-# -- print methods ------------------------------------------------------------
+# Print methods ----------------------------------------------------------------
 
 #' Print a conditional Gaussian nonlinear system model
 #'
-#' Prints a compact, one-field-per-line summary of an `aci_model` object: its
-#' label, the self-drift of the unobserved component, the noise Grammians, the
-#' initial state and, when present, the named scalar parameters that define the
-#' model.
+#' Prints a compact, one-field-per-line summary of an `aci_model` object,
+#' covering its label, the self-drift of the unobserved component, the noise
+#' Grammians, the initial state and, when present, the named scalar parameters
+#' that define the model.
 #'
 #' @param x An `aci_model` object; see [aci_cgns_model()].
 #' @param ... Ignored, for compatibility with [print()].
@@ -56,9 +56,9 @@ print.aci_model <- function(x, ...) {
 
 #' Print an assimilative causal inference result
 #'
-#' Prints a compact summary of an `aci` object: the model it was run for, the
-#' number of steps, the integration step and time span, and a five-number
-#' summary of the causal-information metric.
+#' Prints a compact summary of an `aci` object, covering the model it was run
+#' for, the number of steps, the integration step and time span, and a
+#' five-number summary of the causal-information metric.
 #'
 #' @param x An `aci` object, as returned by [aci()].
 #' @param ... Ignored, for compatibility with [print()].
@@ -88,12 +88,12 @@ print.aci <- function(x, ...) {
   invisible(x)
 }
 
-# -- summary ------------------------------------------------------------------
+# Summary ----------------------------------------------------------------------
 
 #' Summarise an assimilative causal inference result
 #'
 #' Summarises an `aci` object into the quantities a reader needs to judge the
-#' result rather than only to read it: the distribution of the
+#' result rather than only to read it. These are the distribution of the
 #' causal-information metric, where and when it peaks, and the diagnostics that
 #' say whether the numerical assumptions held.
 #'
@@ -111,7 +111,7 @@ print.aci <- function(x, ...) {
 #' @param object An `aci` object, as returned by [aci()].
 #' @param ... Ignored, for compatibility with [summary()].
 #'
-#' @returns An object of class `summary.aci`: a list with the number of steps
+#' @returns An object of class `summary.aci`, a list with the number of steps
 #'   `n`, the step `dt`, the time `span`, the model `label`, the metric
 #'   five-number summary `metric`, the peak metric value `peak` and its time
 #'   `peak_time`, the smallest covariances `min_filter_cov` and
@@ -197,7 +197,7 @@ print.summary.aci <- function(x, ...) {
   invisible(x)
 }
 
-# -- extraction ---------------------------------------------------------------
+# Extraction -------------------------------------------------------------------
 
 #' Coerce an assimilative causal inference result to a data frame
 #'
@@ -233,14 +233,14 @@ as.data.frame.aci <- function(x, row.names = NULL, optional = FALSE, ...) {
   )
 }
 
-# -- plot ---------------------------------------------------------------------
+# Plot -------------------------------------------------------------------------
 
 #' Plot an assimilative causal inference result
 #'
 #' Draws the observed signal and the causal-information metric on a shared time
-#' axis, the pair of panels that carries the method's reading: bursts in the
-#' observed signal above, and the steps at which the future of that signal
-#' sharpens the estimate of the unobserved component below.
+#' axis. The upper panel shows bursts in the observed signal. The lower panel
+#' shows the steps at which the future of that signal sharpens the estimate of
+#' the unobserved component.
 #'
 #' The method uses base graphics so that plotting costs the package no
 #' dependency. The colours are chosen to remain distinguishable in the common

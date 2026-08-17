@@ -8,9 +8,9 @@
 # reproducible by anyone with `shasum -a 256`; the MD5 is what this gate checks,
 # because `tools::md5sum()` is base R at every version the package supports
 # whereas `tools::sha256sum()` arrived only in R 4.5.0. Collision resistance is
-# not the property wanted here -- detecting accidental drift in a committed
-# fixture is -- and the two hashes are asserted to describe the same file by the
-# refresh procedure recorded in the manifest.
+# not the property wanted here (detecting accidental drift in a committed
+# fixture is), and the two hashes are asserted to describe the same file by
+# the refresh procedure recorded in the manifest.
 
 .aci_manifest_path <- function() {
   path <- system.file("extdata", "oracle-manifest.yml", package = "aciR")
@@ -45,9 +45,9 @@
 # The lines are read raw, not trimmed: indentation is what distinguishes a
 # member of the block from its sibling at the parent level, and trimming it
 # away made this reader swallow `measured_on: 2026-07-15` from the enclosing
-# block -- a date that a permissive number pattern then happily accepted,
-# because a hyphen is also a minus sign. The pattern below matches a number in
-# decimal or scientific form and nothing else.
+# block, a date that a permissive number pattern then accepted, because a
+# hyphen is also a minus sign. The pattern below matches a number in decimal
+# or scientific form and nothing else.
 .aci_manifest_numbers <- function(block, indent = 4L) {
   lines <- readLines(.aci_manifest_path(), warn = FALSE)
   start <- grep(sprintf("^\\s*%s:\\s*$", block), lines)
@@ -150,15 +150,15 @@ test_that("every shipped fixture matches its recorded hash", {
 })
 
 test_that("the manifest's recorded errors are the errors actually observed", {
-  # The manifest asserts a measured quantity -- the agreement between this
-  # package and its oracles. A number like that is only worth reading if it
+  # The manifest asserts a measured quantity, the agreement between this
+  # package and its oracles. A number like that means something only if it
   # came from a run, and a hand-typed one is indistinguishable from a
   # remembered or invented one until something checks it. This test is that
   # something: it recomputes both errors and holds the manifest to them.
   #
   # The tolerance is a factor of ten, which is loose against the floating-point
   # variation a different platform or BLAS produces (observed: well under 2x)
-  # and tight against the failure it exists to catch -- a plausible-looking
+  # and tight against the failure it exists to catch, a plausible-looking
   # value that was never measured.
   recorded <- .aci_manifest_numbers("observed_max_abs_error")
   expect_setequal(names(recorded), c("dyad", "cross"))

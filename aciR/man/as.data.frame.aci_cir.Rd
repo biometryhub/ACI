@@ -23,8 +23,8 @@ it is threshold-by-time and does not belong in the same rectangle.
 \details{
 \code{monotone} is carried because it is the condition under which \code{objective}
 and \code{objective_exact} are the same functional, and it is what
-\code{\link[=summary.aci_cir]{summary.aci_cir()}} tells the reader to look at; a diagnostic reachable only
-through a print method is not much of a diagnostic.
+\code{\link[=summary.aci_cir]{summary.aci_cir()}} directs the reader to. A diagnostic reachable only
+through a print method cannot be used programmatically.
 }
 \examples{
 model <- aci_dyad_model()

@@ -33,7 +33,7 @@ the ratio of the smoothed to the filtered covariance.
 
 The dispersion part is evaluated in a form that stays accurate when the two
 covariances nearly agree. Writing the covariance ratio as \code{1 + d}, the
-naive expression subtracts two nearly equal quantities and loses precision
+direct expression subtracts two nearly equal quantities and loses precision
 exactly where the metric is smallest; the form used here does not. Values
 that round to a small negative number are clamped to zero, and anything
 more negative than round-off is an error rather than a result. The number

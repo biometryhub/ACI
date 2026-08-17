@@ -6,7 +6,7 @@
 # cannot: the dyad has independent noise, so its oracle never exercises the
 # terms carrying the noise cross-covariance.
 
-# -- analytic fixed points ----------------------------------------------------
+# Analytic fixed points --------------------------------------------------------
 
 # The filtered covariance of a constant-coefficient CGNS obeys
 #   dR/dt = 2 L_y R + S_yoS_y - (S_yoS_x + R L_x)^2 / S_xoS_x
@@ -118,7 +118,7 @@ test_that("the smoother matches its analytic fixed point", {
   expect_lt(RT_star, R_star)
 })
 
-# -- terminal identity --------------------------------------------------------
+# Terminal identity ------------------------------------------------------------
 
 test_that("the smoother equals the filter at the final step", {
   # Conditioning on the whole observed path and on the path up to the final
@@ -134,7 +134,7 @@ test_that("the smoother equals the filter at the final step", {
   expect_identical(fit$aci[n], 0)
 })
 
-# -- zero-information identity ------------------------------------------------
+# Zero-information identity ----------------------------------------------------
 
 .zero_information_metric <- function(dt) {
   n <- as.integer(4 / dt) + 1L
@@ -175,7 +175,7 @@ test_that("the zero-information residual is second order in the step", {
   expect_equal(fine / finer, 4, tolerance = 0.15)
 })
 
-# -- metric domain ------------------------------------------------------------
+# Metric domain ----------------------------------------------------------------
 
 test_that("the metric is exactly zero for identical posteriors", {
   post <- list(mean = c(1, 2, 3), cov = c(0.5, 0.5, 0.5))
@@ -201,7 +201,7 @@ test_that("exact zeros are not counted as round-off clamps", {
 })
 
 test_that("the metric is accurate near a covariance ratio of one", {
-  # The naive form of the dispersion term, 0.5 * (-log(r) + r - 1), subtracts
+  # The direct form of the dispersion term, 0.5 * (-log(r) + r - 1), subtracts
   # two nearly equal quantities and collapses to exactly zero here, losing the
   # value entirely. The cancellation-resistant form recovers it.
   post <- list(mean = c(1, 2, 3), cov = c(0.5, 0.5, 0.5))

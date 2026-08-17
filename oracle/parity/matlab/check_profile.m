@@ -17,7 +17,7 @@ function failures = check_profile(workspace_path, conditions)
 w = load(workspace_path);
 names = fieldnames(w);
 for i = 1:numel(names)
-    eval([names{i} ' = w.(names{i});']);       %#ok<EVLDIR> -- declared checks
+    eval([names{i} ' = w.(names{i});']);       %#ok<EVLDIR>, declared checks
 end
 
 failures = {};

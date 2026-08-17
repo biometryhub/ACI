@@ -5,7 +5,7 @@
 % ANYWHERE ELSE IN THE PACKAGE.
 %
 % Every scalar model in the reference implementation sets the noise
-% cross-covariance to zero, and every ENSO script says so in as many words --
+% cross-covariance to zero, and every ENSO script says so in as many words,
 % "NOISE CROSS-INTERACTION TERMS ARE ABSENT FROM THIS MODEL SO WE DO NOT DEFINE
 % THE ASSOCIATED MATRIX-VALUED FUNCTIONALS IN THIS SCRIPT FOR SIMPLICITY",
 % thirty-five times across the five files. So the matrix-valued cross-noise

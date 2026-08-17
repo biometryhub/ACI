@@ -1,4 +1,4 @@
-# -- the truncation path, on a system fast enough to reach it ------------------
+# The truncation path, on a system fast enough to reach it ---------------------
 #
 # `tol` stops the accumulated update product once it can no longer move the
 # estimate. On every system this package ships the product never gets there:
@@ -7,9 +7,9 @@
 # path that is never exercised is a path nobody has checked.
 #
 # The fixture below is synthetic on purpose. The identity under test is
-# algebraic -- once the running product is negligible, filling the rest of the
+# algebraic (once the running product is negligible, filling the rest of the
 # sequence forward must leave the fully informed posterior where a `tol = 0`
-# walk leaves it -- and that identity does not care where the contraction came
+# walk leaves it), and that identity does not care where the contraction came
 # from. Waiting for a "realistic" fast contraction is how this path stays
 # untested.
 #
@@ -45,7 +45,7 @@
 test_that("the fixture contracts once settled, and grows before it does", {
   # A precondition, asserted rather than assumed. If the system stops
   # contracting, every assertion below would pass vacuously against a branch
-  # that never ran -- which is the failure this whole file exists to prevent.
+  # that never ran, which is the failure this whole file exists to prevent.
   f <- .fast_contraction_system()
   aux <- aciR:::.aci_online_aux_mv(f$x, f$comp, f$dt, f$filt)
   radius <- vapply(seq_len(dim(aux$E_j)[3L]), function(j) {
@@ -56,7 +56,7 @@ test_that("the fixture contracts once settled, and grows before it does", {
   expect_lt(stats::median(radius), 0.85)
   expect_lt(max(radius[-seq_len(20L)]), 1)
 
-  # And the part worth keeping. The paper bounds the spectral radius of each
+  # And the substantive part. The paper bounds the spectral radius of each
   # factor below one, and that bound is a statement about the SETTLED filter,
   # not about every step. Here the first few factors exceed one, because the
   # filter covariance starts at R0 = 0.1 rather than at its fixed point, so

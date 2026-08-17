@@ -1,17 +1,17 @@
-# -- minimal-substitution reduction of a reference script ----------------------
+# minimal-substitution reduction of a reference script -------------------------
 #
 # The reference scripts fix their problem size in top-level literal assignments
 # and then run to completion, allocating objects that do not fit on a
 # workstation at the published settings. To obtain a gold workspace we must run
-# them smaller, and the honest way to do that is a substitution small enough to
-# be proved harmless rather than asserted to be.
+# them smaller, and the substitution that does so must be small enough to be
+# proved harmless rather than asserted to be.
 #
 # `reduce_script()` replaces declared literal assignments and then checks its
 # own work: exactly the declared lines changed, each of them a bare assignment
 # on both sides, and the file still the same length so that the line ranges the
 # extraction manifest depends on still address the same code.
 
-# -- byte-preserving line access -----------------------------------------------
+# byte-preserving line access --------------------------------------------------
 #
 # The reference scripts are CRLF-terminated with an unterminated final line.
 # Reading with `readLines()` and writing with `writeLines()` silently rewrites
@@ -47,7 +47,7 @@
   writeBin(charToRaw(enc2utf8(text)), connection)
 }
 
-# -- helpers -------------------------------------------------------------------
+# helpers ----------------------------------------------------------------------
 
 # Split a `name=value; name=value` knob field into a named character vector.
 .parse_knobs <- function(spec) {
@@ -63,7 +63,7 @@
   sprintf("^%s\\s*=\\s*[-+0-9.eE]+\\s*;\\s*$", name)
 }
 
-# -- reduction -----------------------------------------------------------------
+# reduction --------------------------------------------------------------------
 
 #' Apply the declared knobs to a reference script.
 #'
@@ -87,8 +87,8 @@ reduce_script <- function(source_path, knobs, target_path, sections = NULL) {
   # direction and an array in the other.
   #
   # A runner is therefore composed from declared line ranges of the reference,
-  # in file order -- the same lines a user executes when following the script's
-  # own instructions. Nothing is retyped or reordered; only selected.
+  # in file order, which is the same lines a user executes when following the
+  # script's own instructions. Nothing is retyped or reordered; only selected.
   header <- character(0)
   if (!is.null(sections)) {
     index <- unlist(lapply(sections, function(range) seq.int(range[1L],

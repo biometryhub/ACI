@@ -1,7 +1,7 @@
-# -- conditional assimilative causal inference ---------------------------------
+# Conditional assimilative causal inference ------------------------------------
 #
 # The metric as it stands asks what the observed process, taken whole, says
-# about the unobserved one. Conditional ACI asks a sharper question: what does
+# about the unobserved one. Conditional ACI asks a sharper question. What does
 # ONE observed component say about the unobserved state, given that the others
 # are also being watched?
 #
@@ -9,15 +9,15 @@
 # simpler than it first looks. The filter weights each observed component by
 # the inverse of the observation-noise covariance. Inflating a component's
 # observational uncertainty without bound sends its weight to zero, which is
-# the same as declining to condition on it. So the conditional question is
-# asked by handing the filter an inverse Grammian that is zero everywhere
-# except on the target block -- an object that is deliberately not the inverse
-# of any covariance, which is why the components schema admits
+# the same as declining to condition on it. The conditional question is
+# therefore asked by handing the filter an inverse Grammian that is zero
+# everywhere except on the target block. That object is deliberately not the
+# inverse of any covariance, which is why the components schema admits
 # `S_xoS_x_inv` directly.
 #
 # What this changes is the ESTIMAND, not the arithmetic. The result is a
-# statement about a different quantity, and the assumptions vignette says so;
-# it is not a variance-reduction trick applied to the same one.
+# statement about a different quantity, and the assumptions vignette says so.
+# It is not a variance reduction applied to the same quantity.
 
 #' Condition the causal question on a subset of the observed components
 #'
@@ -39,11 +39,11 @@
 #' supported only on the target block. That object is not the inverse of a
 #' covariance, and it is not required to be.
 #'
-#' A component whose observation noise is exactly zero cannot be a target: the
-#' construction needs its noise covariance to be invertible on the target
-#' block. The reference implementation meets this by adding a small artificial
-#' noise to such a component, which is a modelling decision and is reported
-#' here as an error rather than made silently.
+#' A component whose observation noise is exactly zero cannot be a target,
+#' because the construction needs its noise covariance to be invertible on the
+#' target block. The reference implementation meets this by adding a small
+#' artificial noise to such a component, which is a modelling decision and is
+#' reported here as an error rather than made silently.
 #'
 #' @param comp A vector-valued conditional Gaussian components list; see
 #'   [aci_components]. The scalar schema has only one observed component and so
@@ -74,7 +74,7 @@
 #' @section Estimand:
 #'
 #' The metric is the relative entropy
-#' \eqn{KL(p(y_t \mid x_{0:T}, M) \| p(y_t \mid x_{0:t}, M))}: a property of
+#' \eqn{KL(p(y_t \mid x_{0:T}, M) \| p(y_t \mid x_{0:t}, M))}, a property of
 #' a pair of model-conditional posteriors. It is not \eqn{p(y \mid do(x))},
 #' not a Granger test, and not transfer entropy, although all four can be large
 #' at the same instants on a conditional Gaussian system.
@@ -84,8 +84,8 @@
 #' observation-noise Grammian means "stop updating on this channel"; it does
 #' not mean the channel was absent, and it is not an adjustment in the
 #' do-calculus sense. The non-target components still drive the drift, which is
-#' the entire point of the construction and the thing a reader arriving from
-#' the interventional literature is most likely to get backwards.
+#' the entire point of the construction and the point most easily misread by a
+#' reader arriving from the interventional literature.
 #'
 #' @export
 aci_conditional <- function(comp, target) {
@@ -148,9 +148,8 @@ aci_conditional <- function(comp, target) {
 
   # The masked weight inherits the time-variation of the covariance it is
   # derived from. Building it from the first step alone would freeze a weight
-  # that should move -- the same silent failure the vector validator once had,
-  # and it would bite exactly where it is hardest to notice, since the
-  # conditional result has no unconditional counterpart to be compared against.
+  # that should move, and the failure would be silent, since the conditional
+  # result has no unconditional counterpart to be compared against.
   varying <- length(dim(comp$S_xoS_x)) == 3L
   n <- if (varying) dim(comp$S_xoS_x)[3L] else 1L
   steps <- seq_len(n)

@@ -42,7 +42,7 @@ scalar system means \code{S_xoS_x * S_yoS_y - S_yoS_x^2} is non-negative. A
 components list that violates any of these conditions is rejected before
 the recursion starts.
 
-This schema is the package's expert-level extension surface: build a
+This schema is the package's extension surface for advanced use. Build a
 components list directly to run the core on a conditional Gaussian system
 for which aciR supplies no constructor. See \code{\link[=aci_dyad_components]{aci_dyad_components()}} for a
 worked example, and \code{\link[=aci_cgns_model]{aci_cgns_model()}} for the higher-level alternative.

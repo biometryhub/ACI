@@ -33,8 +33,8 @@ requires \code{sigma_x} and \code{d_sigma_x}.}
 
 \item{sigma_x}{Optional function of the observed state. Supplying it makes
 the observation noise multiplicative, overriding the model's constant
-\code{S_xoS_x} \strong{for the simulation only}. This is a simulation capability:
-the filter still requires a constant observation-noise covariance, so a
+\code{S_xoS_x} \strong{for the simulation only}. This is a simulation capability.
+The filter still requires a constant observation-noise covariance, so a
 path generated this way cannot yet be assimilated by this package.}
 
 \item{d_sigma_x}{Optional function of the observed state, the derivative of
@@ -62,17 +62,17 @@ and draws independent standard normal increments at each step.
 \details{
 The random increments come from R's generator, which differs from that of
 the reference MATLAB implementation, so a simulated path here does not
-reproduce the reference path even at a matching seed. This is expected: the
-independent-oracle grade of the numerical core is run on the MATLAB signal
-itself, not on a fresh simulation.
+reproduce the reference path even at a matching seed. The independent-oracle
+grade of the numerical core is therefore run on the MATLAB signal itself,
+not on a fresh simulation.
 
 Supplying \code{seed} makes the path reproducible without disturbing the calling
-session: the generator state is saved before the draw and restored when the
+session. The generator state is saved before the draw and restored when the
 function exits, so a seeded call has no effect on the sequence a caller
 would otherwise have seen. Leaving \code{seed} as \code{NULL} consumes the global
 stream in the ordinary way.
 
-What a matching seed cannot buy, supplied increments can. \code{increments}
+Supplied increments provide what a matching seed cannot. \code{increments}
 takes the standard normal variates the integrator would otherwise draw, one
 per transition in each of \code{dW_x} and \code{dW_y}, and no random numbers are
 generated at all. This is what makes the integration scheme gradeable

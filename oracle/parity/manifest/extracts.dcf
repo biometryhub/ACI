@@ -9,7 +9,7 @@
 ## nowhere else, which is what makes it safe to supply a stub for it on a
 ## dataset that has no such variable.
 ##
-## Generated functions are NOT committed -- they reproduce code from a
+## Generated functions are NOT committed, because they reproduce code from a
 ## repository this project does not vendor (matlab_reference/ is gitignored as
 ## re-clonable). Run tools/run_parity.R to regenerate.
 
@@ -24,8 +24,8 @@ Pairs: aci_filter
 Note: The forward CGNS filter, together with the four noise Grammians it
  derives on the way in. Two initial conditions are literals inside this range
  rather than arguments: the mean starts at y(1), the true latent value, and
- the covariance at a hardcoded 0.1. The mean is reachable -- `y` is consumed
- only at index 1, asserted above, so a one-element stub selects it -- but the
+ the covariance at a hardcoded 0.1. The mean is reachable (`y` is consumed
+ only at index 1, asserted above, so a one-element stub selects it), but the
  covariance is not. R0 is therefore pinned at 0.1 for every paired comparison,
  and aciR's R0 argument is an interface extension, not a matched parameter.
 
@@ -66,7 +66,7 @@ Note: The fixed-lag online smoother, storing the full staggered triangle of
  posteriors as nested cell arrays. `fixed_lag` is an input because the
  reference sets it to N+1 one line above this range and never varies it; taking
  it as an argument is what allows the lag boundaries to be graded. The memory
- is quadratic in N -- at the published N = 30000 the three cell arrays come to
+ is quadratic in N. At the published N = 30000 the three cell arrays come to
  roughly 10.8 GB, which is why the harness runs at reduced sizes.
 
 Function: ref_cir_scalar
@@ -91,8 +91,8 @@ Lines: 549-561
 Inputs: eps_ord_values, subjective_CIR, max_RE_metric, lookahead_tolerance, dt
 Outputs: defn_objective_CIR
 Pairs: [absent in aciR]
-Note: The objective CIR by its DEFINITION -- the subjective ranges integrated
- over the threshold grid and normalised by the peak divergence -- as distinct
+Note: The objective CIR by its DEFINITION (the subjective ranges integrated
+ over the threshold grid and normalised by the peak divergence), as distinct
  from the efficient underestimate computed inside ref_cir_scalar. aciR
  implements the underestimate and documents the definition, but does not
  compute this quantity. Recorded as a capability gap, not a divergence; see the
@@ -111,7 +111,7 @@ Note: Model setup and the Euler-Maruyama signal generation, including the
  matters because the filter and smoother are O(N) and can therefore be graded
  at full scale even though the online smoother and CIR cannot. Its random draws
  are MATLAB's and are not reproducible in R, so it is never compared against
- aci_simulate() numerically -- only the components map is.
+ aci_simulate() numerically. Only the components map is.
 
 Function: ref_pp_filter_dir1
 Script: noisy_predator_prey_model.m
@@ -155,7 +155,7 @@ ConsumedOnly: y=1
 Pairs: aci_filter
 Note: Predator-prey, causal direction y(t) -> x. The PREDATOR x is observed and
  the PREY y unobserved. Same algebra as ref_pp_filter_dir1 with the labels
- exchanged -- which is precisely why the script's two directions collide: they
+ exchanged, which is precisely why the script's two directions collide: they
  assign the same names, so a top-to-bottom run leaves only this one standing.
 
 Function: ref_pp_smoother_dir2
@@ -190,7 +190,7 @@ Note: Common model setup, direction-one components, and direction-one signal
  one because the script interleaves its two causal directions; taking them in
  file order is exactly what a user does following its "RUN THIS CODE SECTION"
  instructions. N = 12000 is fixed inside the range, so this reproduces the
- PUBLISHED dataset -- which is what allows the committed fixtures to be
+ PUBLISHED dataset, which is what allows the committed fixtures to be
  re-graded at full scale, the filter and smoother both being O(N).
 
 Function: ref_pp_setup_dir2
@@ -211,7 +211,7 @@ Outputs: u, h_W, T_C, T_E, tau, I, L_x, L_y, f_x, f_y, S_x, S_y, N, dt, T, k_dt
 Pairs: aci_enso_parameters, aci_enso_components, aci_enso_model
 Note: Model setup and simulation for the configuration in which (T_C, T_E, I)
  are observed and (u, h_W, tau) are not. Every coefficient is matrix-valued and
- seasonally modulated, and BOTH noise covariances vary in time -- the only
+ seasonally modulated, and BOTH noise covariances vary in time. It is the only
  system in the reference for which that is true, and the reason aciR's
  validators must invert every slice rather than the first. The simulation is
  the reference's own, announced by its progress bar as a Milstein scheme; see
@@ -225,10 +225,10 @@ Inputs: T_C, T_E, I, u, h_W, tau, L_x, L_y, f_x, f_y, S_x, S_y, N, dt
 Outputs: filter_mean, filter_cov, S_xoS_x_inv, S_yoS_y
 Pairs: aci_filter
 Note: The vector CGNS filter on a three-dimensional observed and
- three-dimensional unobserved state. Two things are worth a reviewer's eye.
+ three-dimensional unobserved state. Two things need a reviewer's eye.
  .
- The observation-noise Grammian is inverted with pinv() -- a pseudoinverse,
- chosen by the authors "for stability concerns" -- where aciR uses a Cholesky
+ The observation-noise Grammian is inverted with pinv() (a pseudoinverse,
+ chosen by the authors "for stability concerns"), where aciR uses a Cholesky
  inverse and its validator requires positive-definiteness at every step. On a
  singular slice the reference returns a Moore-Penrose inverse and continues;
  aciR refuses. aciR is the stricter of the two, and the difference is real
@@ -259,8 +259,8 @@ Inputs: filter_mean_s, filter_cov_s, smoother_mean_s, smoother_cov_s
 Outputs: signal_smoother_filter, dispersion_smoother_filter, ACI_metric
 Pairs: aci_metric
 Note: The multivariate relative entropy, formed with det() and a right matrix
- division where aciR uses a Cholesky factorisation -- algebraically the same
- quantity, numerically a different route, so these two agree to round-off
+ division where aciR uses a Cholesky factorisation. That is algebraically the
+ same quantity, numerically a different route, so these two agree to round-off
  rather than exactly. Operates on the windowed `_s` slices rather than the full
  record.
 
@@ -339,7 +339,7 @@ Note: The one ENSO configuration that ships with CONDITIONAL ACI enabled, and
  the reason this record's input list could not be taken from the shared
  template. Line 1202, `S_xoS_x_inv(1, 1, :) = 1/sigma_C^2;`, carries leading
  whitespace rather than a comment marker and is live, so the block consumes
- `sigma_C` -- a name no other ENSO filter block mentions -- and the extract
+ `sigma_C` (a name no other ENSO filter block mentions), and the extract
  will not call without it. `sigma_h` is the second such name, consumed at line
  1211 to form the latent-noise Grammian, which the vector configuration takes
  from a matrix instead.
@@ -347,7 +347,7 @@ Note: The one ENSO configuration that ships with CONDITIONAL ACI enabled, and
  What that live line does is the conditional analysis itself. The
  pseudoinverse at line 1197 fills slice one, line 1202 then overwrites the
  (1,1) entry across every slice, and the per-step pinv at line 1251 is
- commented out as the script's own instructions direct -- so from step two the
+ commented out as the script's own instructions direct, so from step two the
  observation-noise inverse is diag(1/sigma_C^2, 0, 0) and only the T_C channel
  informs the latent state. This computes h_W(t) -> T_C | (u, T_E, tau, I),
  where the other four scripts compute an unconditional ACI. `S_x` is therefore
@@ -364,12 +364,12 @@ Inputs: filter_mean, filter_cov, L_x, L_y, f_y, S_yoS_y, S_xoS_x_inv, N, dt
 Outputs: smoother_mean, smoother_cov, E_j_matrices, F_j_matrices
 Pairs: aci_smoother, .aci_online_aux
 Note: Backward smoother and online-smoother auxiliaries for the h_W
- configuration, in one loop as elsewhere. It consumes no observation at all --
- the model carries no noise cross-interaction terms, so the backward mean
- update is driven by the filter statistics and `f_y` alone and never forms an
- observation increment. That is why the earlier attempt to derive its inputs
- from the vector template failed in the other direction from the filter's: it
- was handed T_C, T_E and I, which this range does not use.
+ configuration, in one loop as elsewhere. It consumes no observation at all,
+ because the model carries no noise cross-interaction terms, so the backward
+ mean update is driven by the filter statistics and `f_y` alone and never
+ forms an observation increment. That is why the earlier attempt to derive its
+ inputs from the vector template failed in the other direction from the
+ filter's: it was handed T_C, T_E and I, which this range does not use.
  .
  `F_j_matrices` is 1 x 3 x (N+1) here rather than scalar, the latent state
  being one-dimensional and the observation three-dimensional.
@@ -383,12 +383,12 @@ ConsumedOnly: T_C=1
 Pairs: aci_filter, aci_conditional
 Note: The configuration in which T_C alone is unobserved. Its observation is
  TWO-dimensional, (T_E, I), so S_xoS_x_inv is 2x2 where the other four scripts
- make it 3x3 -- and `L_y` is per-step here while `L_x` is constant, the mirror
+ make it 3x3, and `L_y` is per-step here while `L_x` is constant, the mirror
  of the tau and u cases. Both are reasons this input list could not be taken
  from a shared template.
  .
- Line 1209, `S_xoS_x_inv(1, 1, :) = 1/sigma_E^2;`, is LIVE -- in column one,
- with no comment marker -- and the per-step pinv at line 1255 is commented out.
+ Line 1209, `S_xoS_x_inv(1, 1, :) = 1/sigma_E^2;`, is LIVE (in column one,
+ with no comment marker), and the per-step pinv at line 1255 is commented out.
  This script therefore computes the CONDITIONAL quantity
  T_C(t) -> T_E | (u, h_W, tau, I), not the unconditional ACI. See the
  correction to F7 in the parity report; the earlier reading of this file was
@@ -415,7 +415,7 @@ ConsumedOnly: tau=1
 Pairs: aci_filter
 Note: The configuration in which tau alone is unobserved. This one takes `S_y`
  rather than a sigma scalar, because it forms the latent-noise Grammian as
- `S_y.^2` from a time-varying feedback -- a third distinct shape for the same
+ `S_y.^2` from a time-varying feedback, a third distinct shape for the same
  quantity across five scripts, and the reason the shared template could not
  supply it.
  .
@@ -442,8 +442,8 @@ Outputs: filter_mean, filter_cov, S_xoS_x_inv, S_yoS_y
 ConsumedOnly: u=1
 Pairs: aci_filter, aci_conditional
 Note: The configuration in which u alone is unobserved. Line 1205,
- `S_xoS_x_inv(1, 1, :) = 1/sigma_C^2;`, is LIVE -- in column one, with no
- comment marker -- and the per-step pinv at line 1253 is commented out, so
+ `S_xoS_x_inv(1, 1, :) = 1/sigma_C^2;`, is LIVE (in column one, with no
+ comment marker), and the per-step pinv at line 1253 is commented out, so
  this script computes the CONDITIONAL quantity u(t) -> T_C | (h_W, T_E, tau, I).
  See the correction to F7 in the parity report.
  .

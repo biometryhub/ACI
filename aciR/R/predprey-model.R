@@ -1,17 +1,17 @@
-# -- noisy predator-prey model -------------------------------------------------
+# Noisy predator-prey model ----------------------------------------------------
 #
 # A stochastic Lotka-Volterra pair. Unlike the dyad, neither variable is
-# privileged: the reference implementation studies the system twice, once with
+# privileged. The reference implementation studies the system twice, once with
 # the prey observed and the predator latent, and once the other way round. Both
 # directions are supported here, because the causal question the method asks is
 # directional and the two answers are not each other's mirror image.
 #
-# This is the model that needed a time-varying self-drift. In both directions
-# the latent variable's own damping depends on the OBSERVED state -- the
+# This is the model that requires a time-varying self-drift. In both directions
+# the latent variable's own damping depends on the OBSERVED state. The
 # predator's growth rate is set by how much prey it can see, and the prey's by
 # how many predators. That is still a conditional Gaussian system, since the
 # coefficient is measurable with respect to the observed path, but it is not a
-# constant, and the core carried only constants until now.
+# constant.
 
 #' Validate a predator-prey parameter list
 #'
@@ -121,8 +121,9 @@ aci_predprey_components <- function(x, p, direction) {
   direction <- .aci_check_direction(direction)
 
   if (identical(direction, "predator_to_prey")) {
-    # Observed: prey. Latent: predator. The prey equation supplies the observed
-    # drift, and the predator's own growth rate is set by the prey it sees.
+    # The prey is observed and the predator is latent. The prey equation
+    # supplies the observed drift, and the predator's own growth rate is set by
+    # the prey it sees.
     comp <- list(
       L_x = -p$delta * x,
       f_x = p$gamma * x,
@@ -132,7 +133,7 @@ aci_predprey_components <- function(x, p, direction) {
       S_yoS_y = p$sigma_x^2
     )
   } else {
-    # Observed: predator. Latent: prey.
+    # The predator is observed and the prey is latent.
     comp <- list(
       L_x = p$beta * x,
       f_x = -p$alpha * x,
@@ -155,7 +156,7 @@ aci_predprey_components <- function(x, p, direction) {
 #'
 #' The model is studied in two directions, and `direction` selects which. The
 #' two are genuinely different questions rather than one question and its
-#' mirror: the observed process differs, the latent process differs, and the
+#' mirror. The observed process differs, the latent process differs, and the
 #' causal-information metric is not symmetric between them.
 #'
 #' @param direction Character scalar, `"prey_to_predator"` (the default) or

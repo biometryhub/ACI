@@ -1,20 +1,20 @@
-# -- the vector dataset contract -----------------------------------------------
+# the vector dataset contract --------------------------------------------------
 #
 # The scalar bundle carries one column per per-step quantity. The vector bundle
 # has to carry arrays of matrices, and how those reach CSV is a real choice.
 # Three options, all viable:
 #
-#   (a) One row per time step, the slice flattened COLUMN-MAJOR -- chosen.
+#   (a) One row per time step, the slice flattened COLUMN-MAJOR (chosen).
 #       MATLAB's A(:,:,j)(:) and R's as.vector(A[,,j]) are both column-major, so
 #       neither side transposes and a transposition bug has nowhere to hide.
 #   (b) Long format: one row per (slice, i, j, value). Self-describing, but
-#       three times the bytes and both sides must reassemble -- more code on
-#       precisely the axis where the mistakes happen.
+#       three times the bytes and both sides must reassemble, which is more
+#       code on precisely the axis where the mistakes happen.
 #   (c) One file per matrix entry, A11.csv .. A33.csv. Trivially readable, but
 #       nine files per component and the naming becomes the contract.
 #
 # Noise is carried as the feedback matrices S_x and S_y rather than as the
-# Grammians, matching the scalar bundle -- and deliberately, because forming the
+# Grammians, matching the scalar bundle, and deliberately, because forming the
 # Grammians and inverting them is itself a place the two implementations part
 # company: the reference pseudo-inverts, aciR factorises.
 
@@ -69,7 +69,7 @@ vector_components <- function(d) {
   # Whether the observed and unobserved processes are driven by the SAME Wiener
   # increments or by disjoint ones decides the cross-Grammian entirely, and it
   # cannot be read off the two blocks: both are 3x3 either way. Declared in the
-  # bundle, and absent means refuse -- reading the ENSO blocks as shared gives a
+  # bundle, and absent means refuse. Reading the ENSO blocks as shared gives a
   # cross-Grammian of 0.38 and drives the filter covariance to NA by step 1872,
   # where that model's own script states the cross terms are absent.
   coupling <- d$meta$NoiseCoupling

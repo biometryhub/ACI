@@ -53,8 +53,9 @@ ranges are still returned, as lower bounds. Defaults to \code{0.1}.
 
 Because a censored time yields a bound rather than a hole, \code{margin}
 governs the flag rather than whether a number is reported at all, so a
-slightly wrong value is cheap. It is this package's device: the reference
-guards the same problem with an absolute lookahead chosen for one figure.}
+slightly wrong value has little consequence. It is this package's device.
+The reference guards the same problem with an absolute lookahead chosen
+for one figure.}
 
 \item{horizon}{Integer scalar or \code{NULL}. How many steps of the record each
 reported time may look forward across, counted from the start of the
@@ -75,16 +76,15 @@ only when \code{filt} is \code{NULL}.}
 An object of class \code{aci_cir}, a list with the reported \code{time}, the
 \code{objective} range at each time, the \code{objective_exact} range obtained by
 integrating the subjective ranges over the whole threshold grid rather
-than by the efficient approximation, the \code{subjective} range as a
-than by the efficient approximation, the \code{subjective} range as a
-matrix with one row per threshold and one column per time,
-\code{peak} divergence at each time, the logical matrix \code{subjective_censored}
-marking thresholds whose range ran past the retained margin, the character
-\code{status} (\code{"resolved"}, \code{"censored"}, \code{"below_threshold"} or
-\code{"insufficient"}), the logical \code{monotone} marking times whose divergence
-sequence decreases with lag -- the condition under which \code{objective} and
-\code{objective_exact} are the same functional -- and the logical \code{saturated},
-which is \code{status == "censored"}.
+than by the efficient approximation, the \code{subjective} range as a matrix
+with one row per threshold and one column per time, the \code{peak} divergence
+at each time, the logical matrix \code{subjective_censored} marking thresholds
+whose range ran past the retained margin, the character \code{status}
+(\code{"resolved"}, \code{"censored"}, \code{"below_threshold"} or \code{"insufficient"}), the
+logical \code{monotone} marking times whose divergence sequence decreases with
+lag (the condition under which \code{objective} and \code{objective_exact} are the
+same functional), and the logical \code{saturated}, which is
+\code{status == "censored"}.
 }
 \description{
 Computes the subjective and objective causal influence range of the
@@ -107,26 +107,26 @@ the subjective ranges over all thresholds.
 
 The computation is quadratic in the length of \code{window}, because every
 reported time is compared against every later observation. Choose the window
-accordingly: a few thousand steps is comfortable, and reproducing a
-figure at the scale of the published one is a batch computation rather than
-an interactive one.
+accordingly. A few thousand steps is comfortable, and reproducing a figure
+at the scale of the published one is a batch computation rather than an
+interactive one.
 
 A reported time close to the end of the record cannot be resolved, because
 the observations that would settle it do not exist. Such a time is not
-unmeasured, though: its range is \strong{right-censored}, and the truncated value
-is a lower bound on the true one. The result therefore returns the value and
-records the caveat in \code{status}, rather than discarding what the record does
-support. Only a time with fewer than three later observations, where no
-quadrature is possible at all, returns \code{NA}.
+unmeasured. Its range is \strong{right-censored}, and the truncated value is a
+lower bound on the true one. The result therefore returns the value and
+marks that time \code{"censored"} in \code{status}, rather than discarding what the
+record does support. Only a time with fewer than three later observations,
+where no quadrature is possible at all, returns \code{NA}.
 
 \code{objective} and \code{objective_exact} are different functionals, not two
 quadratures of one. They coincide when the divergence decreases with lag, by
 the layer-cake identity. Both this package and the reference measure the
 range as the \strong{last} time the divergence exceeds a threshold, which is at
 least the measure of the superlevel set and is strictly larger the moment
-the sequence is not monotone -- which is the common case on a truncated
-\code{horizon}. Seeing \code{objective} below \code{objective_exact} is that definitional
-gap, not a numerical defect in either.
+the sequence is not monotone. A sequence that is not monotone is the common
+case on a truncated \code{horizon}. Seeing \code{objective} below \code{objective_exact} is
+that definitional gap, not a numerical defect in either.
 }
 \examples{
 model <- aci_dyad_model()

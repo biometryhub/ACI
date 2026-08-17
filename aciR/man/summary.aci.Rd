@@ -12,7 +12,7 @@
 \item{...}{Ignored, for compatibility with \code{\link[=summary]{summary()}}.}
 }
 \value{
-An object of class \code{summary.aci}: a list with the number of steps
+An object of class \code{summary.aci}, a list with the number of steps
 \code{n}, the step \code{dt}, the time \code{span}, the model \code{label}, the metric
 five-number summary \code{metric}, the peak metric value \code{peak} and its time
 \code{peak_time}, the smallest covariances \code{min_filter_cov} and
@@ -21,7 +21,7 @@ round-off-clamped metric values \code{n_clamped}.
 }
 \description{
 Summarises an \code{aci} object into the quantities a reader needs to judge the
-result rather than only to read it: the distribution of the
+result rather than only to read it. These are the distribution of the
 causal-information metric, where and when it peaks, and the diagnostics that
 say whether the numerical assumptions held.
 }

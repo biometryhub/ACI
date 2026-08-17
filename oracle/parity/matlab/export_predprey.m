@@ -19,8 +19,8 @@ function export_predprey(workspace_path, direction, bundle_dir, report_dir)
 %
 %   aciR always calls the observed process x and the latent one y, which is the
 %   dyad's convention and therefore direction two's. Direction one is the
-%   mirror, and its columns are exchanged here -- once, in MATLAB, next to the
-%   discriminator that proves which direction was captured.
+%   mirror, and its columns are exchanged here (once, in MATLAB, next to the
+%   discriminator that proves which direction was captured).
 %
 %   Nothing numerical is recomputed. The Grammians written below are the values
 %   the reference's own filter block formed, not a re-derivation from the
@@ -155,8 +155,8 @@ writetable( ...
                             'F_j'}), ...
     sprintf('%s.csv', stem));
 
-% The reference runs the online smoother at one lag only -- it sets
-% fixed_lag = N+1 unconditionally -- so that is the only lag there is anything
+% The reference runs the online smoother at one lag only (it sets
+% fixed_lag = N+1 unconditionally), so that is the only lag there is anything
 % to compare against, and the file is named with it rather than with a bare
 % "full" so the comparison cannot drift onto a different quantity.
 final_mean = w.online_fixed_mean{end}(:);

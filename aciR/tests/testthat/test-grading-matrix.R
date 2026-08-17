@@ -1,11 +1,11 @@
-# -- the grading matrix --------------------------------------------------------
+# The grading matrix -----------------------------------------------------------
 #
 # This file exists because of a defect this package found in itself, and it is
 # the mechanism that makes that class of defect impossible rather than merely
 # remembered.
 #
 # The defect: a term can be publicly reachable, execute on every run, be
-# reported as covered by line coverage AND be graded by an oracle -- and still
+# reported as covered by line coverage AND be graded by an oracle, and still
 # be checked against nothing, because the fixture that grades it happens to
 # multiply it by zero. That is what happened to the scalar noise
 # cross-covariance, and it is the failure mode of every oracle whose scope is
@@ -38,11 +38,11 @@
 
 # ---- Known gaps, each with a reason ------------------------------------------
 #
-# A cell may appear here only with a stated reason. This list is the honest
-# part of the register: it is what the package does NOT grade, written down
-# where a reader will find it rather than discovered later.
-# Empty, and that is a measured statement rather than an aspiration: this list
-# held two entries when the register was first built -- the online smoother and
+# A cell may appear here only with a stated reason. This list records what the
+# package does NOT grade, written down where a reader will find it rather than
+# discovered later.
+# Empty, and that is a measured statement rather than an aspiration. This list
+# held two entries when the register was first built. The online smoother and
 # the causal influence range were graded only by a fixture whose noise
 # cross-covariance was zero. The register is what found them; the
 # `cir_cross` fixture is what closed them.
@@ -209,7 +209,7 @@ test_that("every declared gap is really a gap", {
   # Asserted before the loop, so this test still says something when the
   # exemption list is empty. A test whose only assertions live inside a loop
   # over an empty list is a test that skips, and a gate that skips is not a
-  # gate -- which is the same standard the oracle tests are held to.
+  # gate, which is the same standard the oracle tests are held to.
   expect_identical(sum(!matrix_df$graded), length(.aci_gm_known_gaps))
 
   for (gap in .aci_gm_known_gaps) {
@@ -253,11 +253,11 @@ test_that("the register covers the schema it claims to", {
   expect_gt(sum(matrix_df$graded), 20L)
 })
 
-# -- the sibling class: declared time-varying, read as constant ----------------
+# The sibling class, declared time-varying and read as constant ----------------
 #
 # The register above catches a term that is present but ANNIHILATED. It cannot
 # catch a term that is present, non-zero, and silently read only at its first
-# step -- which produces a plausible result computed from an input the caller
+# step, which produces a plausible result computed from an input the caller
 # did not supply.
 #
 # That defect was real. The vector validator inverted only the first slice of a
@@ -271,8 +271,8 @@ test_that("the register covers the schema it claims to", {
 #   a coefficient is genuinely consumed only if PERTURBING IT CHANGES THE
 #   ANSWER.
 #
-# So each term that may vary in time is perturbed at a LATE step -- late enough
-# that a reader of the first step alone would not notice -- and the output must
+# So each term that may vary in time is perturbed at a LATE step (late enough
+# that a reader of the first step alone would not notice), and the output must
 # move. A term whose perturbation changes nothing is either ignored or dead.
 
 .aci_gm_perturb_at <- function(n) as.integer(round(0.75 * n))

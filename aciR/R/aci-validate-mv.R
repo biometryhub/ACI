@@ -1,22 +1,22 @@
-# -- contracts for the vector-valued components schema -------------------------
+# Contracts for the vector-valued components schema ----------------------------
 #
 # The scalar contract boundary in aci-validate.R checks lengths and signs. The
-# vector one has to check conformability as well: a components list is a set of
+# vector one has to check conformability as well. A components list is a set of
 # matrices that must compose, and a mismatch produces either a low-level error
 # from the first multiplication or, worse, a silently recycled one.
 #
 # The dimensions are inferred from the noise Grammians rather than declared,
-# because those are the two entries whose shape is unambiguous: S_xoS_x is
+# because those are the two entries whose shape is unambiguous. S_xoS_x is
 # square in the observed dimension and S_yoS_y is square in the unobserved one.
 # Everything else is checked against them.
 
 #' Is this a vector-valued components list?
 #'
-#' The discriminator is the shape of the latent-noise covariance: a matrix
+#' The discriminator is the shape of the latent-noise covariance. A matrix
 #' means the unobserved component is a vector, a bare number means it is
 #' scalar. A one-by-one matrix therefore routes to the vector path, which is
-#' deliberate -- someone who wrote their system in matrices gets the matrix
-#' recursions, and the two agree.
+#' deliberate. A system written in matrices gets the matrix recursions, and the
+#' two agree.
 #'
 #' @param comp A components list.
 #'
@@ -108,8 +108,8 @@
 #'
 #' Checks conformability, symmetry and admissibility, then returns the list
 #' with `S_xoS_x_inv` filled in. The inverse is computed once here rather than
-#' at every step of the recursion, and it may also be SUPPLIED by the caller:
-#' the conditional causal-inference construction works by handing in an inverse
+#' at every step of the recursion, and it may also be SUPPLIED by the caller.
+#' The conditional causal-inference construction works by handing in an inverse
 #' that is deliberately not the inverse of anything, so that the non-target
 #' observations carry no weight.
 #'
@@ -175,14 +175,14 @@
   }
 
   # The observation-noise covariance is inverted by the filter, so it must be
-  # positive definite and not merely non-negative -- at EVERY step it is
-  # supplied for, not merely the first.
+  # positive definite and not merely non-negative, at EVERY step it is supplied
+  # for and not merely the first.
   #
   # Inverting only the first slice of a time-varying covariance is a silent
-  # wrong answer rather than an error: the recursion runs, the result looks
-  # plausible, and the variation the caller supplied is discarded. This code
-  # did exactly that until it was probed by perturbing a late slice and
-  # observing the output not move at all.
+  # wrong answer rather than an error. The recursion runs, the result looks
+  # plausible, and the variation the caller supplied is discarded. Perturbing a
+  # late slice and observing whether the output moves is the probe that detects
+  # it.
   if (is.null(comp$S_xoS_x_inv)) {
     varying <- length(dim(comp$S_xoS_x)) == 3L
     steps <- if (varying) seq_len(n) else 1L

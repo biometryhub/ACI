@@ -21,14 +21,14 @@ knitr::opts_chunk$set(
 A test suite written by the author of the code it tests can only prove the code
 is self-consistent. If the author misread an equation, the test encodes the
 same misreading and passes. For a package whose entire purpose is to reproduce
-a published numerical method, self-consistency is close to worthless: the
+a published numerical method, self-consistency is close to worthless. The
 question is not whether aciR agrees with itself, but whether it agrees with the
 method.
 
 Every numerical claim aciR makes is therefore graded against a reference the
 package did not produce. This article records what those references are, how
-they were generated, what each one covers, and -- the part most easily
-overlooked -- what each one does *not* cover.
+they were generated, what each one covers, and (the part most easily
+overlooked) what each one does *not* cover.
 
 ```{r library}
 library(aciR)
@@ -42,19 +42,19 @@ vocabulary.
 A test oracle is the mechanism that decides, for a given input, whether a
 program's output is correct (Barr et al., 2015,
 [doi:10.1109/TSE.2014.2372785](https://doi.org/10.1109/TSE.2014.2372785)).
-Most software has one close to hand -- a specification, a worked example, an
-answer that is obviously right. A program written to compute a quantity that is
-not otherwise known has none, and Weyuker (1982,
+Most software has one close to hand, whether a specification, a worked example
+or an answer that is obviously right. A program written to compute a quantity
+that is not otherwise known has none, and Weyuker (1982,
 [doi:10.1093/comjnl/25.4.465](https://doi.org/10.1093/comjnl/25.4.465)) called
 such a program non-testable. The usual recourse is a pseudo-oracle, a second
 implementation of the same specification, written independently, whose
 disagreement with the first exposes an error in one of them (Davis and Weyuker,
 1981, [doi:10.1145/800175.809889](https://doi.org/10.1145/800175.809889)).
 
-We use "grounded" for something narrower -- an oracle whose expected values
-come from a source that did not also produce the code under test. The term is
-ours rather than the literature's, and the distinction it draws is the one the
-rest of this article turns on.
+We use "grounded" for something narrower, an oracle whose expected values come
+from a source that did not also produce the code under test. The term is ours
+rather than the literature's, and the distinction it draws is the one the rest
+of this article turns on.
 
 ## The three oracles
 
@@ -85,15 +85,15 @@ The flagship oracle. A MATLAB harness reproduces the deterministic core of
 `dyad_interaction_model.m` from the reference implementation at
 [github.com/marandmath/ACI_code](https://github.com/marandmath/ACI_code)
 (MIT licence, commit `733c49f`), using that reference's own seed and
-parameters. It writes two files: the observed signal, and the expected filter
-mean, filter covariance, smoother mean, smoother covariance and ACI metric at
-every hundredth step.
+parameters. It writes two files. The first holds the observed signal. The
+second holds the expected filter mean, filter covariance, smoother mean,
+smoother covariance and ACI metric at every hundredth step.
 
 aciR then runs its *own* filter, smoother and metric on that signal and must
 reproduce all five series. The comparison is at 301 sampled indices of a
 30,001-step trajectory, and the gate is a maximum absolute error below `1e-6`.
 
-The observed agreement is far tighter than the gate:
+The observed agreement is far tighter than the gate.
 
 | Oracle | Maximum absolute error | Gate |
 |---|---|---|
@@ -106,30 +106,29 @@ arithmetic can carry.
 
 ### 2. The cross-noise fixture, and why it had to exist
 
-The dyad oracle is strong, but its scope is narrower than it first appears, and
-the gap is instructive.
+The dyad oracle is strong, but its scope is narrower than it first appears.
 
-Every scalar model in the reference implementation -- the dyad and the noisy
-predator-prey model alike -- sets the noise decomposition so that the noise
+Every scalar model in the reference implementation, the dyad and the noisy
+predator-prey model alike, sets the noise decomposition so that the noise
 cross-covariance is zero. The filter's update carries a term
 `aux = S_yoS_x + R * L_x`, and the smoother carries `A_j` and a transport term,
 all of which involve that cross-covariance. On every run of the dyad fixture
 those terms *execute*, and are multiplied by zero.
 
-The consequence is worth stating plainly. Line coverage sees the arithmetic run
-and reports it covered. The oracle sees the outputs agree and reports them
-graded. Neither is wrong, and yet the cross-covariance terms had never been
-checked against anything -- while `aci_cgns_model(S_yoS_x = ...)` exposes them
-to users as a supported path. A high coverage figure on a graded path had been
-manufacturing confidence in an ungraded path beside it.
+Two measurements therefore say less than they appear to. Line coverage sees the
+arithmetic run and reports it covered. The oracle sees the outputs agree and
+reports them graded. Neither measurement is wrong, and neither one reaches the
+cross-covariance terms, which `aci_cgns_model(S_yoS_x = ...)` exposes to users
+as a supported path. Coverage of the graded path was therefore standing in as
+evidence about an ungraded path beside it.
 
-So aciR ships a second harness, `aci_oracle_cross.m`, which is the reference
-dyad with correlated noise switched on. It has no upstream counterpart, because
-upstream has no scalar model that exercises these terms. It is therefore a
-second independent implementation of the published equations in a different
-language and runtime. Agreement with it refutes a transcription error on the R
-side over the full transient. It is *not* an authors'-reference grounding, and
-the manifest says so.
+aciR ships a second harness for that path, `aci_oracle_cross.m`, which is the
+reference dyad with correlated noise switched on. It has no upstream
+counterpart, because upstream has no scalar model that exercises these terms.
+It is therefore a second independent implementation of the published equations
+in a different language and runtime. Agreement with it refutes a transcription
+error on the R side over the full transient. It is *not* an authors'-reference
+grounding, and the manifest says so.
 
 ### 3. The analytic identities, which depend on no implementation
 
@@ -138,7 +137,7 @@ algebra.
 
 For a constant-coefficient system the stationary filtered covariance is the
 positive root of an algebraic Riccati equation, obtained by setting the
-covariance derivative to zero:
+covariance derivative to zero.
 
 $$
 L_x^2 R^2 \;-\; 2\left(L_y S_{xx} - S_{yx} L_x\right) R
@@ -152,15 +151,15 @@ from the governing equations and is independent of aciR *and* of MATLAB. The
 package's tests also check the smoother's analogous fixed point, the terminal
 identity, and the zero-information limit.
 
-The zero-information test deserves a note, because it is where a naive test
-would have been wrong. With no coupling and no cross-covariance the observed
-process is independent of the unobserved one, so the smoother must equal the
-filter and the metric must be zero. That identity is exact in continuous time
-only. Under an explicit Euler scheme the forward and backward sweeps do not
-invert one another exactly, so asserting equality would assert a property of
-the mathematics against an approximation of it. The test instead asserts that
-the residual vanishes at second order in the step, which is the true claim and
-a stronger one: it checks the *rate*, not just the size.
+The zero-information test is constructed with some care. With no coupling and
+no cross-covariance the observed process is independent of the unobserved one,
+so the smoother must equal the filter and the metric must be zero. That
+identity is exact in continuous time only. Under an explicit Euler scheme the
+forward and backward sweeps do not invert one another exactly, so an assertion
+of equality would test a property of the mathematics against an approximation
+of it. The test instead asserts that the residual vanishes at second order in
+the step. That is the claim the discretisation supports, and it is the stronger
+of the two, because it checks the *rate* rather than only the size.
 
 ## Provenance and the manifest
 
@@ -169,7 +168,7 @@ to tell an intentional change from an accidental one.
 `inst/extdata/oracle-manifest.yml` records, for each fixture, the upstream
 repository and immutable commit, the licence and copyright holder, the MATLAB
 release, the exact generating command, the parameters and seed, the sampled
-indices, both an MD5 and a SHA-256 hash, the measured error -- and a `grades`
+indices, both an MD5 and a SHA-256 hash, the measured error, and a `grades`
 and `does_not_grade` field.
 
 ```{r manifest}
@@ -178,22 +177,23 @@ cat(paste(readLines(manifest)[1:12], collapse = "\n"))
 ```
 
 The recorded MATLAB release is grounded by reproduction rather than by
-recollection: the harness was rerun on that release into a scratch directory
+recollection. The harness was rerun on that release into a scratch directory,
 and both files reproduced byte-for-byte, with identical hashes to the committed
 copies. A test checks the shipped bytes against the recorded hashes on every
 run, so a fixture cannot drift silently.
 
 ## What is graded, and what is not
 
-An oracle grades the paths its parameters exercise and no others. Two lists,
-because the distinction that matters is not whether a thing works but whether
-the evidence for it comes from the authors. After them, a boundary that belongs
-on neither.
+An oracle grades the paths its parameters exercise and no others. The two lists
+below separate the paths by the source of their evidence rather than by whether
+they work, because the distinction that matters here is whether the evidence
+comes from the authors. A third section names a boundary that belongs on
+neither list.
 
 ### Graded, with the scope named
 
 * **A time-varying self-drift**, in both causal directions, against the noisy
-  predator-prey model -- the system whose latent damping is set by the observed
+  predator-prey model, the system whose latent damping is set by the observed
   population. The dyad and cross fixtures cannot reach this path, since both
   pin the self-drift at a constant.
 * **The whole predator-prey path, filter through causal influence range**, in
@@ -208,7 +208,7 @@ on neither.
   round-off in converting counts to time.
 * **The noise cross-covariance of the online smoother and the causal influence
   range**, against the `cir_cross` fixture. This is a second independent
-  implementation rather than the authors' own numbers: every scalar model
+  implementation rather than the authors' own numbers. Every scalar model
   upstream sets the cross-covariance to zero, so no reference fixture can reach
   these terms.
 * **Vector filter, smoother and metric**, against the ENSO fixture and against
@@ -221,10 +221,10 @@ on neither.
 * **The Euler-Maruyama integrator**, against the reference's own 3001-step dyad
   capture. Path equality at a matching seed is impossible, since R and MATLAB
   draw normal variates by different algorithms, so that is not what is graded.
-  The scheme is invertible -- subtract the drift from a captured transition and
-  divide by the noise coefficient, and the variate that produced it comes back
-  -- so the reference's own draws are recoverable from its own path. Driven
-  with them, `aci_simulate()` reproduces the observed component to `5.1e-15`
+  The scheme is invertible. Subtract the drift from a captured transition and
+  divide by the noise coefficient, and the variate that produced it comes back,
+  so the reference's own draws are recoverable from its own path. Driven with
+  them, `aci_simulate()` reproduces the observed component to `5.1e-15`
   and the unobserved to `1.8e-15`, against a round-off bound of `1.15e-10`
   derived from the arithmetic before the comparison was run. What this grades
   is the update rule, and only that. The drift the recovery subtracts is the
@@ -232,12 +232,12 @@ on neither.
   and the path would still be reproduced. That common error is what the dyad
   oracle catches, by grading the filter against the reference's own output.
 
-The matrix noise-cross-covariance terms deserve their own sentence. They have
-**no upstream counterpart at all**: every scalar model in the reference sets
-the cross-covariance to zero, and the ENSO scripts state in as many words that
-the cross-interaction terms are absent. The analytic identities are the primary
-grounding there, and a second implementation refutes a transcription error
-without being an authors'-reference grounding.
+The matrix noise-cross-covariance terms need their scope named separately. They
+have **no upstream counterpart at all**. Every scalar model in the reference
+sets the cross-covariance to zero, and the ENSO scripts state in as many words
+that the cross-interaction terms are absent. The analytic identities are the
+primary grounding there, and a second implementation refutes a transcription
+error without being an authors'-reference grounding.
 
 ### Not yet graded
 
@@ -260,8 +260,8 @@ One item, and it is work not yet done rather than work that cannot be done.
 ### A boundary, not a gap
 
 Model adequacy is not on that list, and it never will be. Every oracle in this
-article asks one question -- does the code compute the method it claims to
-compute. Whether that method describes your data is a separate question, and it
+article asks one question. Does the code compute the method it claims to
+compute? Whether that method describes your data is a separate question, and it
 belongs to the science rather than to the software. No fixture, no identity and
 no reference implementation can reach it, and none here pretends to. The
 companion article *Assumptions and interpretation* is where that question is
@@ -270,7 +270,7 @@ treated.
 ## Reproducing the grade
 
 The oracle tests run from the installed package fixtures. They never skip, on
-any platform, in any check environment -- a validation gate that can skip is not
+any platform, in any check environment. A validation gate that can skip is not
 a gate, and an earlier version of these tests could skip when run outside the
 development tree.
 

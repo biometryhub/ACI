@@ -33,10 +33,10 @@ integrated with a first-order (Euler) step of width \code{dt}. It consumes the
 filtered trajectory returned by \code{\link[=aci_filter]{aci_filter()}}, and, like the filter,
 stops at the first step at which the smoothed covariance leaves its domain.
 
-At the final index the smoother is the filter by construction: conditioning
-on the whole observed path and on the path up to the final step are the
-same conditioning. The returned trajectory reproduces that identity
-exactly.
+At the final index the smoother is the filter by construction, because
+conditioning on the whole observed path and conditioning on the path up to
+the final step are the same conditioning. The returned trajectory reproduces
+that identity exactly.
 }
 \examples{
 model <- aci_dyad_model()

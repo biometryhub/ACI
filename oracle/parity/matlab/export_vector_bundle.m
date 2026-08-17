@@ -5,13 +5,13 @@ function export_vector_bundle(workspace_path, bundle_dir, M)
 %   scalar case does not: how to put a 3-D array of matrices into CSV. Three
 %   options were considered.
 %
-%     (a) One row per time step, the slice flattened column-major -- chosen.
+%     (a) One row per time step, the slice flattened column-major (chosen).
 %         MATLAB's A(:,:,j)(:) and R's as.vector(A[,,j]) are both column-major,
 %         so neither side transposes and a transposition bug has nowhere to
 %         hide. n rows by r*c columns.
 %     (b) Long format, one row per (slice, i, j, value). Self-describing, but
-%         three times the bytes and both sides must reassemble -- more code on
-%         the axis where the mistakes actually happen.
+%         three times the bytes and both sides must reassemble, which is more
+%         code on the axis where the mistakes actually happen.
 %     (c) One file per matrix entry, A11.csv .. A33.csv. Trivially readable but
 %         nine files per component, and the naming becomes the contract.
 %
@@ -20,7 +20,7 @@ function export_vector_bundle(workspace_path, bundle_dir, M)
 %   MATLAB, not against the published figure.
 %
 %   Noise is carried as the feedback matrices S_x and S_y, not as the
-%   Grammians, matching the scalar bundle -- and deliberately, because forming
+%   Grammians, matching the scalar bundle, and deliberately, because forming
 %   the Grammians and their inverse is itself a place the two implementations
 %   diverge (the reference pseudo-inverts, aciR factorises).
 

@@ -1,10 +1,10 @@
-# -- driving MATLAB from R -----------------------------------------------------
+# driving MATLAB from R --------------------------------------------------------
 #
 # `matlab -batch` accepts one command, so anything with structure has to reach
 # it as a file. Every MATLAB step in this harness therefore goes through
 # `run_matlab()`, which writes the code to a scratch script and runs that. The
-# script is kept on failure -- a MATLAB error message without the code that
-# produced it is not diagnosable.
+# script is kept on failure, because a MATLAB error message without the code
+# that produced it is not diagnosable.
 
 matlab_binary <- function() {
   candidates <- c(
@@ -41,9 +41,9 @@ run_matlab <- function(code, label = "step", quiet = TRUE) {
   dir.create(scratch, recursive = TRUE, showWarnings = FALSE)
   script <- file.path(scratch, sprintf("parity_%s.m", label))
 
-  # The harness helpers, the generated extracts, and the reference directory --
-  # the last because the extracted slices call the reference's own auxiliaries
-  # (simps, progress_bar), which we neither vendor nor reimplement.
+  # The harness helpers, the generated extracts, and the reference directory.
+  # The last is needed because the extracted slices call the reference's own
+  # auxiliaries (simps, progress_bar), which we neither vendor nor reimplement.
   search_path <- c(
     file.path("oracle", "parity", "matlab"),
     file.path("oracle", "parity", "matlab", "extracted"),

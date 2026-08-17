@@ -1,4 +1,4 @@
-# -- binding independent-oracle grade: the packaged core vs the MATLAB oracle --
+# Binding independent-oracle grade of the packaged core vs the MATLAB oracle ---
 #
 # This is the package's independent-oracle test. It runs aciR's own conditional
 # Gaussian core (aci_filter / aci_smoother / aci_metric) on the MATLAB input

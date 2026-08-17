@@ -51,9 +51,9 @@ different system.
 
 Because the Walker-circulation noise vanishes at \code{I = 0} and \code{I = 4}, an
 observed path that reaches either endpoint gives a singular observation-noise
-covariance. Such a path is rejected rather than regularised: the filter
-inverts that covariance, and quietly nudging it would be inventing an
-observation the data does not support.
+covariance. Such a path is rejected rather than regularised. The filter
+inverts that covariance, and perturbing it to restore invertibility would
+introduce an observation the data does not support.
 }
 \examples{
 p <- aci_enso_parameters()

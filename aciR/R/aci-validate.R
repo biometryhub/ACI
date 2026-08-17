@@ -1,10 +1,10 @@
-# aci-validate.R -- Shared argument validation for the aciR contract boundary.
+# Shared argument validation for the aciR contract boundary --------------------
 #
 # Every exported function routes its checks through the helpers below, so the
 # general conditional Gaussian surface and the flagship dyad path enforce one
 # contract and raise one class of message. The mathematical admissibility of a
-# noise covariance -- a positive observation-noise covariance, a non-negative
-# latent-noise covariance and a positive semidefinite joint covariance -- is
+# noise covariance (a positive observation-noise covariance, a non-negative
+# latent-noise covariance and a positive semidefinite joint covariance) is
 # stated once, in .aci_check_noise_covariance(), and is reused by the model
 # constructor and by the components validator alike.
 #
@@ -13,7 +13,7 @@
 # the units of that system and a fixed absolute tolerance would be strict on a
 # small system and permissive on a large one.
 
-# -- tolerance and description helpers ----------------------------------------
+# Tolerance and description helpers --------------------------------------------
 
 #' Round-off tolerance scaled to the magnitude of the compared quantities
 #'
@@ -69,7 +69,7 @@
   "an infinite value"
 }
 
-# -- scalar and signal checks -------------------------------------------------
+# Scalar and signal checks -----------------------------------------------------
 
 #' Require a single finite numeric value
 #'
@@ -159,7 +159,7 @@
 #'
 #' The numerical core integrates a fixed step, so an observed time vector is
 #' only admissible when it is strictly increasing and equally spaced. An
-#' irregular grid is rejected rather than approximated: the closed-form
+#' irregular grid is rejected rather than approximated, because the closed-form
 #' recursions have no contract for one.
 #'
 #' @param time The time vector.
@@ -231,9 +231,9 @@
 #' so a caller may drive the integrator with increments recovered from another
 #' implementation's captured path. Those increments are the exogenous input of
 #' the recursion, exactly as the observed signal is the exogenous input of the
-#' filter, and they are checked on the same terms: one complete finite value
-#' per transition in each of the two named vectors, with no recycling and no
-#' coercion.
+#' filter, and they are checked on the same terms, requiring one complete
+#' finite value per transition in each of the two named vectors, with no
+#' recycling and no coercion.
 #'
 #' @param increments The supplied increments.
 #' @param n Integer scalar. The number of simulated time steps. The increments
@@ -356,13 +356,13 @@
   invisible(parameters)
 }
 
-# -- coefficient evaluation ---------------------------------------------------
+# Coefficient evaluation -------------------------------------------------------
 
 #' Evaluate a model coefficient at the observed signal and validate the result
 #'
 #' Coefficient functions are supplied by the user, so their return value is
 #' part of the package's input contract rather than of its internals. A
-#' function that returns a scalar is rejected rather than recycled: silent
+#' function that returns a scalar is rejected rather than recycled. Silent
 #' recycling would leave the filter reading a constant where the model
 #' promised a per-step coefficient, and a genuinely constant coefficient is
 #' already expressible as a numeric scalar at construction.
@@ -448,7 +448,7 @@
   )
 }
 
-# -- noise covariance ---------------------------------------------------------
+# Noise covariance -------------------------------------------------------------
 
 #' Validate a scalar noise covariance system
 #'
@@ -458,10 +458,10 @@
 #' non-negative; and the joint covariance must be positive semidefinite, which
 #' for the scalar system reduces to a non-negative determinant.
 #'
-#' A singular system, whose determinant is zero, is admissible: it describes
-#' perfectly correlated noise sources. It is not rejected here because the
-#' per-step covariance checks in the filter and the smoother are the right
-#' place to catch the run it may destabilise.
+#' A singular system, whose determinant is zero, is admissible, since it
+#' describes perfectly correlated noise sources. It is not rejected here,
+#' because the per-step covariance checks in the filter and the smoother are
+#' the right place to catch the run it may destabilise.
 #'
 #' @param S_xoS_x The observation-noise covariance.
 #' @param S_yoS_y The latent-noise covariance.
@@ -505,7 +505,7 @@
   invisible(TRUE)
 }
 
-# -- components and posteriors ------------------------------------------------
+# Components and posteriors ----------------------------------------------------
 
 #' The names of a conditional Gaussian components list
 #'
@@ -518,9 +518,10 @@
 
 #' Validate a conditional Gaussian components list
 #'
-#' The components list is the package's expert-level extension surface: a user
-#' may hand-build one for a system aciR provides no constructor for. It is
-#' therefore validated as rigorously as a model object.
+#' The components list is the package's extension surface for advanced use. A
+#' user may hand-build one for a system aciR provides no constructor for. It is
+#' therefore checked against the same contract as a model object, for shape,
+#' finiteness and noise-covariance admissibility.
 #'
 #' @param comp The components list.
 #' @param n The number of time steps the per-step coefficients must cover.
@@ -708,15 +709,15 @@
   invisible(TRUE)
 }
 
-# -- runtime diagnostics ------------------------------------------------------
+# Runtime diagnostics ----------------------------------------------------------
 
 #' Expand a possibly-constant coefficient to one value per observation
 #'
 #' The unobserved component's self-drift is admitted either as a scalar,
 #' constant in time, or as one value per observation. The recursions index it
 #' either way, so it is expanded once at the top rather than branched on at
-#' every step: a length-n vector of a repeated value costs a few hundred
-#' kilobytes on the longest signals this core integrates, and buys a loop body
+#' every step. A length-n vector of a repeated value costs a few hundred
+#' kilobytes on the longest signals this core integrates, and gives a loop body
 #' that reads like the equation it implements.
 #'
 #' @param value Numeric scalar or numeric vector of length `n`.
@@ -733,7 +734,7 @@
 #' Require a lag length
 #'
 #' A lag is a count of future time steps, so it must be a non-negative whole
-#' number. Infinity is admitted and means the whole remaining path: it is the
+#' number. Infinity is admitted and means the whole remaining path. It is the
 #' value at which the online smoother becomes the backward smoother, and
 #' spelling that as `Inf` rather than as a large integer keeps the identity
 #' explicit at the call site.

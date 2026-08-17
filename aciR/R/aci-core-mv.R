@@ -1,26 +1,26 @@
-# -- vector-valued conditional Gaussian core -----------------------------------
+# Vector-valued conditional Gaussian core --------------------------------------
 #
 # The scalar core in aci-core.R integrates one observed and one unobserved
-# component. This file integrates the general case: an observed process of
+# component. This file integrates the general case, an observed process of
 # dimension n_x and an unobserved process of dimension n_y, with matrix-valued
 # coefficients that may vary in time.
 #
 # The scalar path is NOT routed through here. At one dimension the two agree
-# bit for bit -- that is graded -- but the scalar recursion is some thirty
-# times faster and is the code the package's oldest oracle grades. Replacing a
-# validated, fast implementation with a general, slow one that computes the
-# same numbers would spend an asset and buy nothing, so the public functions
-# dispatch on the shape of the components and the scalar path stays as it was.
+# bit for bit, and that agreement is graded, but the scalar recursion is some
+# thirty times faster and is the code the package's oldest oracle grades.
+# Replacing a validated, fast implementation with a general, slower one that
+# computes the same numbers would gain nothing, so the public functions
+# dispatch on the shape of the components and the scalar path is left as it is.
 #
-# Three things need more care here than they did in one dimension:
+# Three things need more care here than they did in one dimension.
 #
 #   * The covariance must stay symmetric as well as positive definite. An
 #     explicit Euler step breaks symmetry at round-off, and the asymmetry
-#     compounds, so each step re-symmetrises rather than hoping.
+#     compounds, so each step re-symmetrises rather than assuming it holds.
 #   * Positive-definiteness is checked by attempting a Cholesky factorisation,
 #     which is the definition rather than a proxy for it.
-#   * The relative entropy is evaluated through Cholesky factors -- never an
-#     explicit inverse, and never a determinant computed as a product.
+#   * The relative entropy is evaluated through Cholesky factors, never an
+#     explicit inverse and never a determinant computed as a product.
 
 #' Attempt a Cholesky factorisation, returning NULL rather than raising
 #'
@@ -154,7 +154,7 @@
     A_j <- L_y - S_yoS_x %*% inv %*% L_x
     B_j <- S_yoS_y - S_yoS_x %*% inv %*% S_xoS_y
     R_f <- .aci_slice(filt$cov, j)
-    # Solve against the filtered covariance rather than inverting it: the
+    # Solve against the filtered covariance rather than inverting it. The
     # quantity wanted is B R_f^{-1}, and a solve is both faster and better
     # conditioned than forming the inverse to multiply by it.
     b_over_r <- t(solve(R_f, t(B_j)))
@@ -181,11 +181,11 @@
 #' Causal-information metric, vector case
 #'
 #' The relative entropy of the smoother posterior from the filter posterior for
-#' multivariate Gaussians. Evaluated through Cholesky factors throughout: the
-#' quadratic form by triangular solve, the trace as a sum of squares, and the
-#' log-determinant ratio as a difference of sums of logged diagonals. Forming
-#' the inverse, or the determinant as a product, would lose accuracy in exactly
-#' the regime where the metric is smallest.
+#' multivariate Gaussians. Evaluated through Cholesky factors throughout, with
+#' the quadratic form by triangular solve, the trace as a sum of squares, and
+#' the log-determinant ratio as a difference of sums of logged diagonals.
+#' Forming the inverse, or the determinant as a product, would lose accuracy in
+#' exactly the regime where the metric is smallest.
 #'
 #' @param filt A list with `mean` and `cov`, the filtered posterior.
 #' @param smooth A list with `mean` and `cov`, the smoothed posterior.
@@ -218,15 +218,15 @@
       )
     }
     d <- smooth$mean[, j] - filt$mean[, j]
-    # The quadratic form: with R_f = c_f' c_f, solving c_f' z = d gives
+    # For the quadratic form, with R_f = c_f' c_f, solving c_f' z = d gives
     # z = R_f^{-1/2} d, so the form is its sum of squares.
     q <- backsolve(c_f, d, transpose = TRUE)
-    # The trace: tr(R_f^-1 R_s) = || c_s c_f^-1 ||_F^2, obtained by solving
-    # rather than inverting. Writing it as a sum of squares also makes the
-    # term manifestly non-negative, which the equivalent-looking
-    # tr(c_f^-1 R_s c_f^-1) is NOT -- those two agree only when the factors
-    # are diagonal, so a system without off-diagonal structure cannot tell
-    # them apart.
+    # For the trace, tr(R_f^-1 R_s) = || c_s c_f^-1 ||_F^2, obtained by
+    # solving rather than inverting. Writing it as a sum of squares also makes
+    # the term manifestly non-negative, which the equivalent-looking
+    # tr(c_f^-1 R_s c_f^-1) is not. Those two agree only when the factors are
+    # diagonal, so a system without off-diagonal structure cannot tell them
+    # apart.
     m <- t(backsolve(c_f, t(c_s), transpose = TRUE))
     log_det_ratio <- 2 * (sum(log(diag(c_s))) - sum(log(diag(c_f))))
     value[j] <- 0.5 * (sum(q^2) + sum(m^2) - n_y - log_det_ratio)

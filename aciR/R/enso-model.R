@@ -1,24 +1,23 @@
-# -- stochastic ENSO model -----------------------------------------------------
+# Stochastic ENSO model --------------------------------------------------------
 #
 # The six-dimensional conditional Gaussian system of the paper's El Nino
-# Southern Oscillation case study. Three observables -- central- and
+# Southern Oscillation case study. The three observables are the central- and
 # eastern-Pacific sea-surface temperature anomalies and the Walker circulation
-# strength -- and three unobserved variables: the central-Pacific zonal
+# strength. The three unobserved variables are the central-Pacific zonal
 # current, the western-Pacific thermocline depth, and the intraseasonal
 # westerly wind burst.
 #
 # It is the largest system the package expresses, and it exercises three things
 # nothing else does. The coefficients are matrix-valued and vary at every step.
-# They are seasonally modulated, on a six-unit period. And BOTH noise
-# covariances vary in time: the Walker circulation's is multiplicative in its
-# own state, and the wind burst's depends on the observed central-Pacific
-# temperature through a hyperbolic tangent.
+# They are seasonally modulated, on a six-unit period. BOTH noise covariances
+# vary in time, the Walker circulation's multiplicative in its own state and
+# the wind burst's depending on the observed central-Pacific temperature
+# through a hyperbolic tangent.
 #
-# That last property is why this constructor could not have been written
-# earlier without shipping a defect: the vector validator inverted only the
-# first slice of a time-varying observation-noise covariance until that was
-# found and fixed, so every ENSO result would have been computed from a
-# Walker-circulation noise frozen at step one.
+# That last property constrains the constructor. The vector validator must
+# invert the observation-noise covariance at every step, because inverting only
+# its first slice would compute every ENSO result from a Walker-circulation
+# noise frozen at step one.
 
 #' Parameters of the stochastic ENSO model
 #'
@@ -82,8 +81,8 @@ aci_enso_parameters <- function(factor = 0.65, b_0 = 2.5, mu = 0.5,
     # The eastern-Pacific temperature is noiseless in the original model. The
     # conditional construction needs an invertible observation-noise
     # covariance, so the reference adds the smallest noise that keeps the
-    # filter and smoother stable. That is a modelling decision, carried here
-    # rather than hidden.
+    # filter and smoother stable. That is a modelling decision, and it is
+    # recorded here.
     sigma_E = sqrt(5) * 1e-2 * sqrt(factor)
   )
 }
@@ -109,9 +108,9 @@ aci_enso_parameters <- function(factor = 0.65, b_0 = 2.5, mu = 0.5,
 #'
 #' Because the Walker-circulation noise vanishes at `I = 0` and `I = 4`, an
 #' observed path that reaches either endpoint gives a singular observation-noise
-#' covariance. Such a path is rejected rather than regularised: the filter
-#' inverts that covariance, and quietly nudging it would be inventing an
-#' observation the data does not support.
+#' covariance. Such a path is rejected rather than regularised. The filter
+#' inverts that covariance, and perturbing it to restore invertibility would
+#' introduce an observation the data does not support.
 #'
 #' @param T_C,T_E,I Numeric vectors of equal length. The observed
 #'   central-Pacific temperature anomaly, eastern-Pacific temperature anomaly,
@@ -215,7 +214,7 @@ aci_enso_components <- function(T_C, T_E, I, p = aci_enso_parameters(),
   f_y <- matrix(0, 3L, n)
 
   # Coupling of the unobserved state into the observed drift. The third row is
-  # zero: the Walker circulation is autonomous of the latent variables.
+  # zero, because the Walker circulation is autonomous of the latent variables.
   L_x[1L, 1L, ] <- I / 5 * p$factor
   L_x[1L, 2L, ] <- p$gamma_C
   L_x[1L, 3L, ] <- beta_C
@@ -237,7 +236,7 @@ aci_enso_components <- function(T_C, T_E, I, p = aci_enso_parameters(),
   f_y[2L, ] <- -p$delta_h * (T_C + T_E) / 2
 
   # ---- Noise ----------------------------------------------------------------
-  # Diagonal throughout: the six variables are driven by independent Wiener
+  # Diagonal throughout. The six variables are driven by independent Wiener
   # processes, so the cross-covariance is zero, as in every model of the
   # reference implementation.
   S_xoS_x[1L, 1L, ] <- p$sigma_C^2
@@ -260,7 +259,7 @@ aci_enso_components <- function(T_C, T_E, I, p = aci_enso_parameters(),
 #' Stochastic ENSO model
 #'
 #' Returns the ENSO model as a labelled description of its structure and
-#' parameters. Unlike the scalar models, this one carries no simulator: the
+#' parameters. Unlike the scalar models, this one carries no simulator. The
 #' six-dimensional system is integrated with a mixed scheme in the reference
 #' implementation, and its wind-burst update contains a correction this package
 #' does not reproduce. See the design note on that anomaly before simulating
@@ -273,8 +272,8 @@ aci_enso_components <- function(T_C, T_E, I, p = aci_enso_parameters(),
 #'
 #' @param p A parameter list, as returned by [aci_enso_parameters()].
 #'
-#' @returns A list describing the model: its `label`, `parameters`, the names
-#'   of its `observed` and `unobserved` components, and the `components`
+#' @returns A list describing the model, with its `label`, `parameters`, the
+#'   names of its `observed` and `unobserved` components, and the `components`
 #'   function that builds a components list from observed paths.
 #'
 #' @references

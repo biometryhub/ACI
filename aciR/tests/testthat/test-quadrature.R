@@ -1,4 +1,4 @@
-# -- grading the composite Simpson rule ----------------------------------------
+# Grading the composite Simpson rule -------------------------------------------
 #
 # Simpson's rule is exact for polynomials up to cubic. That is a property of
 # the rule, established independently of any implementation of it, so the

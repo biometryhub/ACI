@@ -1,4 +1,4 @@
-# -- binding independent-oracle grade: the time-varying self-drift -------------
+# Binding independent-oracle grade of the time-varying self-drift --------------
 #
 # The dyad and cross fixtures both pin the latent self-drift at a constant, so
 # neither can grade a system whose latent damping moves. The predator-prey
@@ -6,7 +6,7 @@
 # directions the latent variable's damping is set by the observed state.
 #
 # Both directions are graded, and they are genuinely different questions rather
-# than one question and its mirror -- the observed process differs, the latent
+# than one question and its mirror. The observed process differs, the latent
 # process differs, and the metric is not symmetric between them.
 #
 # Runs from the installed fixtures and never skips.
@@ -48,7 +48,7 @@ test_that("the predator-prey fixture exercises a moving self-drift", {
     expect_length(comp$L_y, length(observed))
     expect_gt(diff(range(comp$L_y)), 0.5)
     # The drift changes sign over the record, so the latent process is damped
-    # at some times and driven at others -- a regime a constant cannot express.
+    # at some times and driven at others, a regime a constant cannot express.
     expect_lt(min(comp$L_y), 0)
     expect_gt(max(comp$L_y), 0)
   }

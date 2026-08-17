@@ -15,9 +15,9 @@
 The result \code{x}, invisibly.
 }
 \description{
-Prints a compact summary of an \code{aci} object: the model it was run for, the
-number of steps, the integration step and time span, and a five-number
-summary of the causal-information metric.
+Prints a compact summary of an \code{aci} object, covering the model it was run
+for, the number of steps, the integration step and time span, and a
+five-number summary of the causal-information metric.
 }
 \examples{
 model <- aci_dyad_model()

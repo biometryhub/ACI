@@ -1,4 +1,4 @@
-# -- independent-oracle grade: the vector core with correlated noise -----------
+# Independent-oracle grade of the vector core with correlated noise ------------
 #
 # Read the scope of this grade before citing it.
 #
@@ -72,7 +72,7 @@
 test_that("the fixture actually carries a non-zero matrix cross-covariance", {
   # The terms this fixture exists to grade are exactly the ones every upstream
   # model annihilates. If the cross-block were ever zero here, every comparison
-  # below would still pass while grading nothing -- which is the failure this
+  # below would still pass while grading nothing, which is the failure this
   # package was built to make impossible.
   noise <- .aci_mv_noise()
   expect_gt(max(abs(noise$S_yoS_x)), 0.1)
@@ -161,7 +161,7 @@ test_that("conditioning removes a component's weight without removing it", {
   )
 
   # The system still runs, and gives a different answer from the
-  # unconditional one -- conditioning changes the estimand.
+  # unconditional one. Conditioning changes the estimand.
   filt <- aci_filter(
     pieces$x, conditioned, dt, mu0 = c(0.8, 0.2), R0 = 0.2 * diag(2L)
   )

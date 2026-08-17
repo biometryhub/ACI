@@ -1,9 +1,9 @@
-# -- S5: re-grade the committed fixtures against the authors' own code ---------
+# S5: re-grade the committed fixtures against the authors' own code ------------
 #
 # The fixtures under aciR/inst/extdata were produced by harnesses in oracle/
 # that transcribe the reference's algebra by hand. Those harnesses and the R
 # implementation share an author, so a transcription error common to both is
-# invisible to every test the package owns -- the oracle would agree with the
+# invisible to every test the package owns. The oracle would agree with the
 # code because it came from the same reading of the paper, not because either
 # is right.
 #

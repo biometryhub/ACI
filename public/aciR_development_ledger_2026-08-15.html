@@ -117,11 +117,11 @@
 <p class="lede">A worked case in verifying scientific software against a
 reference that ships as scripts. We set out the vocabulary for the problem, the
 design decisions and the alternatives we set aside, what the failures taught,
-and the questions that remain open. Version 0.2.2, covering 11 July to 16
+and the questions that remain open. Version 0.2.2, covering 11 July to 17
 August 2026.</p>
 
 <div class="stats">
-  <div class="stat"><b>35</b><span>commits over five weeks</span></div>
+  <div class="stat"><b>41</b><span>commits over five weeks</span></div>
   <div class="stat"><b>12</b><span>recorded design decisions</span></div>
   <div class="stat"><b>777</b><span>tests, no skips</span></div>
   <div class="stat"><b>2</b><span>package dependencies, both base</span></div>
@@ -131,9 +131,9 @@ August 2026.</p>
   <b>Companion document</b>
   <span>The numerical evidence behind the claims below is set out quantity by
   quantity in the <a href="parity_ledger.html">Parity Ledger</a>, which places
-  the authors' MATLAB and this package side by side. Both documents are
-  generated from the manifests and the measured results, so neither can drift
-  from the code it describes.</span>
+  the authors' MATLAB and this package side by side. Its code panes and results
+  table are generated from the manifests and the measured reports at render
+  time, so they cannot drift from the code they document.</span>
 </div>
 
 <hr>
@@ -143,8 +143,8 @@ August 2026.</p>
   <div class="body">
     <h2>Why this document exists</h2>
     <p>Two documents accompany this package. The companion answers whether the
-    numbers are right. The present document answers how the software came to be
-    -- which choices were deliberate, what we weighed and set aside, what the
+    numbers are right. The present document answers how the software came to
+    be, which choices were deliberate, what we weighed and set aside, what the
     defects turned out to teach, and which questions remain open.</p>
 
     <p>It is written for a reader deciding whether to build on the package or to
@@ -193,7 +193,7 @@ August 2026.</p>
 <section>
   <div class="num">03</div>
   <div class="body">
-    <h2>Conceptual genesis &ndash; a program with no oracle</h2>
+    <h2>Conceptual genesis. A program with no oracle</h2>
 
     <p>A test oracle is the source that decides whether an output is correct.
     Obtaining one is known as the oracle problem, surveyed by Barr and
@@ -210,7 +210,7 @@ August 2026.</p>
     is a property the output must satisfy that can be checked without knowing
     the correct answer, surveyed by Segura and colleagues. We use both.</p>
 
-    <p>The pseudo-oracle carries a caveat that shaped this package. Knight and
+    <p>The pseudo-oracle carries a limitation that shaped this package. Knight and
     Leveson tested the assumption that independently written versions of a
     program fail independently, and found that it does not hold. Common failures
     occurred far more often than independence predicts, because different people
@@ -314,8 +314,8 @@ August 2026.</p>
       changed beyond the declared knobs.</p>
       <div class="rej">Set aside:
         <ol>
-          <li>Running unmodified and waiting, the honest ideal but not reachable
-          on available hardware.</li>
+          <li>Running the script unmodified and waiting, which is the ideal and
+          is not reachable on available hardware.</li>
           <li>Capturing a cheap prefix with a debugger breakpoint.</li>
           <li>Reducing the size without verifying minimality, which would leave
           the trusted side of the comparison unaudited.</li>
@@ -393,7 +393,7 @@ August 2026.</p>
       first returned <code>NA</code> there. We now return the computed value as
       a right-censored lower bound, borrowing the term from survival analysis,
       where a censored observation is one known only to exceed some value. The
-      caveat is carried in a four-valued status field. Our reasoning is that a
+      qualification is carried in a four-valued status field. Our reasoning is that a
       range consuming most of the available record is not an absent measurement
       but a censored one. Only the case with fewer than three later
       observations, where no quadrature exists, still returns <code>NA</code>.</p>
@@ -420,9 +420,11 @@ August 2026.</p>
   <div class="body">
     <h2>The development cycle</h2>
 
-    <p>Thirty-five commits between 11 July and 15 August 2026. We reconstruct
+    <p>Forty-one commits between 11 July and 17 August 2026. We reconstruct
     the timeline from the repository history rather than from recollection, so a
-    reader with the repository can check it.</p>
+    reader with the repository can check it. The dates below are the dates of
+    the work; the six commits closing version 0.2.2 carry an author date of
+    17 August, because that is when they were recorded.</p>
 
     <div class="tl">
       <div class="tl-i">
@@ -541,8 +543,12 @@ August 2026.</p>
     and every output must equal, not approximate, the value the script produced.
     That gate stands at 156 of 156 outputs across nine profiles at a maximum
     absolute difference of exactly zero, over 2,159 verbatim reference lines in
-    33 extracts. Against that instrument the package's scalar core agrees on 26
-    of 26 quantities across two datasets, worst case 1.5e-14. We re-graded the
+    33 extracts. Against that instrument the package's scalar core agrees on all
+    26 core quantities across two datasets, worst case 1.5e-14. The same results
+    file carries a further eight rows that compare aciR's own default
+    conventions against the reference's; those are designed differences rather
+    than disagreements, and they are counted separately here and in the
+    companion. We re-graded the
     committed dyad fixture at the published record length, and it agreed with
     the authors' output at a difference of exactly zero, which retired a
     standing doubt about the transcription rather than confirming one.</p>
@@ -627,7 +633,8 @@ August 2026.</p>
       harness, the metamorphic relations, and the build-gating register.</p>
       <p class="gen">A test oracle's scope is a claim in its own right, and needs
       measuring rather than asserting. A high coverage figure sitting beside a
-      graded test oracle can manufacture confidence in an ungraded path.</p>
+      graded test oracle can create confidence in an ungraded path that nothing
+      has earned.</p>
     </div>
 
     <div class="lesson">
@@ -670,11 +677,11 @@ August 2026.</p>
       <h4>An empty comparison is not a passing comparison</h4>
       <p>A comparison in which no element was resolved by both sides reported
       success, because the maximum of an empty numeric vector is negative
-      infinity, which sails under any threshold. An empty comparison is now a
-      named failure, and it fired on the first run afterwards.</p>
-      <p class="gen">Verification code earns no exemption from the scepticism it
+      infinity, which passes any threshold. An empty comparison is now a named
+      failure, and it was raised on the first run afterwards.</p>
+      <p class="gen">Verification code earns no exemption from the scrutiny it
       exists to apply. The instrument we built to catch a class of error in the
-      package had the same disease.</p>
+      package contained an instance of it.</p>
     </div>
 
     <div class="lesson">
@@ -699,8 +706,8 @@ August 2026.</p>
   <div class="body">
     <h2>Open problems</h2>
 
-    <p>Four questions are live, and they are the most likely places for someone
-    else to contribute.</p>
+    <p>Four questions are live. Each is stated with what would close it, since
+    they are the most likely places for someone else to contribute.</p>
 
     <ul>
       <li><b>Extending grounded coverage.</b> The predator-prey system is now
@@ -708,37 +715,53 @@ August 2026.</p>
       influence range, at a worst absolute difference of 1.5e-12 across the
       twenty-six graded quantities. Two further rows report aciR's own default
       horizon against the reference's, which is a designed difference rather
-      than a disagreement, and they are excluded from that figure. All four scalar-latent climate scripts are now
-      extracted and gated at a difference of zero. What remains is the aciR side
-      of those four, which is held up by the export rather than by the package.
-      The harness builds its comparison bundles in a square configuration with
-      feedback-matrix noise, and these configurations are three observed against
-      one latent with scalar latent noise.</li>
+      than a disagreement, and they are excluded from that figure. All four
+      scalar-latent climate scripts are extracted and gated at a difference of
+      zero. What remains is the aciR side of those four, and it is held up by
+      the export rather than by the package. The harness builds its comparison
+      bundles in a square configuration with feedback-matrix noise, while these
+      configurations are three observed against one latent with scalar latent
+      noise. <em>Closing it</em> means widening the bundle exporter to the
+      rectangular case. The package already accepts that shape, so no change to
+      the numerical core is implied.</li>
 
-      <li><b>Calibrating the censoring margin.</b> How much lookahead does an
-      influence range need before it can be called resolved? A static fraction
-      of the remaining record is not a property of the system, and the
-      reference's fixed 0.6 time units is a physical scale that suited one
-      figure. In our opinion the amount of lookahead a range needs is the range
-      itself, which makes the question circular and therefore interesting.</li>
+      <li><b>Calibrating the censoring margin.</b> How much of the record must
+      remain unused before an influence range can be called resolved? The
+      package uses a fixed fraction of one tenth, which is a judgement rather
+      than a derived quantity, and it is the principal reason the function is
+      marked experimental. A static fraction is not a property of the system,
+      and the reference's fixed 0.6 time units is a physical scale that suited
+      one figure. The underlying difficulty is that the lookahead a range needs
+      is the range itself, so the question is circular as posed. <em>Closing it</em>
+      means measuring the sensitivity rather than resolving the circularity,
+      by sweeping the margin across the dyad, the predator-prey pair and the
+      climate model and reporting how the reported ranges move. A margin whose
+      effect is small over the plausible interval would justify the default; one
+      whose effect is large would argue for reporting the bound instead.</li>
 
       <li><b>Grading the conditional construction.</b> We had recorded that the
       reference implements this by hand rather than in code, so that no
-      counterpart existed to grade against. That was wrong, and finding it out
-      took three attempts. Read from the source, the answer depends on spotting
-      a comment marker, and we misread it twice. Measured instead from the
-      observation-noise inverse each script's filter actually consumed, three of
-      the five climate scripts ship with the conditional path live. A
-      counterpart therefore exists. One convention has to be matched before it
-      can be used: the reference leaves the first filter step of a conditional
-      run unmasked, which moves the filtered mean by 0.238 at step two, and
-      aciR masks every step.</li>
+      counterpart existed to grade against. That was wrong, and establishing it
+      took three attempts. Read from the source, the answer turns on spotting a
+      comment marker, and we misread it twice. Measured instead from the
+      observation-noise inverse that each script's filter consumed, three of the
+      five climate scripts ship with the conditional path live, so a counterpart
+      does exist. One convention has to be matched first. The reference leaves
+      the first filter step of a conditional run unmasked, which moves the
+      filtered mean by 0.238 at step two, where aciR masks every step.
+      <em>Closing it</em> means driving the comparison with the reference's own
+      first slice, so that the two answer the same question, and reporting the
+      masking difference separately as the design choice it is.</li>
 
       <li><b>Generalising the instrument.</b> Byte-verified hoisting is not
       specific to this method. Any published method whose reference ships as
-      scripts rather than as a library has the same problem, and the extraction,
-      capture and equality-gate machinery would carry over with a new manifest.
-      Whether it generalises cleanly is untested on a second reference.</li>
+      scripts rather than as a library presents the same problem, and the
+      extraction, capture and equality-gate machinery would carry over with a
+      new manifest. Whether it generalises cleanly is untested on a second
+      reference. <em>Closing it</em> means applying the instrument once to an
+      unrelated published reference and recording what had to change, which is
+      the only way to separate what is general in the design from what is
+      particular to this one case.</li>
     </ul>
 
     <p>Two capabilities are queued behind those questions, in the order the

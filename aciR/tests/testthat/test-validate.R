@@ -12,7 +12,7 @@
   aci_dyad_components(x, aci_dyad_model()$parameters)
 }
 
-# -- noise covariance admissibility (T1, T2, T3) ------------------------------
+# Noise covariance admissibility (T1, T2, T3) ----------------------------------
 
 test_that("the constructor rejects a negative latent-noise covariance", {
   expect_error(
@@ -73,7 +73,7 @@ test_that("a singular joint noise covariance is admissible", {
   )
 })
 
-# -- label and parameters (T4) ------------------------------------------------
+# Label and parameters (T4) ----------------------------------------------------
 
 test_that("the constructor validates label and parameters", {
   expect_error(
@@ -106,7 +106,7 @@ test_that("the constructor validates label and parameters", {
   )
 })
 
-# -- coefficient contract (T5, T6) --------------------------------------------
+# Coefficient contract (T5, T6) ------------------------------------------------
 
 test_that("a coefficient returning a scalar is rejected, never recycled", {
   # The old failure: this constructed, then produced NA filter entries.
@@ -161,7 +161,7 @@ test_that("a coefficient that is neither function nor scalar is rejected", {
   )
 })
 
-# -- observed signal contract (T7) --------------------------------------------
+# Observed signal contract (T7) ------------------------------------------------
 
 test_that("a signal with missing or infinite values is rejected", {
   model <- aci_dyad_model()
@@ -205,7 +205,7 @@ test_that("dt, mu0 and R0 are validated at every entry point", {
   expect_error(aci_filter(x, comp, dt = 0.001, mu0 = 2, R0 = -1), "positive")
 })
 
-# -- components schema (T8) ---------------------------------------------------
+# Components schema (T8) -------------------------------------------------------
 
 test_that("a components list missing an entry is rejected", {
   x <- .aci_test_signal()
@@ -242,7 +242,7 @@ test_that("an inadmissible components covariance is rejected", {
   expect_error(aci_filter(x, comp, 0.001, 2, 0.1), "non-negative")
 })
 
-# -- posterior contract (T9) --------------------------------------------------
+# Posterior contract (T9) ------------------------------------------------------
 
 test_that("a malformed posterior is rejected before the metric", {
   filt <- list(mean = c(1, 2, 3), cov = c(1, 1, 1))
@@ -302,7 +302,7 @@ test_that("the smoother rejects a filter posterior of the wrong length", {
   )
 })
 
-# -- runtime covariance guard (T10) -------------------------------------------
+# Runtime covariance guard (T10) -----------------------------------------------
 
 test_that("the metric refuses a posterior pair whose ratio overflows", {
   # Both covariances are positive and finite and both means are finite, so the
@@ -317,8 +317,8 @@ test_that("the metric refuses a posterior pair whose ratio overflows", {
 })
 
 test_that("the smoother covariance guard fires on its own", {
-  # The filter is well posed throughout -- its covariance climbs from a tiny
-  # initial value toward its stationary point -- but the smoother divides by
+  # The filter is well posed throughout (its covariance climbs from a tiny
+  # initial value toward its stationary point), but the smoother divides by
   # that tiny initial covariance on its final backward step, which drives its
   # own covariance negative. This reaches the smoother's guard without the
   # filter's guard firing first.
@@ -347,7 +347,7 @@ test_that("an unstable discretisation fails at the first bad step", {
   expect_error(aci(x, model, dt = 1), "Reduce `dt`")
 })
 
-# -- time grid (T17) ----------------------------------------------------------
+# Time grid (T17) --------------------------------------------------------------
 
 test_that("an irregular time grid is rejected", {
   model <- aci_dyad_model()

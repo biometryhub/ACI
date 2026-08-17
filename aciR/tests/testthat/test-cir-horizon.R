@@ -1,4 +1,4 @@
-# -- causal influence range: comparison horizon and the exact objective range --
+# Horizon and exact objective range for the causal influence range -------------
 #
 # Both quantities exist because the package was graded against the reference
 # implementation rather than against a transcription of it, and the two were
@@ -7,8 +7,8 @@
 # paper gives, of which the existing `objective` is the efficient underestimate.
 #
 # The tests below avoid restating the implementation. Where a value has to be
-# predicted it is predicted from the DEFINITION -- the length of the comparison
-# sequence, the quadrature over the threshold grid -- not from the code.
+# predicted it is predicted from the DEFINITION (the length of the comparison
+# sequence, the quadrature over the threshold grid), not from the code.
 
 .cir_fixture <- function(n = 1200L, seed = 4L) {
   set.seed(seed)
@@ -67,7 +67,7 @@ test_that("a shorter horizon cannot lengthen a subjective range", {
 
   # A range is the last position at which the divergence still exceeds a
   # threshold. Looking at less of the record can only move that position
-  # earlier, never later -- so this is a property of the quantity, and would
+  # earlier, never later, so this is a property of the quantity, and would
   # fail if the horizon were applied to the fully informed posterior as well.
   both <- is.finite(long$subjective) & is.finite(short$subjective)
   expect_true(any(both))
@@ -82,7 +82,7 @@ test_that("the fully informed posterior ignores the horizon", {
 
   # The truncated row must be the prefix of the untruncated one. If the horizon
   # were also applied to the reference posterior each row would be compared
-  # against a different target and the prefix property would break -- which is
+  # against a different target and the prefix property would break, which is
   # exactly the mistake this argument is easiest to get wrong in.
   full <- .aci_cir_row(aux, f$filt, j, n, horizon = n)
   cut <- .aci_cir_row(aux, f$filt, j, n, horizon = 500L)
@@ -143,8 +143,8 @@ test_that("the exact objective range is the subjective grid integrated", {
                epsilon = epsilon, margin = 0.001)
 
   # Recomputed from the returned subjective ranges and peak by the definition
-  # in the source paper -- the subjective ranges averaged over the threshold
-  # grid -- rather than by re-running the internal path.
+  # in the source paper (the subjective ranges averaged over the threshold
+  # grid), rather than by re-running the internal path.
   ord <- order(epsilon)
   for (i in seq_along(window)) {
     if (!is.finite(r$objective_exact[i])) {
@@ -161,7 +161,7 @@ test_that("the exact objective range needs the unmasked subjective ranges", {
   window <- seq.int(60L, 300L, by = 30L)
   # A quadrature over the threshold grid needs every node. If the masked
   # (NA-bearing) subjective matrix were integrated instead, a tightened margin
-  # would blank the exact range wherever any single threshold ran long -- so a
+  # would blank the exact range wherever any single threshold ran long, so a
   # margin that leaves some subjective entries NA must still yield finite exact
   # ranges at times that are not themselves saturated.
   r <- aci_cir(f$x, f$comp, f$dt, filt = f$filt, window = window, margin = 0.5)

@@ -2,7 +2,7 @@ function [same, maxabs, info] = bitcompare(a, b)
 %BITCOMPARE  Compare two values for exact equality, recursing into cells.
 %
 %   The extracted functions are supposed to be the reference's own code, so
-%   the bar here is equality, not tolerance -- any difference at all means the
+%   the bar here is equality, not tolerance. Any difference at all means the
 %   hoist changed something. MAXABS is reported anyway, because "differs by
 %   3e-16" and "differs by 0.4" call for very different investigations.
 %

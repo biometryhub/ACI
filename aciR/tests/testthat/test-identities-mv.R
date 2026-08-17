@@ -1,4 +1,4 @@
-# -- analytic identities for the vector-valued core ----------------------------
+# Analytic identities for the vector-valued core -------------------------------
 #
 # These are the PRIMARY grounding for the matrix noise-cross-covariance terms,
 # because no other grounding for them exists. Every scalar model in the
@@ -24,7 +24,7 @@ test_that("the vector filter sits at the block-diagonal Riccati fixed point", {
   # Two scalar systems, each with a NON-ZERO noise cross-covariance, assembled
   # block-diagonally into one matrix system. Block-diagonal means the joint
   # Riccati equation decouples into the two scalar ones, whose roots are known
-  # in closed form -- so the matrix recursion has an exact target to hit, and
+  # in closed form, so the matrix recursion has an exact target to hit, and
   # the cross-noise terms are exercised while it hits it.
   a <- list(L_x = 1.3, L_y = -0.7, S_xoS_x = 0.8, S_yoS_y = 1.1, S_yoS_x = 0.35)
   b <- list(L_x = 0.9, L_y = -1.1, S_xoS_x = 1.2, S_yoS_y = 0.6, S_yoS_x = -0.4)

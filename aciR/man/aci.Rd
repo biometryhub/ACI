@@ -26,7 +26,7 @@ observation, strictly increasing and equally spaced. When supplied, \code{dt}
 is derived from it.}
 }
 \value{
-An \code{aci} object: a list with the \code{model}, the time vector \code{t}, the
+An \code{aci} object, a list with the \code{model}, the time vector \code{t}, the
 observed signal \code{x}, the \code{filter} and \code{smoother} statistics (each a list of
 \code{mean} and \code{cov}), the causal-information metric \code{aci}, the count
 \code{n_clamped} of metric values clamped from a round-off negative to zero,
@@ -42,7 +42,7 @@ user-facing entry point that ties the numerical core together.
 }
 \details{
 The workflow assumes the observed signal is complete and sampled on a
-regular grid: the closed-form recursions integrate a fixed step, and there
+regular grid. The closed-form recursions integrate a fixed step, and there
 is no contract for missing observations or for an irregular grid. By default
 the time vector is constructed from \code{dt}; supply \code{time} instead to have the
 step derived from an observed grid and the regularity checked.

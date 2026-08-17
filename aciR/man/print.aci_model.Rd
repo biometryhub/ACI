@@ -15,10 +15,10 @@
 The model \code{x}, invisibly.
 }
 \description{
-Prints a compact, one-field-per-line summary of an \code{aci_model} object: its
-label, the self-drift of the unobserved component, the noise Grammians, the
-initial state and, when present, the named scalar parameters that define the
-model.
+Prints a compact, one-field-per-line summary of an \code{aci_model} object,
+covering its label, the self-drift of the unobserved component, the noise
+Grammians, the initial state and, when present, the named scalar parameters
+that define the model.
 }
 \examples{
 print(aci_dyad_model())

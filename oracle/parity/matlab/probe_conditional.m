@@ -9,12 +9,12 @@ function probe_conditional(workspaces, profiles, out_path)
 %   The discriminator is the observation-noise inverse the filter actually
 %   used. Two structures are possible and they are not close:
 %
-%     unconditional -- the per-step pseudoinverse is live, so S_xoS_x_inv
-%                      varies from slice to slice and is generally dense;
-%     conditional   -- the per-step pseudoinverse is commented out and one
-%                      diagonal entry is overwritten across all slices, so
-%                      every slice from the second onward is the SAME matrix
-%                      with exactly one non-zero entry.
+%     unconditional. The per-step pseudoinverse is live, so S_xoS_x_inv
+%                    varies from slice to slice and is generally dense.
+%     conditional.   The per-step pseudoinverse is commented out and one
+%                    diagonal entry is overwritten across all slices, so
+%                    every slice from the second onward is the SAME matrix
+%                    with exactly one non-zero entry.
 %
 %   Slice one is reported separately, because it is the one slice the
 %   conditional scripts leave partly dense: the pseudoinverse fills it before
@@ -45,7 +45,7 @@ for k = 1:numel(workspaces)
     nz_first = nnz(first);
     nz_second = nnz(second);
 
-    % The entries slice one carries that the later slices do not -- the
+    % The entries slice one carries that the later slices do not, which is the
     % pseudoinverse residue a conditional run assimilates once and never again.
     off = first;
     off(second ~= 0) = 0;

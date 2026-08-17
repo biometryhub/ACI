@@ -46,7 +46,7 @@ those of the reference implementation.
 \details{
 The model is studied in two directions, and \code{direction} selects which. The
 two are genuinely different questions rather than one question and its
-mirror: the observed process differs, the latent process differs, and the
+mirror. The observed process differs, the latent process differs, and the
 causal-information metric is not symmetric between them.
 }
 \examples{

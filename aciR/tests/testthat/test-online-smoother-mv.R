@@ -1,4 +1,4 @@
-# -- the online smoother and causal influence range, vector case ---------------
+# The online smoother and causal influence range, vector case ------------------
 #
 # One thing does NOT carry over from the scalar implementation, and it is the
 # thing that made the scalar one fast. In one dimension the ordered product of
@@ -12,7 +12,7 @@
 #
 #   1. Lag zero is the filter, exactly, as in one dimension.
 #   2. At one dimension the vector path must reproduce the SCALAR online
-#      smoother and range at every lag -- and that scalar path is graded
+#      smoother and range at every lag, and that scalar path is graded
 #      against the authors' MATLAB, so this ties the new code to the package's
 #      oldest oracle through an intermediary.
 #   3. With a matrix cross-covariance it is graded against an independent

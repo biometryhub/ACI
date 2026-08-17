@@ -1,10 +1,10 @@
-# -- manifest reading ----------------------------------------------------------
+# manifest reading -------------------------------------------------------------
 #
 # The manifests are Debian-control files: a flat, diffable, dependency-free
 # key/value format that both R and a ten-line MATLAB parser can read. R's
 # `read.dcf()` has no comment convention, so comments are stripped here before
-# parsing. They earn their place -- a manifest a reviewer cannot read cold is a
-# manifest that will drift from what it describes.
+# parsing. They earn their place, because a manifest a reviewer cannot read
+# cold is a manifest that will drift from what it describes.
 
 #' Read a DCF manifest, stripping `#` comment lines.
 #'

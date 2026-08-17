@@ -12,8 +12,8 @@
 %
 % The reference studies the system in two directions and expects one section
 % to be run at a time, each after rng(42). Both directions integrate the same
-% Lotka-Volterra pair with the same noise applied the same way -- only the
-% bookkeeping names swap -- so a single simulation serves both, and this
+% Lotka-Volterra pair with the same noise applied the same way (only the
+% bookkeeping names swap), so a single simulation serves both, and this
 % harness verifies that equivalence rather than assuming it.
 %
 % Run from the oracle/ directory:

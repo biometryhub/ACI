@@ -1,4 +1,4 @@
-# -- render the side-by-side parity document -----------------------------------
+# render the side-by-side parity document --------------------------------------
 #
 # Generated from the manifests and the measured reports, never hand-written, so
 # the document cannot drift from what was actually run. The MATLAB excerpts are
@@ -58,7 +58,7 @@ render_parity <- function(out = "oracle/parity/reports/parity.html",
     list(m = "ref_aci_metric_scalar", r = "aci_metric", f = "aciR/R/aci-core.R",
          cap = "The ACI metric as a relative entropy of the smoother from the filter. Four lines in MATLAB; aciR routes through a shared implementation so that aci() and aci_metric() cannot drift apart."),
     list(m = "ref_pp_filter_dir1", r = "aci_filter", f = "aciR/R/aci-core.R",
-         cap = "Predator-prey, direction x(t) to y. The same algebra as the dyad with the roles of x and y exchanged -- and the same variable names as its own direction two, which is why that script cannot be run top to bottom.")
+         cap = "Predator-prey, direction x(t) to y. The same algebra as the dyad with the roles of x and y exchanged, and the same variable names as its own direction two, which is why that script cannot be run from top to bottom.")
   )
 
   blocks <- vapply(pairs, function(p) {
@@ -79,7 +79,9 @@ render_parity <- function(out = "oracle/parity/reports/parity.html",
     '<tr><td>%s</td><td class="q">%s</td><td class="n">%s</td><td class="n">%s</td><td class="n">%s</td><td><span class="v %s">%s</span></td></tr>',
     .esc(r[["dataset"]]), .esc(r[["quantity"]]), .esc(r[["n"]]),
     .esc(format(as.numeric(r[["max_abs"]]), digits = 3, scientific = TRUE)),
-    .esc(if (is.na(as.numeric(r[["headroom"]]))) "--"
+    # "n/a" rather than a dash: a bare "--" reaches the page literally, since
+    # nothing here processes typographic markup the way pandoc would.
+    .esc(if (is.na(as.numeric(r[["headroom"]]))) "n/a"
          else format(as.numeric(r[["headroom"]]), digits = 3)),
     if (r[["verdict"]] == "ok") "ok" else "bad", .esc(r[["verdict"]]))),
     collapse = "\n")
@@ -92,6 +94,24 @@ render_parity <- function(out = "oracle/parity/reports/parity.html",
               fixed = TRUE)
   html <- sub("{{ROWS}}", rows, html, fixed = TRUE)
   html <- sub("{{COMPANION}}", companion, html, fixed = TRUE)
+
+  # The headline statistics are computed here, not typed into the template.
+  # The code panes were already pulled at render time while these cards were
+  # hardcoded, so the page could claim it cannot drift while carrying a figure
+  # that could. Deriving them from the manifest and the gate reports closes
+  # that gap: a stale card is now impossible rather than merely unlikely.
+  chk <- check_extraction("oracle/parity/manifest/extracts.dcf")
+  g1_files <- list.files(file.path("oracle", "parity", "reports"),
+                         pattern = "^g1_", full.names = TRUE)
+  g1 <- do.call(rbind, lapply(g1_files, utils::read.csv,
+                              stringsAsFactors = FALSE))
+  html <- sub("{{G1}}", sprintf("%d / %d", sum(g1$same == 1L), nrow(g1)),
+              html, fixed = TRUE)
+  html <- sub("{{VERBATIM_LINES}}",
+              format(sum(chk$lines_verbatim), big.mark = ","), html,
+              fixed = TRUE)
+  html <- sub("{{N_EXTRACTS}}", as.character(nrow(chk)), html, fixed = TRUE)
+
   writeLines(html, out)
   out
 }

@@ -9,7 +9,7 @@ function parity_run_scalar(dataset_dir, out_path, do_cir)
 %   rather than assumed:
 %
 %   * The reference's filter reads the true latent path only as y(1), its
-%     initial mean -- asserted by the extractor's ConsumedOnly rule. That is
+%     initial mean, as asserted by the extractor's ConsumedOnly rule. That is
 %     what makes it legitimate to pass the scalar mu0 in its place on a dataset
 %     that has no latent path at all.
 %

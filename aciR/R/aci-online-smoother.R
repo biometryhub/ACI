@@ -1,4 +1,4 @@
-# -- fixed-lag online smoother for a conditional Gaussian nonlinear system -----
+# Fixed-lag online smoother for a conditional Gaussian nonlinear system --------
 #
 # The forward-in-time online smoother of Andreou, Chen and Li (2026). Where
 # aci_smoother() conditions every time step on the whole observed path, the
@@ -12,9 +12,9 @@
 # the filter exactly; at full lag it conditions on the whole path and must
 # reproduce the backward smoother exactly. Both of those are already graded
 # against the MATLAB oracle, so the two boundaries of this recursion are
-# pinned by assets the package already owns.
+# pinned by results the package already holds.
 #
-# Symbols follow the source paper: E_j and F_j for the per-step auxiliary
+# Symbols follow the source paper, with E_j and F_j for the per-step auxiliary
 # matrices, b_j and P_j for the mean and covariance offsets, and D^{j,k} for
 # the ordered product of E over a contiguous range.
 
@@ -38,19 +38,19 @@
 #' geometrically, which the source paper establishes by bounding the spectral
 #' radius of each factor below one, so the influence of an observation on
 #' distant earlier steps falls away exponentially. The implementation exploits
-#' this: it accumulates the products in logarithms rather than forming the full
+#' this by accumulating the products in logarithms rather than forming the full
 #' `O(n^2)` triangle, which is what keeps the memory at `O(n)`.
 #'
-#' `tol` stops the accumulation once the product falls below it. Be clear about
-#' what that buys. It is a safety catch on a product that has already
-#' underflowed, not a bound on the work: at a typical per-step contraction of
-#' `0.998` the product needs some 26,000 steps to reach the default `1e-18`,
-#' and published records are shorter than that, so on the systems this package
-#' ships the loop is not cut and the cost is quadratic in the record length.
-#' The test is also `max(abs(d)) < tol` on the accumulated product, which is a
-#' sufficient condition that the next innovation cannot move the estimate at
-#' double precision -- not the spectral-radius argument above. Erring that way
-#' costs work, never accuracy.
+#' `tol` stops the accumulation once the product falls below it. It is a safety
+#' catch on a product that has already underflowed rather than a bound on the
+#' work. At a typical per-step contraction of `0.998` the product needs some
+#' 26,000 steps to reach the default `1e-18`, and published records are shorter
+#' than that, so on the systems this package ships the loop is not cut and the
+#' cost is quadratic in the record length. The test applied is
+#' `max(abs(d)) < tol` on the accumulated product, a sufficient condition that
+#' the next innovation cannot move the estimate at double precision, rather
+#' than the spectral-radius argument above. Erring that way costs work, never
+#' accuracy.
 #'
 #' @param x Numeric vector. The observed signal, one value per time step; at
 #'   least two complete, finite observations.
@@ -117,7 +117,7 @@ aci_online_smoother <- function(x, comp, dt, filt, lag = Inf, tol = 1e-18) {
   # ---- Accumulate the lagged updates ----------------------------------------
   #
   # The estimate at step j starts at the filtered value and gains one term for
-  # each later observation it is allowed to see:
+  # each later observation it is allowed to see.
   #
   #   mu_s[j, j + lag] = mu_f[j] + sum_{k = j}^{j + lag - 1} D[j, k] * innov[k]
   #

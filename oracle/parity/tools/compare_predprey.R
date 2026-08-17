@@ -1,11 +1,11 @@
-# -- S4b: predator-prey, aciR against the reference ----------------------------
+# S4b: predator-prey, aciR against the reference -------------------------------
 #
 # The dyad half of S4 builds a dataset and drives the extracted kernels on it.
 # Predator-prey cannot be graded that way, because `noisy_predator_prey_model.m`
 # must not be run top to bottom (F6): its two causal directions assign the same
 # names, so a whole-script run pairs direction one's smoother with direction
 # two's filter. The reference values graded here are therefore the ones the
-# COMPOSED runner produced -- one direction's declared blocks, in file order --
+# COMPOSED runner produced (one direction's declared blocks, in file order),
 # and gate G1 has already shown, on 14 outputs per direction at a maximum
 # absolute difference of 0, that the extracted kernels reproduce them exactly.
 #
@@ -13,11 +13,11 @@
 # never been run on this system at all. This file runs it and compares quantity
 # by quantity, on the reference's own conventions.
 #
-# -- grading like with like ---------------------------------------------------
+# grading like with like -------------------------------------------------------
 #
 # The causal influence range is the quantity with the designed differences, and
 # getting the setup wrong here once produced a 4.58e-09 "disagreement" that was
-# not a disagreement at all -- two different questions differenced. The three
+# not a disagreement at all, but two different questions differenced. The three
 # arguments that make the questions the same are:
 #
 #   * `horizon = last_idx`. The reference compares each reporting time against
@@ -33,7 +33,7 @@
 # tolerance, so the size of the design difference is on the record rather than
 # hidden by the recipe that removes it.
 
-# -- tolerances, declared before the first run ---------------------------------
+# tolerances, declared before the first run ------------------------------------
 #
 # Declared here, in the file, before any predator-prey number had been measured,
 # and taken from the classes the dyad comparison already uses rather than chosen
@@ -41,9 +41,9 @@
 # passes through a logarithm, a division by a covariance or a quadrature. A
 # tolerance picked after seeing the difference is a description, not a test.
 #
-# `cir_objective_exact` is new to this comparison -- the dyad's driver never
-# compared it -- and is declared at 1e-11 for the same reason its neighbours
-# are: it is a quadrature over a 513-point grid divided by a peak.
+# `cir_objective_exact` is new to this comparison (the dyad's driver never
+# compared it) and is declared at 1e-11 for the same reason its neighbours are:
+# it is a quadrature over a 513-point grid divided by a peak.
 .predprey_tolerances <- c(
   filter_mean = 1e-12,
   filter_cov = 1e-12,
@@ -60,7 +60,7 @@
   cir_objective_exact = 1e-11
 )
 
-# -- export --------------------------------------------------------------------
+# export -----------------------------------------------------------------------
 
 #' Export one captured predator-prey workspace for comparison.
 #'
@@ -138,7 +138,7 @@ read_predprey_bundle <- function(path) {
   list(meta = meta, arrays = arrays, comp = comp)
 }
 
-# -- the comparison ------------------------------------------------------------
+# the comparison ---------------------------------------------------------------
 
 #' Run aciR on one predator-prey direction and compare with the reference.
 #'
@@ -205,7 +205,7 @@ compare_predprey <- function(direction,
   result
 }
 
-# -- causal influence range ----------------------------------------------------
+# causal influence range -------------------------------------------------------
 
 .compare_predprey_cir <- function(stem, meta, comp, filt, x, tolerances) {
   theirs <- utils::read.csv(sprintf("%s_cir.csv", stem),
@@ -293,7 +293,7 @@ compare_predprey <- function(direction,
     x, comp, meta$dt, filt = filt, window = theirs$index, epsilon = epsilon
   )
   out <- c(out, list(
-    .compare_vectors("cir_objective [aciR default -- by design]",
+    .compare_vectors("cir_objective [aciR default, by design]",
                      default$objective[reported], theirs$objective[reported],
                      Inf, name)
   ))
@@ -311,7 +311,7 @@ compare_predprey <- function(direction,
   out
 }
 
-# -- driver --------------------------------------------------------------------
+# driver -----------------------------------------------------------------------
 
 #' Export and compare both causal directions, and write the report.
 #'
@@ -341,9 +341,9 @@ run_predprey_parity <- function(directions = c(1L, 2L), export = TRUE,
   invisible(result)
 }
 
-# -- the guard against a vacuous pass ------------------------------------------
+# the guard against a vacuous pass ---------------------------------------------
 #
-# `max(numeric(0))` is -Inf, which sails under any threshold, and this harness
+# `max(numeric(0))` is -Inf, which lies below any threshold, and this harness
 # once reported `ok` for having compared nothing. `.compare_vectors()` names an
 # empty comparison rather than passing it; this asserts that no row of the
 # result is empty, mismatched or over budget, so a driver cannot walk past a

@@ -1,10 +1,11 @@
-# -- reporting surface for the causal influence range --------------------------
+# Reporting surface for the causal influence range -----------------------------
 #
 # The range is returned as a structured object because the quantities that
-# matter are not all numbers of the same kind: an objective range, a matrix of
-# subjective ranges over a threshold grid, a peak divergence, and -- since a
-# range near the end of a record is right-censored rather than missing -- a
-# status that says which of those a given time actually earned.
+# matter are not all numbers of the same kind. They are an objective range, a
+# matrix of subjective ranges over a threshold grid, a peak divergence, and a
+# status that says which of those a given time supports. The status is needed
+# because a range near the end of a record is right-censored rather than
+# missing.
 #
 # Printing the object without methods dumps a threshold-by-time matrix, which
 # buries the three scalars a reader needs.
@@ -53,7 +54,7 @@ print.aci_cir <- function(x, ...) {
   }
   if (any(x$status == "censored")) {
     cat(sprintf(
-      "  %d time%s censored -- those ranges are lower bounds\n",
+      "  %d time%s censored; those ranges are lower bounds\n",
       sum(x$status == "censored"),
       if (sum(x$status == "censored") == 1L) " is" else "s are"
     ))
@@ -64,9 +65,10 @@ print.aci_cir <- function(x, ...) {
 #' Summarise a causal influence range
 #'
 #' Reports the range alongside the two diagnostics a reader needs in order to
-#' interpret it: how many reported times are censored rather than resolved, and
-#' how often the divergence sequence is monotone. The second matters because
-#' `objective` and `objective_exact` are the same functional only when it is.
+#' interpret it. The first is how many reported times are censored rather than
+#' resolved. The second is how often the divergence sequence is monotone, which
+#' matters because `objective` and `objective_exact` are the same functional
+#' only when it is.
 #'
 #' @param object An object of class `aci_cir`.
 #' @param ... Ignored.
@@ -114,7 +116,7 @@ summary.aci_cir <- function(object, ...) {
 #' @param x An object of class `summary.aci_cir`.
 #' @export
 print.summary.aci_cir <- function(x, ...) {
-  cat("Causal influence range -- summary\n\n")
+  cat("Causal influence range, summary\n\n")
   cat(sprintf("  reported times : %d over [%s, %s]\n", x$n_time,
               format(x$span[1L], digits = 4L),
               format(x$span[2L], digits = 4L)))
@@ -153,8 +155,8 @@ print.summary.aci_cir <- function(x, ...) {
 #'
 #' `monotone` is carried because it is the condition under which `objective`
 #' and `objective_exact` are the same functional, and it is what
-#' [summary.aci_cir()] tells the reader to look at; a diagnostic reachable only
-#' through a print method is not much of a diagnostic.
+#' [summary.aci_cir()] directs the reader to. A diagnostic reachable only
+#' through a print method cannot be used programmatically.
 #'
 #' @param x An object of class `aci_cir`.
 #' @param row.names,optional Passed through to the data frame.
@@ -186,9 +188,9 @@ as.data.frame.aci_cir <- function(x, row.names = NULL, optional = FALSE, ...) {
 
 #' Plot a causal influence range
 #'
-#' Two panels: the objective range against time, with censored times drawn
-#' hollow so a lower bound is not mistaken for a measurement, and the peak
-#' divergence beneath it.
+#' Draws two panels. The upper panel shows the objective range against time,
+#' with censored times drawn hollow so that a lower bound is not mistaken for a
+#' measurement. The lower panel shows the peak divergence.
 #'
 #' @param x An object of class `aci_cir`.
 #' @param y Ignored.
@@ -208,7 +210,7 @@ as.data.frame.aci_cir <- function(x, row.names = NULL, optional = FALSE, ...) {
 plot.aci_cir <- function(x, y, ...) {
   # The method draws two panels, so it owns the layout. Leaving that to the
   # caller means an interactive `plot(rng)` paints the objective panel and
-  # immediately overwrites it, which is what happened before.
+  # immediately overwrites it.
   old <- graphics::par(mfrow = c(2L, 1L), mar = c(4.1, 4.1, 2.1, 1.1))
   on.exit(graphics::par(old), add = TRUE)
   censored <- x$status == "censored"
@@ -219,7 +221,7 @@ plot.aci_cir <- function(x, y, ...) {
   )
   graphics::lines(x$time, x$objective, col = "grey60")
   graphics::points(x$time[!censored], x$objective[!censored], pch = 16L)
-  # Hollow for censored: the marker says "at least this", not "this".
+  # Hollow for a censored time, so the marker says "at least this", not "this".
   graphics::points(x$time[censored], x$objective[censored], pch = 1L)
 
   graphics::plot(

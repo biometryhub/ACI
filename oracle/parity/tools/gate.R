@@ -1,9 +1,9 @@
-# -- gate G1: extracted function against the script's own workspace ------------
+# gate G1: extracted function against the script's own workspace ---------------
 #
 # The extraction is mechanical, but "mechanical" is a claim about a program,
 # and programs have bugs. G1 settles it empirically: call each extracted
 # function with the inputs the script itself used, and require every output to
-# equal the value the script itself produced. Not to a tolerance -- equal. A
+# equal the value the script itself produced. Not to a tolerance, but equal. A
 # hoist that changed the arithmetic cannot survive this, and a hoist that
 # changed nothing cannot fail it.
 

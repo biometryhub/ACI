@@ -1,4 +1,4 @@
-# -- grading the causal influence range ----------------------------------------
+# Grading the causal influence range -------------------------------------------
 #
 # The range is built on the online smoother, which is graded in its own file,
 # so the tests here grade what this layer adds: that the comparison sequence is
@@ -85,8 +85,8 @@ test_that("times the record cannot resolve are reported as unresolved", {
   expect_true(any(!rng$saturated))
   expect_gt(min(which(rng$saturated)), max(which(!rng$saturated)))
   # An unresolved time returns a right-censored LOWER BOUND, not a hole. The
-  # record does support a statement about such a time -- that the range is at
-  # least this long -- and discarding it loses information exactly at the end
+  # record does support a statement about such a time (that the range is at
+  # least this long), and discarding it loses information exactly at the end
   # of the record, which is where a user studying a recent event looks.
   expect_true(all(is.finite(rng$objective[rng$saturated])))
   expect_true(all(is.finite(rng$objective[!rng$saturated])))
@@ -104,7 +104,7 @@ test_that("an uncoupled system has no causal influence range", {
   # implementation and the reference one.
   # The step is compared at a fixed INSTANT, not a fixed index. A fixed index
   # names a different instant at every resolution, and the residue then mixes
-  # the discretisation error with the filter's transient -- which is how this
+  # the discretisation error with the filter's transient, which is how this
   # test first reported a meaningless order.
   uncoupled <- function(dt, t_at = 0.1) {
     n <- as.integer(0.6 / dt) + 1L

@@ -1,4 +1,4 @@
-# -- conditional Gaussian nonlinear system: filter / smoother / metric ---------
+# Filter, smoother and metric for a conditional Gaussian system ----------------
 #
 # The three functions below are the numerical core of assimilative causal
 # inference. They operate on a general CGNS "components" list rather than on a
@@ -6,10 +6,10 @@
 # smoothed and scored by supplying the appropriate per-step coefficients.
 #
 # The symbols follow the governing equations of the method paper rather than R
-# naming convention: L_x, f_x, L_y, f_y for the drift coefficients, S_xoS_x and
-# its relatives for the noise Grammians, and A_j / B_j for the smoother's
-# per-step terms. The correspondence to the equations is the point, and the
-# package's lint configuration admits these names deliberately.
+# naming convention. They are L_x, f_x, L_y and f_y for the drift coefficients,
+# S_xoS_x and its relatives for the noise Grammians, and A_j and B_j for the
+# smoother's per-step terms. The correspondence to the equations is the point,
+# and the package's lint configuration admits these names deliberately.
 
 #' Conditional Gaussian components list
 #'
@@ -50,7 +50,7 @@
 #' components list that violates any of these conditions is rejected before
 #' the recursion starts.
 #'
-#' This schema is the package's expert-level extension surface: build a
+#' This schema is the package's extension surface for advanced use. Build a
 #' components list directly to run the core on a conditional Gaussian system
 #' for which aciR supplies no constructor. See [aci_dyad_components()] for a
 #' worked example, and [aci_cgns_model()] for the higher-level alternative.
@@ -166,10 +166,10 @@ aci_filter <- function(x, comp, dt, mu0, R0) {
 #' filtered trajectory returned by [aci_filter()], and, like the filter,
 #' stops at the first step at which the smoothed covariance leaves its domain.
 #'
-#' At the final index the smoother is the filter by construction: conditioning
-#' on the whole observed path and on the path up to the final step are the
-#' same conditioning. The returned trajectory reproduces that identity
-#' exactly.
+#' At the final index the smoother is the filter by construction, because
+#' conditioning on the whole observed path and conditioning on the path up to
+#' the final step are the same conditioning. The returned trajectory reproduces
+#' that identity exactly.
 #'
 #' @param x Numeric vector. The observed signal, one value per time step.
 #' @param comp A conditional Gaussian components list; see [aci_components].
@@ -231,7 +231,7 @@ aci_smoother <- function(x, comp, dt, filt) {
   for (j in rev(seq_len(n - 1L))) {
     dx <- x[j + 1L] - x[j]
     A_j <- L_y[j] - comp$S_yoS_x * inv * comp$L_x[j]
-    # The backward mean carries two contributions: the reversed prior drift
+    # The backward mean carries two contributions, the reversed prior drift
     # corrected toward the filtered estimate, and the transport term through
     # which the noise cross-covariance enters.
     drift <- L_y[j] * muT + comp$f_y[j] -
@@ -265,7 +265,7 @@ aci_smoother <- function(x, comp, dt, filt) {
 #'
 #' The dispersion part is evaluated in a form that stays accurate when the two
 #' covariances nearly agree. Writing the covariance ratio as `1 + d`, the
-#' naive expression subtracts two nearly equal quantities and loses precision
+#' direct expression subtracts two nearly equal quantities and loses precision
 #' exactly where the metric is smallest; the form used here does not. Values
 #' that round to a small negative number are clamped to zero, and anything
 #' more negative than round-off is an error rather than a result. The number
@@ -354,7 +354,7 @@ aci_metric <- function(filt, smooth) {
   #
   # Non-finiteness is tested first and separately. A covariance ratio that
   # overflows yields Inf - Inf = NaN, and NaN would slip past a comparison
-  # guard unnoticed: `NaN <= x` is NA, not TRUE.
+  # guard unnoticed, since `NaN <= x` is NA, not TRUE.
   round_off <- 1e-10
   offending <- which(!is.finite(value) | value <= -round_off)
   if (length(offending) > 0L) {

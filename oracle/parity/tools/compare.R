@@ -1,4 +1,4 @@
-# -- S4: run both implementations on one dataset and compare -------------------
+# S4: run both implementations on one dataset and compare ----------------------
 #
 # The side-by-side proper. One bundle goes to the extracted reference kernels
 # and to aciR, and every quantity they both produce is compared against a
@@ -65,7 +65,7 @@ build_datasets <- function(root = file.path("oracle", "parity", "datasets")) {
   #
   # The point of this one is the noise cross-covariance. The dyad has Sx_2 =
   # Sy_1 = 0, so S_yoS_x vanishes and every term it multiplies is dead on the
-  # published fixture -- graded, reachable, and multiplied by zero. Here the
+  # published fixture (graded, reachable, and multiplied by zero). Here the
   # feedbacks are chosen so S_yoS_x = 0.5, and the components have nothing to
   # do with the dyad's quadratic nonlinearity.
   set.seed(20260814L)
@@ -181,7 +181,7 @@ compare_dataset <- function(dataset_dir,
   do.call(rbind, rows)
 }
 
-# -- causal influence range ----------------------------------------------------
+# causal influence range -------------------------------------------------------
 #
 # The quantity with the most designed differences between the two, so the
 # comparison has to be set up rather than merely run:
@@ -192,7 +192,7 @@ compare_dataset <- function(dataset_dir,
 #    `lookahead_tolerance` of 0.6 time units; aciR uses a `margin` FRACTION of
 #    what remains after each reporting time. The two therefore exclude
 #    different sets of times, and the comparison is restricted to those both
-#    consider resolved -- with the counts each excluded reported rather than
+#    consider resolved, with the counts each excluded reported rather than
 #    quietly dropped.
 .compare_cir <- function(report_dir, stem, dataset, comp, filt, x) {
   base <- sub("\\.csv$", "", stem)
@@ -238,10 +238,10 @@ compare_dataset <- function(dataset_dir,
   #
   # Until `horizon` existed this comparison could not be made at all, and the
   # harness compared aciR's whole-record answer against the reference's
-  # truncated one -- two different questions, reported as a disagreement. The
-  # three arguments below are the documented figure-parity recipe: stop the
-  # comparison where the reference stops it, stand the resolution test down,
-  # and use the reference's threshold grid.
+  # truncated one. Those are two different questions, and the difference was
+  # reported as a disagreement. The three arguments below are the documented
+  # figure-parity recipe: stop the comparison where the reference stops it,
+  # stand the resolution test down, and use the reference's threshold grid.
   same <- aciR::aci_cir(
     x, comp, meta$dt, filt = filt, window = theirs$index, epsilon = epsilon,
     margin = 1e-9, horizon = last_idx
@@ -270,7 +270,7 @@ compare_dataset <- function(dataset_dir,
     x, comp, meta$dt, filt = filt, window = theirs$index, epsilon = epsilon
   )
   out <- c(out, list(
-    .compare_vectors("cir_objective [aciR default -- by design]",
+    .compare_vectors("cir_objective [aciR default, by design]",
                      default$objective[reported], theirs$objective[reported],
                      Inf, meta$Name)
   ))
@@ -286,7 +286,7 @@ compare_dataset <- function(dataset_dir,
   out
 }
 
-# -- the comparison criterion --------------------------------------------------
+# the comparison criterion -----------------------------------------------------
 #
 # `|a - b| <= atol + rtol * |b|`, elementwise, rather than relative error
 # alone.
@@ -296,10 +296,10 @@ compare_dataset <- function(dataset_dir,
 # series crosses zero it divides by nothing in particular and reports a large
 # number for a difference that is small on every scale that matters. This
 # harness met that on its first run: the online smoothed mean at full lag
-# passed through -1.7e-4 at one step out of 3001 -- the only point in the
-# series below 1e-3, against a median of 0.86 -- and a 7e-15 absolute
-# difference there, some thirty units in the last place of the order-one
-# operands it is a cancellation of, registered as a relative error of 4e-11.
+# passed through -1.7e-4 at one step out of 3001 (the only point in the series
+# below 1e-3, against a median of 0.86), and a 7e-15 absolute difference there,
+# some thirty units in the last place of the order-one operands it is a
+# cancellation of, registered as a relative error of 4e-11.
 #
 # So the relative tolerance is NOT relaxed to accommodate it. It stays where it
 # was; the absolute floor is added underneath, and both numbers stay in the
@@ -317,15 +317,15 @@ compare_dataset <- function(dataset_dir,
       stringsAsFactors = FALSE
     ))
   }
-  # An empty comparison is not a pass. `max(numeric(0))` is -Inf, which sails
-  # under every threshold and reports "ok" for having compared nothing -- the
-  # same vacuous-grading failure this harness exists to detect, reproduced
+  # An empty comparison is not a pass. `max(numeric(0))` is -Inf, which lies
+  # below every threshold and reports "ok" for having compared nothing. That is
+  # the same vacuous-grading failure this harness exists to detect, reproduced
   # inside the checker. It is a failure, and it is named.
   if (n == 0L) {
     return(data.frame(
       dataset = dataset, quantity = quantity, n = 0L,
       max_abs = NA_real_, max_rel = NA_real_, rtol = tolerance, atol = atol,
-      headroom = NA_real_, verdict = "EMPTY -- nothing compared",
+      headroom = NA_real_, verdict = "EMPTY, nothing compared",
       stringsAsFactors = FALSE
     ))
   }
@@ -350,8 +350,8 @@ compare_dataset <- function(dataset_dir,
       "EXCEEDS"
     } else if (max(absolute) == 0) {
       # Two implementations, two languages, two compilers: bit-identical output
-      # is not a triumph, it is a smell. It usually means one side did not run,
-      # or both read the same file.
+      # is not reassurance, it is a warning. It usually means one side did not
+      # run, or both read the same file.
       "SUSPECT-EXACT"
     } else {
       "ok"

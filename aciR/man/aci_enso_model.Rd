@@ -10,13 +10,13 @@ aci_enso_model(p = aci_enso_parameters())
 \item{p}{A parameter list, as returned by \code{\link[=aci_enso_parameters]{aci_enso_parameters()}}.}
 }
 \value{
-A list describing the model: its \code{label}, \code{parameters}, the names
-of its \code{observed} and \code{unobserved} components, and the \code{components}
+A list describing the model, with its \code{label}, \code{parameters}, the
+names of its \code{observed} and \code{unobserved} components, and the \code{components}
 function that builds a components list from observed paths.
 }
 \description{
 Returns the ENSO model as a labelled description of its structure and
-parameters. Unlike the scalar models, this one carries no simulator: the
+parameters. Unlike the scalar models, this one carries no simulator. The
 six-dimensional system is integrated with a mixed scheme in the reference
 implementation, and its wind-burst update contains a correction this package
 does not reproduce. See the design note on that anomaly before simulating

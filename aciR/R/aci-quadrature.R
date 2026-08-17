@@ -1,19 +1,20 @@
-# -- composite Simpson quadrature ---------------------------------------------
+# Composite Simpson quadrature -------------------------------------------------
 #
 # The objective causal influence range is an integral of the causal-information
 # metric over the lagged observational time, and of the subjective range over
 # the threshold. The reference implementation evaluates both with a composite
 # Simpson rule in preference to the trapezoidal rule it also carries, so this
-# package uses Simpson too: on a smooth integrand the two differ by more than
+# package uses Simpson too. On a smooth integrand the two differ by more than
 # the tolerance the rest of the package is graded to, and the choice of rule is
 # therefore part of reproducing the published quantity rather than an
 # implementation detail.
 #
 # Simpson's rule carries its own oracle. On an even interval count it is exact
 # for polynomials up to cubic, and the closing interval of an odd count is
-# exact for quadratics -- statements about the rules rather than about any
-# implementation of them, so the tests grade this code against integrals whose
-# values are known in closed form and which no implementation here produced.
+# exact for quadratics. Both are statements about the rules rather than about
+# any implementation of them, so the tests grade this code against integrals
+# whose values are known in closed form and which no implementation here
+# produced.
 
 #' Composite Simpson quadrature
 #'
@@ -21,9 +22,9 @@
 #' number of intervals the rule applies throughout. With an odd number it runs
 #' over the longest even prefix and the final interval is closed by
 #' integrating the quadratic through the last three samples over that interval
-#' alone -- the reference implementation's rule, and the reason the objective
-#' causal influence range reproduces the published number. Exactness is
-#' therefore cubic on an even interval count and quadratic on the closing
+#' alone. This is the reference implementation's rule, and the reason the
+#' objective causal influence range reproduces the published number. Exactness
+#' is therefore cubic on an even interval count and quadratic on the closing
 #' interval of an odd one. Both handle unequal spacing exactly.
 #'
 #' @param y Numeric vector. The sampled integrand; at least two values.
@@ -110,16 +111,16 @@
 #'
 #' Integrates the quadratic through the last three samples over the last
 #' interval alone. This is the closure the reference implementation uses, and
-#' the choice is deliberate rather than incidental: it is what makes the
+#' the choice is deliberate rather than incidental. It is what makes the
 #' objective causal influence range reproduce the published number.
 #'
 #' An earlier version closed with a Simpson 3/8 panel over the last three
-#' intervals. That is a slightly more accurate rule on an equally spaced grid
-#' -- measurably so -- but it is a different number, and on a truncated
-#' comparison horizon the difference reaches 1e-7 on the quantity the method
-#' leads with. It also assumed equal spacing, which is wrong for the
-#' logarithmic threshold grid the exact objective range integrates over. The
-#' form below is exact for unequal spacing, so both problems close together.
+#' intervals. That is a measurably more accurate rule on an equally spaced
+#' grid, but it is a different number, and on a truncated comparison horizon
+#' the difference reaches 1e-7 on the quantity the method leads with. It also
+#' assumed equal spacing, which is wrong for the logarithmic threshold grid
+#' the exact objective range integrates over. The form below is exact for
+#' unequal spacing, so both problems close together.
 #'
 #' Derived rather than transcribed. With the last three abscissae at
 #' `t = -h1, 0, h2` relative to the penultimate point, integrating the Lagrange

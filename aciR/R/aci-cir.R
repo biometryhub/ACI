@@ -1,4 +1,4 @@
-# -- causal influence range ----------------------------------------------------
+# Causal influence range -------------------------------------------------------
 #
 # The second quantity of the method paper. Where the causal-information metric
 # asks HOW MUCH the future of the observed signal says about the unobserved
@@ -6,17 +6,17 @@
 # must look before the answer stops changing.
 #
 # The construction is a divergence between two online-smoother posteriors at
-# the same instant: the one informed by the whole record, and the one informed
-# only up to some later observation. As that later observation moves forward
-# the two coincide, and the range is where the gap falls below a threshold.
+# the same instant. One is informed by the whole record, the other only up to
+# some later observation. As that later observation moves forward the two
+# coincide, and the range is where the gap falls below a threshold.
 #
-# The reference implementation stores the whole matrix of those divergences --
-# one row per time, one column per lagged observation -- which is quadratic in
+# The reference implementation stores the whole matrix of those divergences
+# (one row per time, one column per lagged observation), which is quadratic in
 # the window and reaches several gigabytes at the scale of the published
-# figure. Nothing downstream needs the matrix: each row is reduced immediately
-# to a handful of scalars. This implementation therefore forms one row at a
-# time and discards it, which leaves the memory linear in the window while the
-# arithmetic stays what it has to be.
+# figure. Nothing downstream needs the matrix, because each row is reduced
+# immediately to a handful of scalars. This implementation therefore forms one
+# row at a time and discards it, which leaves the memory linear in the window
+# while the arithmetic stays what it has to be.
 
 #' Causal influence range
 #'
@@ -39,26 +39,26 @@
 #'
 #' The computation is quadratic in the length of `window`, because every
 #' reported time is compared against every later observation. Choose the window
-#' accordingly: a few thousand steps is comfortable, and reproducing a
-#' figure at the scale of the published one is a batch computation rather than
-#' an interactive one.
+#' accordingly. A few thousand steps is comfortable, and reproducing a figure
+#' at the scale of the published one is a batch computation rather than an
+#' interactive one.
 #'
 #' A reported time close to the end of the record cannot be resolved, because
 #' the observations that would settle it do not exist. Such a time is not
-#' unmeasured, though: its range is **right-censored**, and the truncated value
-#' is a lower bound on the true one. The result therefore returns the value and
-#' records the caveat in `status`, rather than discarding what the record does
-#' support. Only a time with fewer than three later observations, where no
-#' quadrature is possible at all, returns `NA`.
+#' unmeasured. Its range is **right-censored**, and the truncated value is a
+#' lower bound on the true one. The result therefore returns the value and
+#' marks that time `"censored"` in `status`, rather than discarding what the
+#' record does support. Only a time with fewer than three later observations,
+#' where no quadrature is possible at all, returns `NA`.
 #'
 #' `objective` and `objective_exact` are different functionals, not two
 #' quadratures of one. They coincide when the divergence decreases with lag, by
 #' the layer-cake identity. Both this package and the reference measure the
 #' range as the **last** time the divergence exceeds a threshold, which is at
 #' least the measure of the superlevel set and is strictly larger the moment
-#' the sequence is not monotone -- which is the common case on a truncated
-#' `horizon`. Seeing `objective` below `objective_exact` is that definitional
-#' gap, not a numerical defect in either.
+#' the sequence is not monotone. A sequence that is not monotone is the common
+#' case on a truncated `horizon`. Seeing `objective` below `objective_exact` is
+#' that definitional gap, not a numerical defect in either.
 #'
 #' @param x Numeric vector. The observed signal, one value per time step.
 #' @param comp A conditional Gaussian components list; see [aci_components].
@@ -87,8 +87,9 @@
 #'
 #'   Because a censored time yields a bound rather than a hole, `margin`
 #'   governs the flag rather than whether a number is reported at all, so a
-#'   slightly wrong value is cheap. It is this package's device: the reference
-#'   guards the same problem with an absolute lookahead chosen for one figure.
+#'   slightly wrong value has little consequence. It is this package's device.
+#'   The reference guards the same problem with an absolute lookahead chosen
+#'   for one figure.
 #' @param horizon Integer scalar or `NULL`. How many steps of the record each
 #'   reported time may look forward across, counted from the start of the
 #'   record rather than from the reported time. `NULL`, the default, uses the
@@ -106,16 +107,15 @@
 #' @returns An object of class `aci_cir`, a list with the reported `time`, the
 #'   `objective` range at each time, the `objective_exact` range obtained by
 #'   integrating the subjective ranges over the whole threshold grid rather
-#'   than by the efficient approximation, the `subjective` range as a
-#'   than by the efficient approximation, the `subjective` range as a
-#'   matrix with one row per threshold and one column per time,
-#'   `peak` divergence at each time, the logical matrix `subjective_censored`
-#'   marking thresholds whose range ran past the retained margin, the character
-#'   `status` (`"resolved"`, `"censored"`, `"below_threshold"` or
-#'   `"insufficient"`), the logical `monotone` marking times whose divergence
-#'   sequence decreases with lag -- the condition under which `objective` and
-#'   `objective_exact` are the same functional -- and the logical `saturated`,
-#'   which is `status == "censored"`.
+#'   than by the efficient approximation, the `subjective` range as a matrix
+#'   with one row per threshold and one column per time, the `peak` divergence
+#'   at each time, the logical matrix `subjective_censored` marking thresholds
+#'   whose range ran past the retained margin, the character `status`
+#'   (`"resolved"`, `"censored"`, `"below_threshold"` or `"insufficient"`), the
+#'   logical `monotone` marking times whose divergence sequence decreases with
+#'   lag (the condition under which `objective` and `objective_exact` are the
+#'   same functional), and the logical `saturated`, which is
+#'   `status == "censored"`.
 #'
 #' @references
 #' Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
@@ -265,8 +265,8 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
       #
       # The reference wraps its quadrature in a try/catch and records zero
       # here, which a reader cannot distinguish from "no detectable
-      # influence" -- the two mean opposite things. This is the one status
-      # that genuinely has no number behind it, so it alone returns NA.
+      # influence". The two mean opposite things. This is the one status that
+      # genuinely has no number behind it, so it alone returns NA.
       status[i] <- "insufficient"
       objective[i] <- NA_real_
       peak[i] <- max(re)
@@ -298,14 +298,10 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
     # A range that consumes most of the record it was measured against is not
     # a range; it is a statement that the record ended first. The divergence
     # is exactly zero at the final observation, by construction, so a range can
-    # never formally reach the end of the row -- testing against the end alone
-    # would therefore never fire. The test is against the retained margin.
-    #
-    # Resolution is judged per quantity rather than once for the whole time.
-    # The subjective ranges at small thresholds run far longer than the
-    # objective range does, and condemning the objective range because the
-    # most demanding threshold was unresolved would discard the quantity the
-    # method leads with.
+    # never formally reach the end of the row, and testing against the end
+    # alone would therefore never fire. The test is against the retained
+    # margin.
+
     # ---- Objective range by its definition ---------------------------------
     #
     # The source paper defines the objective range as the subjective ranges
@@ -321,19 +317,19 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
       objective_exact[i] <- .aci_simpson(counts * dt, eps_sorted) / peak[i]
     }
 
-    # ---- Resolution: censoring, not deletion --------------------------------
+    # ---- Resolution by censoring rather than deletion -----------------------
     #
     # A range that consumes most of the record it was measured against is not
-    # a resolved range. It is also not "no measurement": it is a RIGHT-CENSORED
-    # one, and the record does support a statement about it -- that the range
-    # is at least this long. Earlier versions returned NA here, which threw
-    # that statement away, and did so at the end of the record, which is where
-    # a user studying a recent event looks.
+    # a resolved range. It is also not an absence of measurement. It is a
+    # RIGHT-CENSORED one, and the record does support a statement about it,
+    # namely that the range is at least this long. Returning NA here would
+    # throw that statement away at the end of the record, which is where a
+    # user studying a recent event looks.
     #
-    # So the value stands and the status carries the caveat. `subjective`,
-    # `objective` and `objective_exact` are lower bounds wherever the status is
-    # "censored", and `subjective_censored` marks the individual thresholds
-    # that ran long.
+    # The value therefore stands and `status` records that it is a bound.
+    # `subjective`, `objective` and `objective_exact` are lower bounds wherever
+    # the status is "censored", and `subjective_censored` marks the individual
+    # thresholds that ran long.
     #
     # Resolution is judged per quantity rather than once for the whole time.
     # The subjective ranges at small thresholds run far longer than the
@@ -354,9 +350,9 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
     }
   }
 
-  # Retained with its original meaning -- a time whose objective range is not
-  # resolved -- so callers testing it keep working. What changed is that the
-  # number beside it is now a bound rather than a hole.
+  # Retained with its original meaning (a time whose objective range is not
+  # resolved) so that callers testing it keep working. The number beside it is
+  # a bound rather than a hole.
   saturated <- status == "censored"
 
   structure(
@@ -416,7 +412,7 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
 
   # Relative entropy of the fully informed posterior from each partial one,
   # with the dispersion term written so that it stays accurate where the two
-  # posteriors nearly agree -- which is precisely the tail that sets the range.
+  # posteriors nearly agree, which is precisely the tail that sets the range.
   if (any(!is.finite(rr)) || any(rr <= 0)) {
     bad <- which(!is.finite(rr) | rr <= 0)[1L]
     .aci_stop_covariance("online smoother", j + bad - 1L, NA_real_, rr[bad])
@@ -425,8 +421,9 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
   value <- 0.5 * (mu_end - mu)^2 / rr + 0.5 * (delta - log1p(delta))
 
   # The horizon truncates how far forward the comparison looks, but NOT the
-  # fully informed posterior it is compared against: `mu_end` and `r_end` above
-  # are taken over the whole record either way. That asymmetry is the point.
+  # fully informed posterior it is compared against. Both `mu_end` and `r_end`
+  # above are taken over the whole record either way. That asymmetry is the
+  # point.
   # The quantity being measured is how far one must look before the estimate
   # stops changing, and the thing it must stop changing towards is the estimate
   # informed by everything available.

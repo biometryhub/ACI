@@ -1,4 +1,4 @@
-# -- nonlinear dyad model with intermittent extreme events ---------------------
+# Nonlinear dyad model with intermittent extreme events ------------------------
 #
 # The dyad model pairs an observed process x with an unobserved process y whose
 # feedback on x makes x intermittently extreme. It is the conditional Gaussian
@@ -7,7 +7,7 @@
 #
 # The function below builds the model's components list directly from an
 # observed signal and a parameter list. It is the worked example of the
-# components schema documented at ?aci_components: the arithmetic mirrors the
+# components schema documented at ?aci_components. The arithmetic mirrors the
 # reference implementation's, term for term, which is what makes it a useful
 # template for a system the package supplies no constructor for.
 
@@ -74,8 +74,8 @@
 #' the noise cross-covariances are zero.
 #'
 #' Most users should reach for [aci_dyad_model()] and [aci()] instead. This
-#' function is the worked example of the components schema: read it as the
-#' template for a conditional Gaussian system the package supplies no
+#' function is the worked example of the components schema, and it serves as
+#' the template for a conditional Gaussian system the package supplies no
 #' constructor for. See [aci_components] for the schema itself.
 #'
 #' @param x Numeric vector. The observed signal, one value per time step.

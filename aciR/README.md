@@ -17,15 +17,15 @@ Gaussian nonlinear systems. A conditional Gaussian nonlinear system
 (CGNS) pairs an observed signal with an unobserved component whose
 statistics, conditional on the observed path, are Gaussian and available
 in closed form. ACI measures, step by step, how strongly the observed
-signal carries information about that unobserved component -- and so
-where the two are causally coupled under the model.
+signal carries information about that unobserved component, and so where
+the two are causally coupled under the model.
 
 The workflow rests on data assimilation. A forward filter estimates the
 hidden component from the observed path seen so far, a backward smoother
 estimates it from the whole observed path, and the causal-information
-metric -- the relative entropy of the smoother posterior from the filter
-posterior -- reads off how much the future of the observed signal
-sharpens the estimate at each step.
+metric (the relative entropy of the smoother posterior from the filter
+posterior) reads off how much the future of the observed signal sharpens
+the estimate at each step.
 
 The method reimplemented here is due to Andreou, Chen and Bollt (2026).
 
@@ -87,12 +87,12 @@ summary(fit)
 #>     round-off clamps to zero: 0 of 5000 steps
 ```
 
-The three core functions -- `aci_filter()`, `aci_smoother()` and
-`aci_metric()` -- work on any conditional Gaussian nonlinear system
-through a general components list, so they are not tied to the dyad
-model. `aci_cgns_model()` builds a model object for a system of one's
-own. The vignette *Assimilative causal inference on the nonlinear dyad
-model* is a full walkthrough.
+The three core functions `aci_filter()`, `aci_smoother()` and
+`aci_metric()` work on any conditional Gaussian nonlinear system through
+a general components list, so they are not tied to the dyad model.
+`aci_cgns_model()` builds a model object for a system of one's own. The
+vignette *Assimilative causal inference on the nonlinear dyad model* is
+a full walkthrough.
 
 ## Validation
 
@@ -120,16 +120,16 @@ the estimand precisely, lists the conditions under which the method is
 valid, and sets out what an ACI peak does and does not support. Read it
 before drawing a causal conclusion from a peak.
 
-Current scope: a scalar observed process, a scalar unobserved component,
-and a complete signal on a regular grid. Both published quantities are
-implemented -- the causal-information metric and, via `aci_cir()`, the
-causal influence range -- and the unobserved component's self-drift may
-vary in time, which the noisy predator-prey model needs. The numerical
-core also takes vector-valued states and the conditional construction,
-in which the causal question is asked of one observed component given
-the others. The online smoother and the causal influence range dispatch
-on the components the same way the core does. API stability is declared
-per export in `API_STABILITY.md`.
+Current scope: observed and unobserved components of any dimension, and
+a complete signal on a regular grid. Both published quantities are
+implemented, the causal-information metric and, via `aci_cir()`, the
+causal influence range. The unobserved component's self-drift may vary
+in time, which the noisy predator-prey model needs. The numerical core
+also takes vector-valued states and the conditional construction, in
+which the causal question is asked of one observed component given the
+others. The online smoother and the causal influence range dispatch on
+the components the same way the core does. API stability is declared per
+export in `API_STABILITY.md`.
 
 ### Reproducing the published causal-influence-range panels
 

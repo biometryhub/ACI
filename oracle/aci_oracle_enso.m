@@ -12,7 +12,7 @@
 % diffusion with respect to a DIFFERENT variable, which is not the standard
 % scheme and which the accompanying paper never mentions. See
 % design/2026-08-13_milstein_anomaly.md. The observed path here is therefore a
-% path, not THE reference path -- which is all an oracle for the FILTER needs,
+% path, not THE reference path, which is all an oracle for the FILTER needs,
 % since the filter is graded on whatever signal it is driven with.
 %
 % What this fixture grades is the coefficient construction and the vector

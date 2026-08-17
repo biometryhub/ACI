@@ -21,9 +21,10 @@ An object of class \code{summary.aci_cir}.
 }
 \description{
 Reports the range alongside the two diagnostics a reader needs in order to
-interpret it: how many reported times are censored rather than resolved, and
-how often the divergence sequence is monotone. The second matters because
-\code{objective} and \code{objective_exact} are the same functional only when it is.
+interpret it. The first is how many reported times are censored rather than
+resolved. The second is how often the divergence sequence is monotone, which
+matters because \code{objective} and \code{objective_exact} are the same functional
+only when it is.
 }
 \examples{
 model <- aci_dyad_model()

@@ -1,10 +1,10 @@
-# -- gate G1: capture and validate a reference workspace -----------------------
+# gate G1: capture and validate a reference workspace --------------------------
 #
 # Runs each declared (script, profile) through MATLAB and checks the result is
-# not degenerate before anything is graded against it. The check is not
-# ceremony: a reduced problem size silently emptied one of the reference's own
-# outputs the first time this was run, and a pairing graded against an empty
-# vector passes without comparing anything.
+# not degenerate before anything is graded against it. The check is necessary:
+# a reduced problem size silently emptied one of the reference's own outputs
+# the first time this was run, and a pairing graded against an empty vector
+# passes without comparing anything.
 
 #' Capture every declared workspace and assert it is usable.
 #'

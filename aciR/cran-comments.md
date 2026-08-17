@@ -9,17 +9,17 @@ adjudicated when they arise rather than at submission time.
 
 ## Test environments
 
-* local macOS 26.5.2 (Tahoe), R 4.5.2 — `R CMD check --as-cran`, vanilla
+* local macOS 26.5.2 (Tahoe), R 4.5.2, `R CMD check --as-cran`, vanilla
   session, run on the built tarball
 * GitHub Actions (configured, runs on push): ubuntu-latest (devel, release,
-  oldrel-1, and 4.1 — the declared floor), macOS-latest (release),
+  oldrel-1, and 4.1, the declared floor), macOS-latest (release),
   windows-latest (release), with `error-on: warning`
 
 ## R CMD check results
 
 0 errors | 0 warnings | 2 notes
 
-### Note 1 — new submission and unreachable URLs
+### Note 1. New submission and unreachable URLs
 
 ```
 Maintainer: 'Max Moldovan <max.moldovan@gmail.com>'
@@ -31,11 +31,11 @@ Found the following (possibly) invalid URLs:
 Expected and accurate. The declared repository is private, so its URL returns
 404 to an anonymous checker. The URL is correct and is the canonical home of
 the package; it is not reachable without authentication. This note will persist
-for as long as the repository is private, and would be resolved -- not
-suppressed -- by making it public, which is a decision for a later release
+for as long as the repository is private. It would be resolved, rather than
+suppressed, by making the repository public, which is a decision for a later release
 rather than something to work around in metadata.
 
-### Note 2 — HTML manual validation skipped
+### Note 2. HTML manual validation skipped
 
 ```
 Skipping checking HTML validation: 'tidy' doesn't look like recent enough HTML Tidy.
@@ -52,7 +52,7 @@ on current images.
 * The earlier check ran without the PDF manual. The manual now builds; the
   remaining note above is only about HTML validation tooling.
 
-## Test suite behaviour worth stating
+## Test suite behaviour
 
 `R CMD check` reports 7 skipped tests. All 7 are the `expect_snapshot()` blocks
 in `test-errors.R`, which testthat skips on CRAN by default because snapshot

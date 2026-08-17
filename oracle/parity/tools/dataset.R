@@ -1,14 +1,14 @@
-# -- the dataset contract ------------------------------------------------------
+# the dataset contract ---------------------------------------------------------
 #
 # What both implementations have to agree on before they can be compared: the
 # observed signal, the conditional Gaussian components, the step, and the
-# initial condition. The format is one DCF of scalars and one CSV of columns --
+# initial condition. The format is one DCF of scalars and one CSV of columns,
 # chosen because R reads both with `read.dcf`/`read.csv` and MATLAB with a
 # short parser and `readtable`, so neither side gains a package dependency for
 # a development harness.
 #
-# One asymmetry is baked into the contract and worth stating rather than
-# hiding. The reference parameterises noise by the feedback matrices Sx_1,
+# One asymmetry is baked into the contract and is stated here rather than
+# hidden. The reference parameterises noise by the feedback matrices Sx_1,
 # Sx_2, Sy_1, Sy_2 and forms the Grammians itself; aciR takes the Grammians
 # directly. A dataset therefore carries the feedbacks, and the R side derives
 # what aciR wants. The two are equivalent here, but only the reference's
