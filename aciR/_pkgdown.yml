@@ -13,9 +13,12 @@ template:
 
 navbar:
   structure:
-    left: [intro, reference, articles, evidence, news]
+    left: [intro, walkthrough, reference, articles, evidence, news]
     right: [search, github]
   components:
+    walkthrough:
+      text: Walkthrough
+      href: walkthrough.html
     articles:
       text: Articles
       menu:
@@ -41,6 +44,8 @@ home:
     of something we cannot observe, for systems whose filter and smoother are
     both available in closed form.
   links:
+  - text: Walkthrough, five rungs from one call to the refusal
+    href: walkthrough.html
   - text: Parity ledger, the numbers side by side
     href: ledgers/parity_ledger.html
   - text: Development ledger, how it came to be

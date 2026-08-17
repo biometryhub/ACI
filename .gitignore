@@ -15,3 +15,7 @@ aciR_uplift_proposals_*.md
 .claude/
 .cursor/
 .positai/
+
+# walkthrough render scratch: the copy that ships is in aciR/pkgdown/assets/
+tools/walkthrough/walkthrough.html
+tools/walkthrough/walkthrough_files/

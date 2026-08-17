@@ -1,0 +1,584 @@
+---
+title: "What the future tells you about the present"
+subtitle: "A walkthrough of the aciR package, from one function call to the point where it refuses to answer"
+date: 2026-08-17
+date-format: iso
+abstract: |
+  Assimilative causal inference measures how much the later part of an
+  observed signal sharpens an estimate of something that was never observed.
+  This walkthrough climbs five rungs, from a single function call on a
+  two-variable system to a six-dimensional climate model, and ends at the
+  boundary where the package reports that the record ran out before the
+  question could be settled. Every number and figure below is produced by
+  running the code shown, on systems that are published and cited.
+format:
+  html:
+    embed-resources: true
+    # MathML rather than the default MathJax. MathJax is fetched from a content
+    # delivery network at view time, which a self-contained page must not do,
+    # and omitting it silently leaves the LaTeX on the page as literal text.
+    # MathML is rendered by the browser itself, so the page stays offline and
+    # the notation still resolves. The key is `html-math-method`, which is what
+    # Quarto passes to pandoc; `math_method` is the rmarkdown spelling and is
+    # accepted silently here without doing anything.
+    html-math-method: mathml
+    toc: true
+    toc-location: left
+    toc-depth: 2
+    number-sections: true
+    code-fold: false
+    code-tools: false
+    fig-width: 8
+    fig-height: 4.2
+    fig-align: center
+    theme:
+      light: cosmo
+    smooth-scroll: true
+    include-in-header:
+      text: |
+        <style>
+          :root {
+            --rung:  #1f4e79;
+            --warn:  #b45309;
+            --good:  #146b52;
+            --paper: #fbfcfd;
+          }
+          body { font-size: 1.02rem; }
+          h1, h2, h3 { letter-spacing: -0.01em; }
+          h2 { margin-top: 2.4rem; padding-bottom: .35rem;
+               border-bottom: 2px solid #e6ebf1; }
+          .lede { font-size: 1.12rem; line-height: 1.62; color: #35414d;
+                  margin: 0 0 1.4rem 0; }
+          .box { border-left: 4px solid var(--rung); padding: .75em 1.1em;
+                 margin: 1.35em 0; background: var(--paper);
+                 border-radius: 0 4px 4px 0; }
+          .box-warn { border-left-color: var(--warn); background: #fffaf3; }
+          .box-good { border-left-color: var(--good); background: #f3faf7; }
+          .box p:last-child, .box ul:last-child { margin-bottom: 0; }
+          .box .hd { font-weight: 700; display: block; margin-bottom: .3em;
+                     color: var(--rung); letter-spacing: .02em;
+                     text-transform: uppercase; font-size: .78rem; }
+          .box-warn .hd { color: var(--warn); }
+          .box-good .hd { color: var(--good); }
+          .rung-tag { display: inline-block; font-size: .72rem; font-weight: 700;
+                      letter-spacing: .09em; text-transform: uppercase;
+                      color: #6b7885; border: 1px solid #d4dbe3;
+                      border-radius: 999px; padding: .16em .8em;
+                      margin-bottom: .5rem; }
+          details > summary { cursor: pointer; font-weight: 600;
+                              padding: .35em 0; }
+          table.dataTable { font-size: .9em; }
+          pre { border-radius: 4px; }
+          .quiet { color: #667381; font-size: .93rem; }
+        </style>
+knitr:
+  opts_chunk:
+    collapse: true
+    comment: "#>"
+    message: false
+    warning: false
+    dev: "png"
+    dpi: 120
+    fig.retina: 1
+---
+
+```{r setup, include=FALSE}
+library(aciR)
+library(ggplot2)
+library(DT)
+
+set.seed(2026)
+
+theme_set(
+  theme_minimal(base_size = 12) +
+    theme(
+      panel.grid.minor = element_blank(),
+      panel.grid.major = element_line(colour = "#eaeef2"),
+      plot.title = element_text(face = "bold", size = 12.5),
+      plot.subtitle = element_text(colour = "#5b6672", size = 10.5),
+      axis.title = element_text(colour = "#42505e"),
+      legend.position = "top",
+      legend.title = element_blank()
+    )
+)
+
+# Okabe-Ito, chosen because it stays legible under every common form of
+# colour vision deficiency.
+pal <- c("#0072B2", "#D55E00", "#009E73", "#CC79A7")
+
+# Every fixture read below ships inside the installed package, so this
+# document renders from a clean R session with nothing downloaded.
+ex <- function(f) system.file("extdata", f, package = "aciR")
+
+tbl <- function(df, n = nrow(df), digits = 4) {
+  num <- vapply(df, is.numeric, logical(1L))
+  df[num] <- lapply(df[num], function(z) signif(z, digits))
+  DT::datatable(
+    utils::head(df, n),
+    rownames = FALSE,
+    options = list(pageLength = min(n, 12L), dom = "t", scrollX = TRUE),
+    class = "compact stripe hover"
+  )
+}
+```
+
+::: lede
+Some things you want to know about cannot be measured. You watch one signal
+and you want the state of another that no instrument reaches. The question
+this package answers is narrow and answerable: given everything the observed
+signal does *later*, how much better can you say what the unobserved state
+was *now*, and how far ahead do you have to look before the answer stops
+improving?
+:::
+
+## What this document is
+
+Assimilative causal inference is a method for conditional Gaussian nonlinear
+systems, published by Andreou et al. (2026). A conditional Gaussian nonlinear
+system is one in which an observed signal evolves nonlinearly, while the
+unobserved component, *conditional on the observed path*, has Gaussian
+statistics available in closed form. That closed form is what makes the
+method exact rather than approximate.
+
+Two quantities follow from it. The **causal-information metric** is the
+relative entropy, also called the Kullback-Leibler divergence, of the
+smoother posterior from the filter posterior at each instant. In words: how
+much the future of the observed record sharpens the estimate. The **causal
+influence range** is the second quantity, and it asks how far ahead one must
+look before that sharpening stops.
+
+::: {.box .box-warn}
+[On the inputs]{.hd}
+The systems below are published mathematical models, and the paths are
+simulated realisations of them or fixtures generated from the reference
+implementation. **They are not observational records.** In particular, the
+El Niño Southern Oscillation section uses a simulated realisation of a
+published climate model, not measured sea-surface temperatures, and nothing
+here supports an empirical claim about the climate. The models, and the
+findings that use them, are in the source paper.
+:::
+
+::: {.box}
+[Requirements]{.hd}
+`aciR` (0.2.3 or later), `ggplot2` and `DT`. Nothing is downloaded: every
+fixture read below ships inside the installed package. To install:
+
+```r
+# install.packages("remotes")
+remotes::install_github("biometryhub/ACI", subdir = "aciR")
+```
+:::
+
+## Rung 1: the whole method in one call {#rung-1}
+
+[Rung 1 of 5]{.rung-tag}
+
+The nonlinear dyad is the smallest system worth the trouble. One observed
+variable, one unobserved variable, and a coupling that produces intermittent
+bursts rather than steady behaviour. Those bursts are the interesting part,
+because that is where the future of the observed signal has the most to say.
+
+`aci()` runs the whole workflow: the forward filter, the backward smoother,
+and the metric that contrasts them.
+
+```{r rung1-run}
+model <- aci_dyad_model()
+sim <- aci_simulate(model, n = 6000, seed = 42)
+result <- aci(sim$x, model, dt = 0.001)
+
+result
+```
+
+The `print` method leads with the distribution of the metric rather than a
+single number, because a single number would hide the thing that matters:
+the metric is small most of the time and large in short episodes.
+
+```{r rung1-fig, fig.height=4.6}
+d <- as.data.frame(result)
+
+p1 <- ggplot(d, aes(t, x)) +
+  geom_line(linewidth = .32, colour = pal[1]) +
+  labs(title = "The observed signal", y = "x", x = NULL)
+
+p2 <- ggplot(d, aes(t, aci)) +
+  geom_area(fill = pal[2], alpha = .22) +
+  geom_line(linewidth = .38, colour = pal[2]) +
+  labs(
+    title = "What the future adds",
+    subtitle = "Causal-information metric, in nats",
+    y = "metric", x = "time"
+  )
+
+patch <- function(a, b) {
+  gridExtra::grid.arrange(a, b, ncol = 1, heights = c(1, 1.15))
+}
+if (requireNamespace("gridExtra", quietly = TRUE)) {
+  patch(p1, p2)
+} else {
+  print(p2)
+}
+```
+
+The metric peaks where the signal does something abrupt. That is the
+substantive reading: during a burst, the record that arrives afterwards
+carries a great deal of information about what the unobserved component was
+doing at the time, and during quiet stretches it carries much less.
+
+## Rung 2: how far ahead must you look? {#rung-2}
+
+[Rung 2 of 5]{.rung-tag}
+
+The metric says *how much*. It does not say *how long*. Two systems can
+sharpen an estimate by the same total amount, one settling within a few
+steps and the other still improving thousands of steps later. The causal
+influence range separates them.
+
+```{r rung2-run}
+comp <- aci_dyad_components(sim$x, model$parameters)
+filt <- aci_filter(sim$x, comp, dt = 0.001, mu0 = model$y0, R0 = 0.1)
+
+cir <- aci_cir(
+  sim$x, comp,
+  dt = 0.001, filt = filt,
+  window = seq(500L, 3000L, by = 250L)
+)
+
+cir
+```
+
+Two objective ranges are reported, and they differ here by more than a
+factor of two. This is not a numerical disagreement. They are different
+functionals that coincide only under a condition this system does not meet.
+
+```{r rung2-tbl}
+cd <- as.data.frame(cir)
+tbl(cd[, c("time", "objective", "objective_exact", "peak",
+           "status", "monotone")])
+```
+
+::: {.box}
+[Why the two ranges differ]{.hd}
+`objective_exact` averages the per-threshold ranges over the whole threshold
+grid, which is the definition in the source paper. `objective` is the
+efficient approximation the paper also gives. They agree when the divergence
+sequence decreases with lag, by the layer-cake identity. The `monotone`
+column reports that condition, and here it is `FALSE` at every reported
+time, so the gap is definitional rather than a defect in either. The package
+reports both instead of picking one, because which is wanted depends on
+whether you need the definition or the cheaper computation.
+:::
+
+## Rung 3: the question is not symmetric {#rung-3}
+
+[Rung 3 of 5]{.rung-tag}
+
+Nothing so far distinguishes "what x says about y" from "what y says about
+x". A stochastic predator-prey system makes the asymmetry concrete, because
+the same pair of populations can be read in either causal direction. Observe
+the prey and infer the predator, or observe the predator and infer the prey.
+
+```{r rung3-run}
+pp <- read.csv(ex("predprey_signal.csv"))
+params <- aci_predprey_model()$parameters
+
+run_direction <- function(direction) {
+  observed <- if (direction == "predator_to_prey") pp$prey else pp$predator
+  cmp <- aci_predprey_components(observed, params, direction)
+  f <- aci_filter(observed, cmp, dt = 0.005, mu0 = 4, R0 = 0.1)
+  s <- aci_smoother(observed, cmp, dt = 0.005, filt = f)
+  data.frame(
+    direction = direction,
+    observed = if (direction == "predator_to_prey") "prey" else "predator",
+    mean = mean(aci_metric(f, s)),
+    peak = max(aci_metric(f, s)),
+    drift_low = min(cmp$L_y),
+    drift_high = max(cmp$L_y)
+  )
+}
+
+both <- do.call(rbind, lapply(
+  c("predator_to_prey", "prey_to_predator"), run_direction
+))
+tbl(both)
+```
+
+The mean metric differs by roughly a factor of two between the two readings
+of one system. Watching the predator tells you more about the prey than the
+reverse, at these parameters.
+
+This system also exercises something the dyad does not. The unobserved
+component's own drift coefficient is set by the observed state, so it moves
+over the record and changes sign, shown by the `drift_low` and `drift_high`
+columns. The latent process is damped at some times and driven at others,
+which a system with a constant coefficient cannot express.
+
+## Rung 4: six dimensions, and what one channel contributes {#rung-4}
+
+[Rung 4 of 5]{.rung-tag}
+
+The El Niño Southern Oscillation model in the source paper is the largest
+system the package expresses: six dimensions, three observed and three
+unobserved, with coefficients that vary seasonally and noise covariances
+that vary in time.
+
+```{r rung4-setup}
+enso <- read.csv(ex("enso_signal.csv"))
+p <- aci_enso_parameters()
+emodel <- aci_enso_model(p)
+
+c(observed = paste(emodel$observed, collapse = ", "),
+  unobserved = paste(emodel$unobserved, collapse = ", "))
+```
+
+The observed channels are the central- and eastern-Pacific temperature
+anomalies and the Walker circulation strength. The unobserved ones are the
+zonal current, the thermocline depth and the wind burst.
+
+```{r rung4-joint}
+ecomp <- aci_enso_components(
+  enso$T_C, enso$T_E, enso$I, p = p, time = enso$t, dt = 0.005
+)
+xm <- rbind(enso$T_C, enso$T_E, enso$I)
+mu0 <- c(6.9136e-04, -0.0028, -0.0256)
+R0 <- 0.01 * diag(3L)
+
+ef <- aci_filter(xm, ecomp, dt = 0.005, mu0 = mu0, R0 = R0)
+es <- aci_smoother(xm, ecomp, dt = 0.005, filt = ef)
+joint <- aci_metric(ef, es)
+
+c(mean = mean(joint), peak = max(joint), at_time = enso$t[which.max(joint)])
+```
+
+::: {.box .box-warn}
+[Six dimensions defeat the eye]{.hd}
+At three observed and three unobserved dimensions there is no plot that
+settles whether this is right. A time series of the metric can be shown, and
+is below, but it is orientation rather than proof. What establishes the
+numbers is the parity grading described at the end of this document, in
+which each quantity is compared against the authors' own code on the same
+input. Treat the figure as a picture of the answer, not as evidence for it.
+:::
+
+`aci_conditional()` asks a sharper question: what does one observed channel
+contribute, when the others are still present in the system but the filter
+stops assimilating them?
+
+```{r rung4-conditional}
+channels <- c("T_C", "T_E", "I")
+
+contribution <- do.call(rbind, lapply(seq_along(channels), function(i) {
+  cc <- aci_conditional(ecomp, target = i)
+  f <- aci_filter(xm, cc, dt = 0.005, mu0 = mu0, R0 = R0)
+  s <- aci_smoother(xm, cc, dt = 0.005, filt = f)
+  m <- aci_metric(f, s)
+  data.frame(channel = channels[i], mean = mean(m), peak = max(m))
+}))
+contribution <- rbind(
+  contribution,
+  data.frame(channel = "all three", mean = mean(joint), peak = max(joint))
+)
+tbl(contribution)
+```
+
+```{r rung4-fig, fig.height=3.9}
+ggplot(
+  data.frame(t = enso$t, metric = joint),
+  aes(t, metric)
+) +
+  geom_line(linewidth = .34, colour = pal[3]) +
+  labs(
+    title = "Causal-information metric, six-dimensional model",
+    subtitle = "Orientation only. The grading, not the picture, is the evidence.",
+    x = "time", y = "metric (nats)"
+  )
+```
+
+::: {.box .box-warn}
+[The trap in that table]{.hd}
+The central-Pacific channel on its own scores *higher* than all three
+channels together. That is not a contradiction, and it is the single easiest
+result to misread. The metric measures how much the future improves on the
+filter. Give the filter fewer channels and it becomes worse, which leaves
+the future more room to improve on it. A large value therefore reports a
+weak filter as readily as an informative channel, and the quantity is not a
+decomposition: the parts do not sum to the whole.
+
+The Walker circulation scoring near zero should be read with the same care.
+It says the *future* of that channel adds little beyond its own past, not
+that the channel is uninformative.
+:::
+
+The estimand is worth stating exactly, because four different quantities get
+confused here. The metric is the relative entropy of
+$p(y_t \mid x_{0:T})$ from $p(y_t \mid x_{0:t})$. It is not an
+interventional quantity, not a Granger test and not transfer entropy,
+although all four can be large at the same instants. Conditioning changes
+what the filter assimilates, not the system that produced the path.
+
+## Rung 5: where the package refuses {#rung-5}
+
+[Rung 5 of 5]{.rung-tag}
+
+Every method has a boundary. For this one the binding constraint is not
+dimension and not runtime: it is how much record remains *after* the moment
+you asked about. To measure how far ahead the influence extends, the record
+has to extend that far. Ask about a time near the end and it does not.
+
+The honest behaviour is to say so. Here the same system is interrogated at
+thirty times, marching toward the end of the record.
+
+```{r rung5-run}
+sim2 <- aci_simulate(model, n = 4000, seed = 7)
+comp2 <- aci_dyad_components(sim2$x, model$parameters)
+filt2 <- aci_filter(sim2$x, comp2, dt = 0.001, mu0 = model$y0, R0 = 0.1)
+
+edge <- aci_cir(
+  sim2$x, comp2,
+  dt = 0.001, filt = filt2,
+  window = seq(1000L, 3900L, by = 100L)
+)
+
+ed <- as.data.frame(edge)
+ed$lookahead <- nrow(sim2) - ed$index
+table(ed$status)
+```
+
+```{r rung5-fig, fig.height=4.1}
+ggplot(ed, aes(lookahead, objective, colour = status)) +
+  geom_point(size = 2.1) +
+  geom_line(aes(group = 1), linewidth = .3, colour = "#9aa5b1") +
+  scale_x_reverse() +
+  scale_colour_manual(values = c(resolved = pal[3], censored = pal[2])) +
+  labs(
+    title = "The boundary is the record that remains, not the model",
+    subtitle = paste(
+      "Reading right to left, each point sits closer to the end of the record."
+    ),
+    x = "steps of record remaining after the reported time",
+    y = "objective range"
+  )
+```
+
+The status changes from `resolved` to `censored` partway along. The rule is
+explicit: a time is censored when the divergence has not settled below
+`threshold` until it has consumed more than `1 - margin` of the record
+available after it. At the default `margin = 0.1`, that means more than 90%.
+
+What the package does *not* do at that point is return `NA`. A censored time
+still yields a statement the record supports, namely that the range is at
+least this long, so the value stands and the status records that it is a
+lower bound. Discarding it would throw away information exactly at the end
+of the record, which is where somebody studying a recent event is looking.
+Only a time with fewer than three later observations, where no quadrature is
+possible at all, returns `NA`.
+
+::: {.box .box-good}
+[What to take from this rung]{.hd}
+A range reported near the end of a record is a lower bound, and the `status`
+column is how you tell. Two habits follow. Check `status` before quoting a
+range. And when you design a record, leave more tail than the influence you
+expect to measure, because the tail is the binding constraint.
+:::
+
+## How these numbers are checked {#checked}
+
+A reimplementation tested only against fixtures its own author transcribed
+demonstrates self-consistency and nothing more. If the author misread an
+equation, the fixture encodes the same misreading and passes.
+
+Every numerical claim in this package is therefore graded against a source
+that did not also produce the code under test. The authors publish their
+work as MATLAB scripts rather than as a callable library, so their
+computational passages are lifted into callable functions as byte-exact
+slices, never retyped, and a checker fails on a single byte of drift. Both
+implementations then run on the same input and are compared quantity by
+quantity.
+
+```{r checked-tbl}
+tbl(data.frame(
+  check = c(
+    "Extract outputs reproducing the reference's own workspace",
+    "Verbatim reference lines, none retyped",
+    "Scalar core against the reference",
+    "Predator-prey, both directions, filter through influence range"
+  ),
+  result = c(
+    "156 of 156, difference exactly 0",
+    "2,159 lines across 33 extracts",
+    "26 of 26 quantities, worst 1.5e-14",
+    "26 graded quantities, worst 1.5e-12"
+  )
+))
+```
+
+For scale, an experiment comparing independently developed implementations
+of the same algorithms on identical input found agreement degrading from six
+significant figures to one (Hatton, 1997).
+
+The full record is in the
+[parity ledger](ledgers/parity_ledger.html), and the design history, with
+what remains open, is in the
+[development ledger](ledgers/development_ledger.html).
+
+## Where to go next {#next}
+
+```{r next-tbl}
+tbl(data.frame(
+  rung = c("1", "2", "3", "4", "5"),
+  question = c(
+    "How much does the future add?",
+    "How far ahead must I look?",
+    "Does the direction matter?",
+    "What does one channel contribute?",
+    "When should I not trust the answer?"
+  ),
+  entry_point = c(
+    "aci()", "aci_cir()", "aci_predprey_components()",
+    "aci_conditional()", "the status column of aci_cir()"
+  )
+))
+```
+
+Three articles ship with the package. *Assimilative causal inference on the
+nonlinear dyad model* is the worked tutorial. *Assumptions and
+interpretation* states the conditions under which the method applies and
+what a peak does and does not support, and it is the right next read after
+the two warnings above. *Validation and the independent oracle* records what
+each oracle grades and, for each, what it does not.
+
+## References {#references}
+
+Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
+*Nature Communications*, **17**, 1854.
+[doi:10.1038/s41467-026-68568-0](https://doi.org/10.1038/s41467-026-68568-0)
+
+Andreou, M., Chen, N. and Li, Y. (2026). An adaptive online smoother with
+closed-form solutions and information-theoretic lag selection for
+conditional Gaussian nonlinear systems. *Journal of Nonlinear Science*,
+**36**(4), 71.
+[doi:10.1007/s00332-026-10271-x](https://doi.org/10.1007/s00332-026-10271-x)
+
+Hatton, L. (1997). The T experiments: errors in scientific software.
+*IEEE Computational Science and Engineering*, **4**(2), 27-38.
+[doi:10.1109/99.609829](https://doi.org/10.1109/99.609829)
+
+## Citation and licence {#licence}
+
+Cite the package as `citation("aciR")`. The method is the authors' and
+should be cited alongside any use of this software; the reference is the
+first entry above.
+
+`aciR` is MIT licensed, Copyright &copy; 2026 Max Moldovan. The reference
+implementation, [`marandmath/ACI_code`](https://github.com/marandmath/ACI_code),
+is separately MIT licensed, Copyright &copy; 2025 Marios Andreou, and is not
+redistributed with this package. This document inherits the MIT licence of
+both.
+
+<details>
+<summary>Session information</summary>
+
+```{r session, echo=FALSE}
+sessionInfo()
+```
+
+</details>
