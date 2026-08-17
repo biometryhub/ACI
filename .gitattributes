@@ -1,20 +1,30 @@
-# The oracle fixtures are pinned by hash: inst/extdata/oracle-manifest.yml
-# records an MD5 and a SHA-256 for each, and tests/testthat/test-oracle-manifest.R
-# checks the shipped bytes against them on every run.
+# Byte-exactness across platforms.
 #
-# Git's end-of-line translation would defeat that. On a Windows checkout the
-# default conversion rewrites LF to CRLF, changing every fixture's bytes and so
-# its hash, while leaving the numbers read from them identical -- the values
-# parse the same, so the oracle grade still passes and only the identity check
-# fails. That is the right outcome from the gate and the wrong state for the
-# repository: a hash-pinned fixture must be byte-identical on every platform,
-# or the hash records a property of the checkout rather than of the fixture.
+# Fixtures here are pinned by hash. `aciR/inst/extdata/oracle-manifest.yml`
+# records an MD5 and a SHA-256 for each shipped fixture, checked on every run by
+# `tests/testthat/test-oracle-manifest.R`; `tests/testthat/fixtures/` holds a
+# captured path pinned the same way; and `tools/oracle/` holds the harnesses
+# those fixtures came from.
 #
-# `-text` disables all conversion, so these files are delivered verbatim
-# everywhere. Found by the fixture gate failing on windows-latest, 2026-07-15.
-oracle/*.csv                -text
-aciR/inst/extdata/*.csv     -text
+# Git's end-of-line translation defeats all of it. On a Windows checkout the
+# default conversion rewrites LF to CRLF, which changes every fixture's bytes
+# and so its hash, while leaving the numbers parsed out of them identical. The
+# oracle grade still passes and only the identity check fails, which is the
+# right outcome from the gate and the wrong state for the repository: a
+# hash-pinned fixture must be byte-identical everywhere, or the hash records a
+# property of the checkout rather than of the fixture.
+#
+# `-text` disables all conversion, so these files are delivered verbatim on
+# every platform.
+#
+# The rules are deliberately extension-based rather than directory-based. The
+# previous version named `oracle/*.csv` and `oracle/*.m`, which stopped matching
+# anything the moment those files moved to `tools/oracle/` during the
+# restructure for publication, silently and with no error anywhere. That is the
+# second time end-of-line conversion has broken this repository's hash gates:
+# once on 2026-07-15 when the rules were absent, and once on 2026-08-17 when
+# they were present but pointed at a path that no longer existed. A rule keyed
+# to the extension cannot be invalidated by moving a directory.
 
-# The MATLAB harnesses are the provenance of those fixtures; keep them stable
-# too, so a hash taken of a harness means the same thing on any platform.
-oracle/*.m                  -text
+*.csv   -text
+*.m     -text
