@@ -1,4 +1,4 @@
-# -- grading the integrator against the reference, by inverting the scheme -----
+# Grading the integrator against the reference, by inverting the scheme --------
 #
 # aci_simulate() used to be ungraded, and the stated reason was that R and
 # MATLAB draw normal variates by different algorithms, so a simulated path
@@ -16,16 +16,16 @@
 # the variates the reference actually drew are recoverable from its own
 # captured path by subtracting the drift and dividing by the noise
 # coefficient. Feeding them back through aci_simulate(increments = ) must
-# return the reference path itself -- not a path with the same statistics, the
-# same path. That is an exact grade of the scheme, its coefficient assembly and
-# its step ordering, and it is what these tests run.
+# return the reference path itself. A path with the same statistics is not
+# enough. It must be the same path. That is an exact grade of the scheme, its
+# coefficient assembly and its step ordering, and it is what these tests run.
 #
 # The inverse below is written from the two equations above, with the
 # parameters read off the model object, rather than by calling anything the
 # simulator uses. An oracle assembled from the code it grades tests
 # self-consistency; this one does not share the integrator's source.
 #
-# -- the fixture ---------------------------------------------------------------
+# The fixture ------------------------------------------------------------------
 #
 # The inversion needs BOTH components at consecutive steps of the integration
 # grid, and neither packaged oracle fixture supplies that. inst/extdata's
@@ -41,7 +41,7 @@
 # column is tied to the published run rather than merely asserted to belong
 # to it.
 #
-# -- the declared tolerance ----------------------------------------------------
+# The declared tolerance -------------------------------------------------------
 #
 # Declared from the arithmetic before any comparison was run, not read off the
 # disagreement. Two quantities set it.
@@ -54,8 +54,8 @@
 #   bounds the whole chain with a factor of seven to spare.
 #
 #   Amplification. A deviation obeys d[j + 1] = (I + dt J[j]) d[j] + e, with J
-#   the Jacobian of the drift at the reference state -- the noise is additive,
-#   so it does not enter J. An injection at one step is amplified by the
+#   the Jacobian of the drift at the reference state (the noise is additive,
+#   so it does not enter J). An injection at one step is amplified by the
 #   product of the largest singular values of (I + dt J) over every later step.
 #
 # Summing the injection over the steps, each weighted by its own amplification,
@@ -122,6 +122,19 @@
 }
 
 test_that("the captured true path is the published dyad run", {
+  # Every other oracle-bearing fixture has its bytes pinned in
+  # inst/extdata/oracle-manifest.yml. This one lives under tests/ rather than
+  # inst/extdata, so the manifest does not reach it, and the provenance record
+  # the manifest promises for each fixture would otherwise stop short here. The
+  # hash is therefore pinned in place. md5 rather than sha256 for the reason
+  # given in test-oracle-manifest.R, that tools::sha256sum() arrived in R 4.5.0
+  # and this package's floor is 4.1.0.
+  path <- testthat::test_path("fixtures", "dyad_true_path_head.csv")
+  expect_identical(
+    unname(tools::md5sum(path)),
+    "9cc1d3a4387b9e662d1896598f8e3b67"
+  )
+
   ref <- .aci_dyad_true_path()
   expect_identical(nrow(ref), 3001L)
   expect_identical(names(ref), c("x", "y"))

@@ -1,17 +1,19 @@
 # Provenance of the independent-oracle fixtures shipped with aciR.
 #
-# Each fixture pair is (signal, reference): aciR runs its OWN filter, smoother
+# Each fixture pair is (signal, reference). aciR runs its OWN filter, smoother
 # and metric on the signal and must reproduce the reference at the sampled
-# indices to the stated tolerance. The tests that enforce this are
-# tests/testthat/test-oracle-dyad.R and tests/testthat/test-oracle-cross.R;
+# indices to the stated tolerance. The tests that enforce this are the
+# tests/testthat/test-oracle-*.R family, one per fixture group;
 # tests/testthat/test-oracle-manifest.R checks the shipped bytes against the
-# hashes below, so a changed fixture cannot pass unnoticed.
+# hashes below, so a changed fixture cannot pass unnoticed, and
+# tests/testthat/test-grading-matrix.R fails the build when a capability is
+# neither graded nor declared ungraded.
 #
-# Read `grades` on each entry before citing a fixture as validation: an oracle
+# Read `grades` on each entry before citing a fixture as validation. An oracle
 # grades the paths its parameters exercise, and no others.
 
 manifest_version: 1
-package_version: 0.1.0
+package_version: 0.2.2
 generated_on: 2026-07-15
 
 upstream:
@@ -27,7 +29,7 @@ upstream:
 environment:
   matlab_release: R2025b Update 1
   matlab_version: 25.2.0.3042426
-  platform: macOS (Darwin 25.5.0, x86_64)
+  platform: macOS (Darwin 25.5.0, arm64)
 
 fixtures:
   - id: dyad
@@ -62,20 +64,22 @@ fixtures:
     reproduced_on: 2026-07-15
     reproduced_note: >
       Regenerated from the harness on MATLAB R2025b Update 1 into a scratch
-      directory and diffed: both files reproduced byte-for-byte, identical
-      SHA-256. The recorded MATLAB release is therefore grounded by
-      reproduction, not by recollection.
+      directory and diffed. Both files reproduced byte-for-byte, with an
+      identical SHA-256. The recorded MATLAB release is therefore grounded by
+      reproduction rather than by recollection.
     grades: >
-      The deterministic CGNS core -- filter, smoother and metric -- on a
+      The deterministic CGNS core (filter, smoother and metric) on a
       state-dependent coupling L_x = gamma*x with INDEPENDENT noise. Because
-      the reference sets Sx_2 = Sy_1 = 0, the noise cross-covariance is zero:
-      the terms carrying S_yoS_x execute on every run of this fixture but are
+      the reference sets Sx_2 = Sy_1 = 0, the noise cross-covariance is zero.
+      The terms carrying S_yoS_x execute on every run of this fixture but are
       annihilated, so this fixture does NOT grade them. See the `cross`
       fixture and the analytic identities for those.
     does_not_grade: >
-      The noise-cross-covariance terms; simulation (aciR's generator differs
-      from MATLAB's, so paths do not correspond at a matching seed); the
-      causal-influence-range, which is not yet implemented.
+      The noise-cross-covariance terms. Simulation, since aciR's generator
+      differs from MATLAB's and paths do not correspond at a matching seed;
+      the integrator itself is graded separately, by driving it with the
+      reference's own recovered increments. The causal influence range, which
+      the `cir` fixture below grades instead.
 
   - id: cross
     harness: oracle/aci_oracle_cross.m
@@ -114,11 +118,11 @@ fixtures:
       and the smoother (A_j and the S_yoS_x transport term), over the full
       transient, on the reference dyad with correlated noise switched on.
     does_not_grade: >
-      Nothing upstream. This harness has NO upstream counterpart: every scalar
+      Nothing upstream. This harness has NO upstream counterpart. Every scalar
       model in the reference implementation (dyad_interaction_model.m,
       noisy_predator_prey_model.m) sets Sx_2 = Sy_1 = 0. It is therefore a
       second, independent implementation of the published equations in a
-      different language and runtime -- agreement refutes an R-side
+      different language and runtime. Agreement refutes an R-side
       transcription error, but it is NOT an authors'-reference grounding. The
       primary grounding for these terms is analytic; see `analytic_oracles`.
 
@@ -133,11 +137,12 @@ fixtures:
     initial_filter_covariance: 0.1
     signal_source: >
       The leading 2001 steps of dyad_signal_x.csv. This harness generates no
-      signal of its own: it reads the fixture already pinned above, so the CIR
-      grade and the dyad grade are driven by the identical path and there is
-      one fewer set of bytes to keep honest. The truncation is a limit of the
-      REFERENCE, whose staggered triangle is quadratic in the record and needs
-      several gigabytes at full length; aciR never forms that triangle.
+      signal of its own. It reads the fixture already pinned above, so the CIR
+      grade and the dyad grade are driven by the identical path, and no second
+      copy of that path has to be shipped, hashed and kept in step. The
+      truncation is a limit of the REFERENCE, whose staggered triangle is
+      quadratic in the record and needs several gigabytes at full length;
+      aciR never forms that triangle.
     parameters:
       d_x: 0.5
       d_y: 0.5
@@ -157,17 +162,17 @@ fixtures:
     grades: >
       The fixed-lag online smoother at 75 sampled (time, observation) pairs
       spanning lags from zero to the whole record, and the causal influence
-      range at 15 times: the peak divergence, the objective range, and the
-      subjective range at four thresholds.
+      range at 15 times, covering the peak divergence, the objective range,
+      and the subjective range at four thresholds.
     does_not_grade: >
       The saturation margin, which is aciR's own and has no counterpart
-      upstream -- the reference reports every value it computes and leaves the
+      upstream. The reference reports every value it computes and leaves the
       record-limited ones to the reader. The margin is graded by its own tests
-      in test-cir.R. Also the noise-cross-covariance terms of the online
-      smoother: like every scalar model upstream this fixture sets S_yoS_x to
-      zero, so the terms carrying it execute but are annihilated. That gap is
-      the same one the `cross` fixture closes for the filter and smoother, and
-      it is closed one layer up by the `cir_cross` fixture below.
+      in test-cir.R. Also ungraded here are the noise-cross-covariance terms of
+      the online smoother. Like every scalar model upstream, this fixture sets
+      S_yoS_x to zero, so the terms carrying it execute but are annihilated.
+      That gap matches the one the `cross` fixture closes for the filter and
+      smoother, and it is closed one layer up by the `cir_cross` fixture below.
     measured_max_abs_error:
       online_mean: 5.107026e-15
       online_cov: 7.216450e-16
@@ -200,8 +205,8 @@ fixtures:
       The reference presents the two directions as separate code sections, each
       run after rng(42). Both integrate the same Lotka-Volterra pair with the
       same noise applied the same way, so one simulation serves both. The
-      harness does not assume this: it re-runs the second branch's formulation
-      and diffs. Measured 2026-08-13: 1.669775e-13.
+      harness does not assume this. It re-runs the second branch's formulation
+      and diffs. The measured difference on 2026-08-13 was 1.669775e-13.
     files:
       predprey_signal.csv:
         sha256: 591f904e511efc7abd6b884a75b65aea00aadfdd2ce9598d841feb9b41b34f13
@@ -215,8 +220,8 @@ fixtures:
     grades: >
       The filter, smoother and metric with a TIME-VARYING latent self-drift, in
       both causal directions. This is the path the dyad and cross fixtures
-      cannot reach: both pin L_y at a constant, so the terms that index it
-      execute against an unvarying value. Here the self-drift moves over
+      cannot reach, since both pin L_y at a constant, so the terms that index
+      it execute against an unvarying value. Here the self-drift moves over
       [-0.3705, 0.8174] one way and [-1.1583, 0.8386] the other, changing sign
       in both, so the latent process is damped at some times and driven at
       others.
@@ -254,24 +259,25 @@ fixtures:
       The vector-valued filter, smoother and multivariate relative entropy on a
       two-by-two system with time-varying coefficients and a NON-ZERO matrix
       noise cross-covariance, over the full transient. The covariances carry
-      genuine off-diagonal structure, which matters: a block-diagonal system
+      genuine off-diagonal structure, which matters. A block-diagonal system
       has diagonal Cholesky factors and cannot distinguish the correct trace
       term of the relative entropy from a plausible wrong one. This fixture
       caught exactly that defect on its first run.
     does_not_grade: >
       NOTHING UPSTREAM. This harness has NO upstream counterpart, and the gap
-      is wider here than anywhere else in the package: every scalar model in
+      is wider here than anywhere else in the package. Every scalar model in
       the reference sets the noise cross-covariance to zero, and all five ENSO
       scripts state in as many words that the cross-interaction terms are
-      absent -- thirty-five times across those files. It is therefore a second
+      absent, thirty-five times across those files. It is therefore a second
       independent implementation of the published matrix equations in a
       different language and runtime. Agreement refutes an R-side transcription
       error; it is NOT an authors'-reference grounding, and must not be cited
       as one. The primary grounding for these terms is analytic; see
-      `analytic_oracles`. Also not graded against the authors: the online
-      smoother and causal influence range in the vector case, which ARE
-      implemented but whose grounding is collapse onto the graded scalar path
-      plus an independent transcription, not the reference's own numbers.
+      `analytic_oracles`. Two further items are not graded against the authors,
+      the online smoother and the causal influence range in the vector case.
+      Both ARE implemented, but their grounding is collapse onto the graded
+      scalar path plus an independent transcription, not the reference's own
+      numbers.
     measured_max_abs_error:
       all_series: 5.773160e-15
     measured_on: 2026-08-13
@@ -299,7 +305,7 @@ fixtures:
     exists_because: >
       The package's grading register (tests/testthat/test-grading-matrix.R)
       MEASURED that the online smoother and the causal influence range were
-      graded only by a fixture whose noise cross-covariance is zero -- so the
+      graded only by a fixture whose noise cross-covariance is zero, so the
       terms carrying it executed annihilated, exactly as they had for the
       filter and smoother before the `cross` fixture existed. The register
       found the gap; this fixture closed it. Two of fifty-six cells were
@@ -310,9 +316,9 @@ fixtures:
       (time, observation) pairs and 15 reported times.
     does_not_grade: >
       Nothing upstream. Like aci_oracle_cross.m, this harness has no upstream
-      counterpart -- no scalar model in the reference exercises these terms --
-      so it is a second independent implementation, NOT an authors'-reference
-      grounding.
+      counterpart, since no scalar model in the reference exercises these
+      terms, so it is a second independent implementation and NOT an
+      authors'-reference grounding.
     measured_max_abs_error:
       online_mean: 8.881784e-15
       online_cov: 4.302114e-16
@@ -338,8 +344,8 @@ fixtures:
         sha256: faf981c3149a79a84aaa9a45e4ef094d67ae9736d9f41e7e8a33adeda825e7d8
         md5: fe8f0f1c74b693324e9858697c3b3b90
     grades: >
-      The ENSO coefficient construction -- matrix-valued, seasonally modulated
-      on a six-unit period -- and the vector recursions on the only system the
+      The ENSO coefficient construction (matrix-valued, seasonally modulated
+      on a six-unit period) and the vector recursions on the only system the
       package carries whose noise covariances VARY IN TIME. The Walker
       circulation's observation-noise variance is multiplicative in its own
       state and swings by a factor of more than three across the record; the
@@ -351,13 +357,14 @@ fixtures:
       The reference's own realisation. The harness generates its observed path
       by plain Euler-Maruyama rather than the reference's mixed scheme, because
       that scheme's wind-burst update carries a correction aciR does not
-      reproduce -- see design/2026-08-13_milstein_anomaly.md. A filter is
+      reproduce (see design/2026-08-13_milstein_anomaly.md). A filter is
       graded on whatever signal drives it, so this grades the coefficients and
-      the recursions and NOT the particular path upstream would produce. Also
-      not graded here: the noise cross-covariance, which this model sets to zero as
-      every model in the reference does, and the online smoother and causal
-      influence range, which ARE implemented for vector states but are graded
-      by collapse onto the scalar path rather than against this script.
+      the recursions and NOT the particular path upstream would produce. Two
+      further items are not graded here. The first is the noise
+      cross-covariance, which this model sets to zero as every model in the
+      reference does. The second is the online smoother and causal influence
+      range, which ARE implemented for vector states but are graded by
+      collapse onto the scalar path rather than against this script.
     measured_max_abs_error:
       all_series: 8.509859e-14
     measured_on: 2026-08-13
@@ -396,7 +403,7 @@ fixtures:
     measured_on: 2026-08-13
 
 # The oracles that depend on no implementation at all. These are the primary
-# grounding for the cross-noise path: algebra on the governing equations,
+# grounding for the cross-noise path, being algebra on the governing equations,
 # solved in closed form in the test file and independent of BOTH aciR and
 # MATLAB.
 analytic_oracles:
@@ -422,8 +429,9 @@ analytic_oracles:
       beyond the current step, so it is the forward filter. The recursion adds
       one term per admitted future observation and at lag zero admits none.
     grades: >
-      the online smoother's boundary at zero lag, exactly. Measured 2026-08-13:
-      identical to the filter, bit for bit, at every step size tried.
+      the online smoother's boundary at zero lag, exactly. The measurement on
+      2026-08-13 found it identical to the filter, bit for bit, at every step
+      size tried.
   - id: online_smoother_triangle
     location: tests/testthat/test-online-smoother.R
     statement: >
@@ -432,10 +440,11 @@ analytic_oracles:
       O(n^2) triangle. A literal transcription of that triangle is carried in
       the test file and must agree to machine precision.
     grades: >
-      the logarithmic reconstruction against the algorithm it replaces.
-      Measured 2026-08-13: 2.442e-15 at n = 400, 5.773e-15 at n = 800.
+      the logarithmic reconstruction against the algorithm it replaces. The
+      measurements on 2026-08-13 were 2.442e-15 at n = 400 and 5.773e-15 at
+      n = 800.
     does_not_grade: >
-      the recursion itself -- both sides here share the per-step auxiliary
+      the recursion itself, since both sides here share the per-step auxiliary
       quantities. This grades the redesign, not the equations; those are
       graded by the zero-lag identity and the convergence rate below.
   - id: online_smoother_full_lag_order
@@ -446,9 +455,9 @@ analytic_oracles:
       distinct objects agreeing only as dt tends to zero, so the graded
       quantity is the convergence rate and not equality.
     grades: >
-      the full-lag limit at first order. Measured 2026-08-13 on a fixed
-      analytic signal: gap ratios 2.017, 2.009, 2.004, 2.002, 2.001 across
-      successive halvings of dt, an estimated order of 1.000.
+      the full-lag limit at first order. Measured on 2026-08-13 on a fixed
+      analytic signal, the gap ratios were 2.017, 2.009, 2.004, 2.002 and
+      2.001 across successive halvings of dt, an estimated order of 1.000.
     does_not_grade: >
       agreement at any fixed dt. Asserting equality here would fail by
       construction; the earlier plan for this package wrongly recorded the
@@ -467,10 +476,10 @@ validation:
   tolerance_gate: 1.0e-6
   gate_semantics: >
     Maximum absolute error across all five compared series at the 301 sampled
-    indices. Both oracle tests run from the installed package fixtures and
+    indices. The oracle tests run from the installed package fixtures and
     never skip.
   # Measured on the release candidate, not recalled. Both are ~8 orders of
-  # magnitude inside the gate: the agreement is at the floating-point noise
+  # magnitude inside the gate. The agreement is at the floating-point noise
   # floor of a 30,001-step recursion, not merely within tolerance.
   observed_max_abs_error:
     dyad: 4.574119e-14

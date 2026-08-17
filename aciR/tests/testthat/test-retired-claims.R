@@ -1,4 +1,4 @@
-# -- claims that were retired, and must not come back --------------------------
+# Claims that were retired, and must not come back -----------------------------
 #
 # Twice in review this package was found asserting something that had ceased to
 # be true: documentation saying the online smoother and causal influence range
@@ -9,7 +9,7 @@
 #
 # The failure is not the individual sentences. It is marking an item done from
 # the surfaces one edited rather than from a search over the surfaces that could
-# carry it -- a check that costs one grep and was not run. A habit of running it
+# carry it, a check that costs one grep and was not run. A habit of running it
 # is exactly the kind of rule that fails under load, so it is a test instead.
 #
 # Each entry is a RETIRED SENTENCE, not a keyword. That is deliberate: the
@@ -55,6 +55,22 @@
     )
   ),
   list(
+    phrase = "which is not yet implemented",
+    why = paste(
+      "Said of the causal influence range in the oracle manifest, and true",
+      "only before 0.2.0. The cir fixture in the same file grades it. Found",
+      "2026-08-17, having survived three releases in a file that ships."
+    )
+  ),
+  list(
+    phrase = "saturated and returns `NA` rather than the truncated value",
+    why = paste(
+      "A censored time returns the value as a lower bound. This sentence",
+      "contradicted the breaking-change entry forty lines above it in the",
+      "same release section. Found 2026-08-17."
+    )
+  ),
+  list(
     phrase = "closed with the\n#' Simpson 3/8 rule",
     why = paste(
       "The odd-interval closure follows the reference: the quadratic through",
@@ -65,8 +81,8 @@
 
 # Gather every text surface that could carry a claim, from wherever it is
 # reachable. Under `R CMD check` the source tree is gone and only the installed
-# package exists, so the two roots are unioned rather than chosen between --
-# and the manual is read through `Rd_db()`, since installed help is a database
+# package exists, so the two roots are unioned rather than chosen between.
+# The manual is read through `Rd_db()`, since installed help is a database
 # rather than files. A guard that quietly scans nothing is worse than no guard,
 # so the count is asserted before the search.
 .claim_surfaces <- function() {
