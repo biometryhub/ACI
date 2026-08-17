@@ -1,4 +1,4 @@
-# MIT License
+MIT License
 
 Copyright (c) 2026 Max Moldovan
 
@@ -20,14 +20,22 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+
 ---
 
-## Third-party attribution
+Third-party attribution
 
-The numerical core of this package derives from, and is validated against, the
-reference MATLAB implementation `ACI_code`
-(<https://github.com/marandmath/ACI_code>), Copyright (c) 2025 Marios Andreou,
+The numerical core of the R package in `aciR/` derives from, and is validated
+against, the reference MATLAB implementation `ACI_code`
+(https://github.com/marandmath/ACI_code), Copyright (c) 2025 Marios Andreou,
 which is itself MIT licensed. That copyright and the permission notice above
-apply to the derived portions alongside the package's own.
+apply to the derived portions alongside this repository's own.
 
-The reference implementation is not redistributed with this package.
+The reference implementation is not redistributed here. It is obtained by
+cloning it separately, and the working copies are excluded from version
+control. Where passages of it are quoted verbatim in the documents under
+`docs/`, the notice appears beside the quoted code.
+
+The scope of this licence is the whole repository: the R package in `aciR/`,
+the verification harnesses and design records in `tools/`, and the documents
+in `docs/`.

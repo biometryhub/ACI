@@ -10,3 +10,8 @@ matlab_reference/
 aciR/docs/
 # working notes (charter: never enter shared history)
 aciR_uplift_proposals_*.md
+
+# AI-assistant scratch directories: never belong in shared history
+.claude/
+.cursor/
+.positai/
