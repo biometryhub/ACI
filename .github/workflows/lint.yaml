@@ -40,3 +40,13 @@ jobs:
         shell: Rscript {0}
         env:
           LINTR_ERROR_ON_LINT: true
+
+      # The fixture directories can only be compared where both exist, and
+      # `tools/` is excluded from the build, so this cannot live in the test
+      # suite: under `R CMD check` it would skip on every run. This job works
+      # from the checkout rather than from a tarball, which is the one place
+      # the comparison is possible. Hence `working-directory: .`, overriding
+      # the job default of `aciR`.
+      - name: Fixture provenance
+        run: Rscript tools/oracle/check_fixture_provenance.R
+        working-directory: .
