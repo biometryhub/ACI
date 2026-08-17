@@ -19,3 +19,6 @@ aciR_uplift_proposals_*.md
 # walkthrough render scratch: the copy that ships is in aciR/pkgdown/assets/
 tools/walkthrough/walkthrough.html
 tools/walkthrough/walkthrough_files/
+
+# tooling scratch (carries absolute local paths): never in history or a tarball
+_visual_inspection/

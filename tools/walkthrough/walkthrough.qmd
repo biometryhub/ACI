@@ -123,12 +123,19 @@ tbl <- function(df, n = nrow(df), digits = 4) {
 ```
 
 ::: lede
-Some things you want to know about cannot be measured. You watch one signal
-and you want the state of another that no instrument reaches. The question
-this package answers is narrow and answerable: given everything the observed
-signal does *later*, how much better can you say what the unobserved state
-was *now*, and how far ahead do you have to look before the answer stops
-improving?
+The depth of the thermocline under the Pacific drives the sea-surface
+temperatures that satellites record, and is itself far harder to observe.
+That shape recurs everywhere: you have a signal you can measure, and you
+want the state of something you cannot. This package answers one narrow,
+answerable question about that pair. Given everything the observed signal
+goes on to do *after* a given moment, how much better can you say what the
+unobserved state was *at* that moment, and how far ahead do you have to look
+before the answer stops improving?
+
+Those are two different questions, and they get two different numbers. What
+follows climbs from a single function call to the point where the second
+question can no longer be answered from the record in hand, and the package
+says so.
 :::
 
 ## What this document is
@@ -393,19 +400,67 @@ ggplot(
   )
 ```
 
-::: {.box .box-warn}
-[The trap in that table]{.hd}
 The central-Pacific channel on its own scores *higher* than all three
-channels together. That is not a contradiction, and it is the single easiest
-result to misread. The metric measures how much the future improves on the
-filter. Give the filter fewer channels and it becomes worse, which leaves
-the future more room to improve on it. A large value therefore reports a
-weak filter as readily as an informative channel, and the quantity is not a
-decomposition: the parts do not sum to the whole.
+channels together, and the three parts sum to well over the whole. That is
+the easiest result in this document to misread, so it is worth taking apart
+rather than asserting an explanation for.
 
-The Walker circulation scoring near zero should be read with the same care.
-It says the *future* of that channel adds little beyond its own past, not
-that the channel is uninformative.
+The tempting explanation is that a filter given fewer channels is worse,
+which leaves the future more room to improve on it. That explanation is
+wrong, and the package's own output refutes it: restricted to the
+central-Pacific channel, the *smoother's* posterior widens by more than the
+filter's does, not less. Something else is moving.
+
+Between two Gaussians the divergence splits into exactly two pieces. One is
+the change in spread, how much narrower the smoother posterior is. The other
+is the distance between the two posterior means, measured in filter
+precisions. Computing both from the same filter and smoother the package
+returns shows which one carries the metric.
+
+```{r rung4-decomp}
+kl_parts <- function(cmp) {
+  f <- aci_filter(xm, cmp, dt = 0.005, mu0 = mu0, R0 = R0)
+  s <- aci_smoother(xm, cmp, dt = 0.005, filt = f)
+  n <- dim(f$cov)[3L]
+  spread <- mean_shift <- numeric(n)
+  for (i in seq_len(n)) {
+    prec <- solve(f$cov[, , i])
+    gap <- f$mean[, i] - s$mean[, i]
+    spread[i] <- 0.5 * (sum(diag(prec %*% s$cov[, , i])) - 3 +
+                          log(det(f$cov[, , i]) / det(s$cov[, , i])))
+    mean_shift[i] <- 0.5 * as.numeric(t(gap) %*% prec %*% gap)
+  }
+  data.frame(spread = mean(spread), mean_shift = mean(mean_shift),
+             total = mean(spread + mean_shift))
+}
+
+split <- do.call(rbind, lapply(
+  list(ecomp, aci_conditional(ecomp, 1L), aci_conditional(ecomp, 2L),
+       aci_conditional(ecomp, 3L)),
+  kl_parts
+))
+split <- cbind(assimilating = c("all three", "T_C", "T_E", "I"), split)
+split$mean_shift_pct <- round(100 * split$mean_shift / split$total)
+tbl(split)
+```
+
+The `total` column reproduces the metric reported above, which is the check
+that this decomposition is of the same quantity and not a different one.
+
+::: {.box .box-warn}
+[What the table shows]{.hd}
+Roughly three quarters of the metric is the distance between the two
+posterior means, not the narrowing of the posterior. Restricting to the
+central-Pacific channel leaves the spread term essentially unchanged and
+raises the mean term. The metric therefore reports mostly how far the future
+*moves* the estimate, and only secondarily how much it *sharpens* it.
+
+Two consequences follow, and they are the practical ones. The quantity is
+not a decomposition, so per-channel values cannot be added and cannot be
+read as a ranking of channel importance. And a channel scoring near zero,
+as the Walker circulation does here on both terms, is saying that its future
+neither moves nor sharpens the estimate beyond its own past. That is not the
+same as the channel being uninformative about the system.
 :::
 
 The estimand is worth stating exactly, because four different quantities get
@@ -419,13 +474,20 @@ what the filter assimilates, not the system that produced the path.
 
 [Rung 5 of 5]{.rung-tag}
 
-Every method has a boundary. For this one the binding constraint is not
-dimension and not runtime: it is how much record remains *after* the moment
-you asked about. To measure how far ahead the influence extends, the record
-has to extend that far. Ask about a time near the end and it does not.
+The binding constraint here is neither dimension nor runtime. It is how much
+record remains *after* the moment you asked about. To find how far ahead the
+influence reaches, the record has to reach at least that far, and near the
+end of a record it does not.
 
-The honest behaviour is to say so. Here the same system is interrogated at
-thirty times, marching toward the end of the record.
+This is a property of the question rather than of the software. No method,
+in any language, can measure an influence extending further than the data it
+was given, and an implementation that returned a confident number there
+would be inventing it. What distinguishes implementations is whether they
+report the shortfall or absorb it silently into a plausible-looking value.
+
+So the last rung is not a limitation being disclosed. It is the behaviour
+worth checking for before trusting any of the previous four. The same system
+is interrogated at thirty times, marching toward the end of the record.
 
 ```{r rung5-run}
 sim2 <- aci_simulate(model, n = 4000, seed = 7)

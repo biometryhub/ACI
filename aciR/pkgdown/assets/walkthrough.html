@@ -4797,7 +4797,8 @@ pre { border-radius: 4px; }
 
 
 <div class="lede">
-<p>Some things you want to know about cannot be measured. You watch one signal and you want the state of another that no instrument reaches. The question this package answers is narrow and answerable: given everything the observed signal does <em>later</em>, how much better can you say what the unobserved state was <em>now</em>, and how far ahead do you have to look before the answer stops improving?</p>
+<p>The depth of the thermocline under the Pacific drives the sea-surface temperatures that satellites record, and is itself far harder to observe. That shape recurs everywhere: you have a signal you can measure, and you want the state of something you cannot. This package answers one narrow, answerable question about that pair. Given everything the observed signal goes on to do <em>after</em> a given moment, how much better can you say what the unobserved state was <em>at</em> that moment, and how far ahead do you have to look before the answer stops improving?</p>
+<p>Those are two different questions, and they get two different numbers. What follows climbs from a single function call to the point where the second question can no longer be answered from the record in hand, and the package says so.</p>
 </div>
 <section id="what-this-document-is" class="level2" data-number="1">
 <h2 data-number="1" class="anchored" data-anchor-id="what-this-document-is"><span class="header-section-number">1</span> What this document is</h2>
@@ -5009,49 +5010,84 @@ pre { border-radius: 4px; }
 </div>
 </div>
 </div>
+<p>The central-Pacific channel on its own scores <em>higher</em> than all three channels together, and the three parts sum to well over the whole. That is the easiest result in this document to misread, so it is worth taking apart rather than asserting an explanation for.</p>
+<p>The tempting explanation is that a filter given fewer channels is worse, which leaves the future more room to improve on it. That explanation is wrong, and the package’s own output refutes it: restricted to the central-Pacific channel, the <em>smoother’s</em> posterior widens by more than the filter’s does, not less. Something else is moving.</p>
+<p>Between two Gaussians the divergence splits into exactly two pieces. One is the change in spread, how much narrower the smoother posterior is. The other is the distance between the two posterior means, measured in filter precisions. Computing both from the same filter and smoother the package returns shows which one carries the metric.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>kl_parts <span class="ot">&lt;-</span> <span class="cf">function</span>(cmp) {</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  f <span class="ot">&lt;-</span> <span class="fu">aci_filter</span>(xm, cmp, <span class="at">dt =</span> <span class="fl">0.005</span>, <span class="at">mu0 =</span> mu0, <span class="at">R0 =</span> R0)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  s <span class="ot">&lt;-</span> <span class="fu">aci_smoother</span>(xm, cmp, <span class="at">dt =</span> <span class="fl">0.005</span>, <span class="at">filt =</span> f)</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  n <span class="ot">&lt;-</span> <span class="fu">dim</span>(f<span class="sc">$</span>cov)[<span class="dv">3</span>L]</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  spread <span class="ot">&lt;-</span> mean_shift <span class="ot">&lt;-</span> <span class="fu">numeric</span>(n)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  <span class="cf">for</span> (i <span class="cf">in</span> <span class="fu">seq_len</span>(n)) {</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    prec <span class="ot">&lt;-</span> <span class="fu">solve</span>(f<span class="sc">$</span>cov[, , i])</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>    gap <span class="ot">&lt;-</span> f<span class="sc">$</span>mean[, i] <span class="sc">-</span> s<span class="sc">$</span>mean[, i]</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>    spread[i] <span class="ot">&lt;-</span> <span class="fl">0.5</span> <span class="sc">*</span> (<span class="fu">sum</span>(<span class="fu">diag</span>(prec <span class="sc">%*%</span> s<span class="sc">$</span>cov[, , i])) <span class="sc">-</span> <span class="dv">3</span> <span class="sc">+</span></span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>                          <span class="fu">log</span>(<span class="fu">det</span>(f<span class="sc">$</span>cov[, , i]) <span class="sc">/</span> <span class="fu">det</span>(s<span class="sc">$</span>cov[, , i])))</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>    mean_shift[i] <span class="ot">&lt;-</span> <span class="fl">0.5</span> <span class="sc">*</span> <span class="fu">as.numeric</span>(<span class="fu">t</span>(gap) <span class="sc">%*%</span> prec <span class="sc">%*%</span> gap)</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">data.frame</span>(<span class="at">spread =</span> <span class="fu">mean</span>(spread), <span class="at">mean_shift =</span> <span class="fu">mean</span>(mean_shift),</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>             <span class="at">total =</span> <span class="fu">mean</span>(spread <span class="sc">+</span> mean_shift))</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>split <span class="ot">&lt;-</span> <span class="fu">do.call</span>(rbind, <span class="fu">lapply</span>(</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">list</span>(ecomp, <span class="fu">aci_conditional</span>(ecomp, <span class="dv">1</span>L), <span class="fu">aci_conditional</span>(ecomp, <span class="dv">2</span>L),</span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aci_conditional</span>(ecomp, <span class="dv">3</span>L)),</span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>  kl_parts</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a>))</span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>split <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="at">assimilating =</span> <span class="fu">c</span>(<span class="st">&quot;all three&quot;</span>, <span class="st">&quot;T_C&quot;</span>, <span class="st">&quot;T_E&quot;</span>, <span class="st">&quot;I&quot;</span>), split)</span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>split<span class="sc">$</span>mean_shift_pct <span class="ot">&lt;-</span> <span class="fu">round</span>(<span class="dv">100</span> <span class="sc">*</span> split<span class="sc">$</span>mean_shift <span class="sc">/</span> split<span class="sc">$</span>total)</span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl</span>(split)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<div class="datatables html-widget html-fill-item" id="htmlwidget-37e42f220b02e2293c63" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-37e42f220b02e2293c63">{"x":{"filter":"none","vertical":false,"data":[["all three","T_C","T_E","I"],[0.189,0.1825,0.1476,6.666e-05],[0.5928,0.6877,0.365,1.604e-07],[0.7818000000000001,0.8702,0.5125999999999999,6.682e-05],[76,79,71,0]],"container":"<table class=\"compact stripe hover\">\n  <thead>\n    <tr>\n      <th>assimilating<\/th>\n      <th>spread<\/th>\n      <th>mean_shift<\/th>\n      <th>total<\/th>\n      <th>mean_shift_pct<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":4,"dom":"t","scrollX":true,"columnDefs":[{"className":"dt-right","targets":[1,2,3,4]},{"name":"assimilating","targets":0},{"name":"spread","targets":1},{"name":"mean_shift","targets":2},{"name":"total","targets":3},{"name":"mean_shift_pct","targets":4}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[4,10,25,50,100]}},"evals":[],"jsHooks":[]}</script>
+</div>
+</div>
+<p>The <code>total</code> column reproduces the metric reported above, which is the check that this decomposition is of the same quantity and not a different one.</p>
 <div class="box box-warn">
-<p><span class="hd">The trap in that table</span> The central-Pacific channel on its own scores <em>higher</em> than all three channels together. That is not a contradiction, and it is the single easiest result to misread. The metric measures how much the future improves on the filter. Give the filter fewer channels and it becomes worse, which leaves the future more room to improve on it. A large value therefore reports a weak filter as readily as an informative channel, and the quantity is not a decomposition: the parts do not sum to the whole.</p>
-<p>The Walker circulation scoring near zero should be read with the same care. It says the <em>future</em> of that channel adds little beyond its own past, not that the channel is uninformative.</p>
+<p><span class="hd">What the table shows</span> Roughly three quarters of the metric is the distance between the two posterior means, not the narrowing of the posterior. Restricting to the central-Pacific channel leaves the spread term essentially unchanged and raises the mean term. The metric therefore reports mostly how far the future <em>moves</em> the estimate, and only secondarily how much it <em>sharpens</em> it.</p>
+<p>Two consequences follow, and they are the practical ones. The quantity is not a decomposition, so per-channel values cannot be added and cannot be read as a ranking of channel importance. And a channel scoring near zero, as the Walker circulation does here on both terms, is saying that its future neither moves nor sharpens the estimate beyond its own past. That is not the same as the channel being uninformative about the system.</p>
 </div>
 <p>The estimand is worth stating exactly, because four different quantities get confused here. The metric is the relative entropy of <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>y</mi><mi>t</mi></msub><mo>∣</mo><msub><mi>x</mi><mrow><mn>0</mn><mo>:</mo><mi>T</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">p(y_t \mid x_{0:T})</annotation></semantics></math> from <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo stretchy="false" form="prefix">(</mo><msub><mi>y</mi><mi>t</mi></msub><mo>∣</mo><msub><mi>x</mi><mrow><mn>0</mn><mo>:</mo><mi>t</mi></mrow></msub><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">p(y_t \mid x_{0:t})</annotation></semantics></math>. It is not an interventional quantity, not a Granger test and not transfer entropy, although all four can be large at the same instants. Conditioning changes what the filter assimilates, not the system that produced the path.</p>
 </section>
 <section id="rung-5" class="level2" data-number="6">
 <h2 data-number="6" class="anchored" data-anchor-id="rung-5"><span class="header-section-number">6</span> Rung 5: where the package refuses</h2>
 <p><span class="rung-tag">Rung 5 of 5</span></p>
-<p>Every method has a boundary. For this one the binding constraint is not dimension and not runtime: it is how much record remains <em>after</em> the moment you asked about. To measure how far ahead the influence extends, the record has to extend that far. Ask about a time near the end and it does not.</p>
-<p>The honest behaviour is to say so. Here the same system is interrogated at thirty times, marching toward the end of the record.</p>
+<p>The binding constraint here is neither dimension nor runtime. It is how much record remains <em>after</em> the moment you asked about. To find how far ahead the influence reaches, the record has to reach at least that far, and near the end of a record it does not.</p>
+<p>This is a property of the question rather than of the software. No method, in any language, can measure an influence extending further than the data it was given, and an implementation that returned a confident number there would be inventing it. What distinguishes implementations is whether they report the shortfall or absorb it silently into a plausible-looking value.</p>
+<p>So the last rung is not a limitation being disclosed. It is the behaviour worth checking for before trusting any of the previous four. The same system is interrogated at thirty times, marching toward the end of the record.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>sim2 <span class="ot">&lt;-</span> <span class="fu">aci_simulate</span>(model, <span class="at">n =</span> <span class="dv">4000</span>, <span class="at">seed =</span> <span class="dv">7</span>)</span>
-<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>comp2 <span class="ot">&lt;-</span> <span class="fu">aci_dyad_components</span>(sim2<span class="sc">$</span>x, model<span class="sc">$</span>parameters)</span>
-<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>filt2 <span class="ot">&lt;-</span> <span class="fu">aci_filter</span>(sim2<span class="sc">$</span>x, comp2, <span class="at">dt =</span> <span class="fl">0.001</span>, <span class="at">mu0 =</span> model<span class="sc">$</span>y0, <span class="at">R0 =</span> <span class="fl">0.1</span>)</span>
-<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>edge <span class="ot">&lt;-</span> <span class="fu">aci_cir</span>(</span>
-<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>  sim2<span class="sc">$</span>x, comp2,</span>
-<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">dt =</span> <span class="fl">0.001</span>, <span class="at">filt =</span> filt2,</span>
-<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">window =</span> <span class="fu">seq</span>(<span class="dv">1000</span>L, <span class="dv">3900</span>L, <span class="at">by =</span> <span class="dv">100</span>L)</span>
-<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>ed <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(edge)</span>
-<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>ed<span class="sc">$</span>lookahead <span class="ot">&lt;-</span> <span class="fu">nrow</span>(sim2) <span class="sc">-</span> ed<span class="sc">$</span>index</span>
-<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(ed<span class="sc">$</span>status)</span>
-<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
-<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; censored resolved </span></span>
-<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;       16       14</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>sim2 <span class="ot">&lt;-</span> <span class="fu">aci_simulate</span>(model, <span class="at">n =</span> <span class="dv">4000</span>, <span class="at">seed =</span> <span class="dv">7</span>)</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>comp2 <span class="ot">&lt;-</span> <span class="fu">aci_dyad_components</span>(sim2<span class="sc">$</span>x, model<span class="sc">$</span>parameters)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>filt2 <span class="ot">&lt;-</span> <span class="fu">aci_filter</span>(sim2<span class="sc">$</span>x, comp2, <span class="at">dt =</span> <span class="fl">0.001</span>, <span class="at">mu0 =</span> model<span class="sc">$</span>y0, <span class="at">R0 =</span> <span class="fl">0.1</span>)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>edge <span class="ot">&lt;-</span> <span class="fu">aci_cir</span>(</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  sim2<span class="sc">$</span>x, comp2,</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">dt =</span> <span class="fl">0.001</span>, <span class="at">filt =</span> filt2,</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">window =</span> <span class="fu">seq</span>(<span class="dv">1000</span>L, <span class="dv">3900</span>L, <span class="at">by =</span> <span class="dv">100</span>L)</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>ed <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(edge)</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>ed<span class="sc">$</span>lookahead <span class="ot">&lt;-</span> <span class="fu">nrow</span>(sim2) <span class="sc">-</span> ed<span class="sc">$</span>index</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a><span class="fu">table</span>(ed<span class="sc">$</span>status)</span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; </span></span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt; censored resolved </span></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a><span class="co">#&gt;       16       14</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(ed, <span class="fu">aes</span>(lookahead, objective, <span class="at">colour =</span> status)) <span class="sc">+</span></span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="fl">2.1</span>) <span class="sc">+</span></span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">group =</span> <span class="dv">1</span>), <span class="at">linewidth =</span> .<span class="dv">3</span>, <span class="at">colour =</span> <span class="st">&quot;#9aa5b1&quot;</span>) <span class="sc">+</span></span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_reverse</span>() <span class="sc">+</span></span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_colour_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="at">resolved =</span> pal[<span class="dv">3</span>], <span class="at">censored =</span> pal[<span class="dv">2</span>])) <span class="sc">+</span></span>
-<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
-<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">&quot;The boundary is the record that remains, not the model&quot;</span>,</span>
-<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="fu">paste</span>(</span>
-<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;Reading right to left, each point sits closer to the end of the record.&quot;</span></span>
-<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>    ),</span>
-<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">&quot;steps of record remaining after the reported time&quot;</span>,</span>
-<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">&quot;objective range&quot;</span></span>
-<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(ed, <span class="fu">aes</span>(lookahead, objective, <span class="at">colour =</span> status)) <span class="sc">+</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_point</span>(<span class="at">size =</span> <span class="fl">2.1</span>) <span class="sc">+</span></span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_line</span>(<span class="fu">aes</span>(<span class="at">group =</span> <span class="dv">1</span>), <span class="at">linewidth =</span> .<span class="dv">3</span>, <span class="at">colour =</span> <span class="st">&quot;#9aa5b1&quot;</span>) <span class="sc">+</span></span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_x_reverse</span>() <span class="sc">+</span></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">scale_colour_manual</span>(<span class="at">values =</span> <span class="fu">c</span>(<span class="at">resolved =</span> pal[<span class="dv">3</span>], <span class="at">censored =</span> pal[<span class="dv">2</span>])) <span class="sc">+</span></span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">&quot;The boundary is the record that remains, not the model&quot;</span>,</span>
+<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="fu">paste</span>(</span>
+<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>      <span class="st">&quot;Reading right to left, each point sits closer to the end of the record.&quot;</span></span>
+<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>    ),</span>
+<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">&quot;steps of record remaining after the reported time&quot;</span>,</span>
+<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">&quot;objective range&quot;</span></span>
+<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>  )</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output-display">
 <div>
 <figure class="figure">
@@ -5071,23 +5107,23 @@ pre { border-radius: 4px; }
 <p>A reimplementation tested only against fixtures its own author transcribed demonstrates self-consistency and nothing more. If the author misread an equation, the fixture encodes the same misreading and passes.</p>
 <p>Every numerical claim in this package is therefore graded against a source that did not also produce the code under test. The authors publish their work as MATLAB scripts rather than as a callable library, so their computational passages are lifted into callable functions as byte-exact slices, never retyped, and a checker fails on a single byte of drift. Both implementations then run on the same input and are compared quantity by quantity.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl</span>(<span class="fu">data.frame</span>(</span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">check =</span> <span class="fu">c</span>(</span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Extract outputs reproducing the reference&#39;s own workspace&quot;</span>,</span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Verbatim reference lines, none retyped&quot;</span>,</span>
-<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Scalar core against the reference&quot;</span>,</span>
-<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Predator-prey, both directions, filter through influence range&quot;</span></span>
-<span id="cb13-7"><a href="#cb13-7" aria-hidden="true" tabindex="-1"></a>  ),</span>
-<span id="cb13-8"><a href="#cb13-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">result =</span> <span class="fu">c</span>(</span>
-<span id="cb13-9"><a href="#cb13-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;156 of 156, difference exactly 0&quot;</span>,</span>
-<span id="cb13-10"><a href="#cb13-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;2,159 lines across 33 extracts&quot;</span>,</span>
-<span id="cb13-11"><a href="#cb13-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;26 of 26 quantities, worst 1.5e-14&quot;</span>,</span>
-<span id="cb13-12"><a href="#cb13-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;26 graded quantities, worst 1.5e-12&quot;</span></span>
-<span id="cb13-13"><a href="#cb13-13" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb13-14"><a href="#cb13-14" aria-hidden="true" tabindex="-1"></a>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl</span>(<span class="fu">data.frame</span>(</span>
+<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">check =</span> <span class="fu">c</span>(</span>
+<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Extract outputs reproducing the reference&#39;s own workspace&quot;</span>,</span>
+<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Verbatim reference lines, none retyped&quot;</span>,</span>
+<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Scalar core against the reference&quot;</span>,</span>
+<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Predator-prey, both directions, filter through influence range&quot;</span></span>
+<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">result =</span> <span class="fu">c</span>(</span>
+<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;156 of 156, difference exactly 0&quot;</span>,</span>
+<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;2,159 lines across 33 extracts&quot;</span>,</span>
+<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;26 of 26 quantities, worst 1.5e-14&quot;</span>,</span>
+<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;26 graded quantities, worst 1.5e-12&quot;</span></span>
+<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output-display">
-<div class="datatables html-widget html-fill-item" id="htmlwidget-37e42f220b02e2293c63" style="width:100%;height:auto;"></div>
-<script type="application/json" data-for="htmlwidget-37e42f220b02e2293c63">{"x":{"filter":"none","vertical":false,"data":[["Extract outputs reproducing the reference's own workspace","Verbatim reference lines, none retyped","Scalar core against the reference","Predator-prey, both directions, filter through influence range"],["156 of 156, difference exactly 0","2,159 lines across 33 extracts","26 of 26 quantities, worst 1.5e-14","26 graded quantities, worst 1.5e-12"]],"container":"<table class=\"compact stripe hover\">\n  <thead>\n    <tr>\n      <th>check<\/th>\n      <th>result<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":4,"dom":"t","scrollX":true,"columnDefs":[{"name":"check","targets":0},{"name":"result","targets":1}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[4,10,25,50,100]}},"evals":[],"jsHooks":[]}</script>
+<div class="datatables html-widget html-fill-item" id="htmlwidget-07f141acfbdcbc68eb84" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-07f141acfbdcbc68eb84">{"x":{"filter":"none","vertical":false,"data":[["Extract outputs reproducing the reference's own workspace","Verbatim reference lines, none retyped","Scalar core against the reference","Predator-prey, both directions, filter through influence range"],["156 of 156, difference exactly 0","2,159 lines across 33 extracts","26 of 26 quantities, worst 1.5e-14","26 graded quantities, worst 1.5e-12"]],"container":"<table class=\"compact stripe hover\">\n  <thead>\n    <tr>\n      <th>check<\/th>\n      <th>result<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":4,"dom":"t","scrollX":true,"columnDefs":[{"name":"check","targets":0},{"name":"result","targets":1}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[4,10,25,50,100]}},"evals":[],"jsHooks":[]}</script>
 </div>
 </div>
 <p>For scale, an experiment comparing independently developed implementations of the same algorithms on identical input found agreement degrading from six significant figures to one (Hatton, 1997).</p>
@@ -5096,23 +5132,23 @@ pre { border-radius: 4px; }
 <section id="next" class="level2" data-number="8">
 <h2 data-number="8" class="anchored" data-anchor-id="next"><span class="header-section-number">8</span> Where to go next</h2>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl</span>(<span class="fu">data.frame</span>(</span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">rung =</span> <span class="fu">c</span>(<span class="st">&quot;1&quot;</span>, <span class="st">&quot;2&quot;</span>, <span class="st">&quot;3&quot;</span>, <span class="st">&quot;4&quot;</span>, <span class="st">&quot;5&quot;</span>),</span>
-<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">question =</span> <span class="fu">c</span>(</span>
-<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;How much does the future add?&quot;</span>,</span>
-<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;How far ahead must I look?&quot;</span>,</span>
-<span id="cb14-6"><a href="#cb14-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Does the direction matter?&quot;</span>,</span>
-<span id="cb14-7"><a href="#cb14-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;What does one channel contribute?&quot;</span>,</span>
-<span id="cb14-8"><a href="#cb14-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;When should I not trust the answer?&quot;</span></span>
-<span id="cb14-9"><a href="#cb14-9" aria-hidden="true" tabindex="-1"></a>  ),</span>
-<span id="cb14-10"><a href="#cb14-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">entry_point =</span> <span class="fu">c</span>(</span>
-<span id="cb14-11"><a href="#cb14-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;aci()&quot;</span>, <span class="st">&quot;aci_cir()&quot;</span>, <span class="st">&quot;aci_predprey_components()&quot;</span>,</span>
-<span id="cb14-12"><a href="#cb14-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;aci_conditional()&quot;</span>, <span class="st">&quot;the status column of aci_cir()&quot;</span></span>
-<span id="cb14-13"><a href="#cb14-13" aria-hidden="true" tabindex="-1"></a>  )</span>
-<span id="cb14-14"><a href="#cb14-14" aria-hidden="true" tabindex="-1"></a>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tbl</span>(<span class="fu">data.frame</span>(</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">rung =</span> <span class="fu">c</span>(<span class="st">&quot;1&quot;</span>, <span class="st">&quot;2&quot;</span>, <span class="st">&quot;3&quot;</span>, <span class="st">&quot;4&quot;</span>, <span class="st">&quot;5&quot;</span>),</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">question =</span> <span class="fu">c</span>(</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;How much does the future add?&quot;</span>,</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;How far ahead must I look?&quot;</span>,</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;Does the direction matter?&quot;</span>,</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;What does one channel contribute?&quot;</span>,</span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;When should I not trust the answer?&quot;</span></span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>  ),</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">entry_point =</span> <span class="fu">c</span>(</span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;aci()&quot;</span>, <span class="st">&quot;aci_cir()&quot;</span>, <span class="st">&quot;aci_predprey_components()&quot;</span>,</span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>    <span class="st">&quot;aci_conditional()&quot;</span>, <span class="st">&quot;the status column of aci_cir()&quot;</span></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb15-14"><a href="#cb15-14" aria-hidden="true" tabindex="-1"></a>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output-display">
-<div class="datatables html-widget html-fill-item" id="htmlwidget-07f141acfbdcbc68eb84" style="width:100%;height:auto;"></div>
-<script type="application/json" data-for="htmlwidget-07f141acfbdcbc68eb84">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5"],["How much does the future add?","How far ahead must I look?","Does the direction matter?","What does one channel contribute?","When should I not trust the answer?"],["aci()","aci_cir()","aci_predprey_components()","aci_conditional()","the status column of aci_cir()"]],"container":"<table class=\"compact stripe hover\">\n  <thead>\n    <tr>\n      <th>rung<\/th>\n      <th>question<\/th>\n      <th>entry_point<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"dom":"t","scrollX":true,"columnDefs":[{"name":"rung","targets":0},{"name":"question","targets":1},{"name":"entry_point","targets":2}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script>
+<div class="datatables html-widget html-fill-item" id="htmlwidget-c8ec51e8ef469abf317d" style="width:100%;height:auto;"></div>
+<script type="application/json" data-for="htmlwidget-c8ec51e8ef469abf317d">{"x":{"filter":"none","vertical":false,"data":[["1","2","3","4","5"],["How much does the future add?","How far ahead must I look?","Does the direction matter?","What does one channel contribute?","When should I not trust the answer?"],["aci()","aci_cir()","aci_predprey_components()","aci_conditional()","the status column of aci_cir()"]],"container":"<table class=\"compact stripe hover\">\n  <thead>\n    <tr>\n      <th>rung<\/th>\n      <th>question<\/th>\n      <th>entry_point<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"pageLength":5,"dom":"t","scrollX":true,"columnDefs":[{"name":"rung","targets":0},{"name":"question","targets":1},{"name":"entry_point","targets":2}],"order":[],"autoWidth":false,"orderClasses":false,"lengthMenu":[5,10,25,50,100]}},"evals":[],"jsHooks":[]}</script>
 </div>
 </div>
 <p>Three articles ship with the package. <em>Assimilative causal inference on the nonlinear dyad model</em> is the worked tutorial. <em>Assumptions and interpretation</em> states the conditions under which the method applies and what a peak does and does not support, and it is the right next read after the two warnings above. <em>Validation and the independent oracle</em> records what each oracle grades and, for each, what it does not.</p>
