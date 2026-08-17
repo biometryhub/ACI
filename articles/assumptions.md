@@ -1,0 +1,291 @@
+# Assumptions and interpretation
+
+## What this article covers
+
+The other vignette shows a large peak in the causal-information metric
+and describes it as a moment of strong causal coupling. That reading is
+correct only under conditions the software cannot check. This article
+states those conditions, so that a reader can say when the method
+applies, when the software should refuse to run, and what an ACI peak
+does and does not support.
+
+``` r
+
+library(aciR)
+```
+
+## What the metric is
+
+At each time step aciR reports the relative entropy of the smoother
+posterior of the unobserved component from its filter posterior. The
+filter posterior is the law of the unobserved state given the observed
+path so far. The smoother posterior is its law given the whole observed
+path. The metric therefore answers one question, step by step. How much
+does knowing the *future* of the observed signal change what we believe
+about the unobserved component *now*?
+
+This is an information-theoretic quantity, and it is non-negative by
+construction. It has units of nats. A value of zero means the future of
+the observed signal is uninformative about the hidden state at that
+step, and a large value means it is highly informative.
+
+## The estimand, stated precisely
+
+The quantity is a property of a **model-conditional posterior pair**,
+not of the world. Written out, aciR estimates
+
+``` math
+\mathrm{ACI}(t) \;=\; \mathrm{KL}\!\left(
+  p(y_t \mid x_{0:T}, \mathcal{M}) \;\|\; p(y_t \mid x_{0:t}, \mathcal{M})
+\right),
+```
+
+where $`\mathcal{M}`$ is the conditional Gaussian nonlinear system you
+supplied, $`x`$ is the observed process, $`y`$ is the unobserved one,
+and $`T`$ is the end of the record. Every claim the metric supports is
+conditional on $`\mathcal{M}`$. Change the model and the metric changes,
+with no warning from the software, because a different model is a
+different question.
+
+The direction is fixed and asymmetric. The metric measures information
+flowing from the observed process to the estimate of the unobserved one.
+It is not a test of whether $`y`$ causes $`x`$, and reversing the roles
+of the two processes requires a different model, not a different reading
+of the same output.
+
+## The assumptions
+
+### Model correctness
+
+The method assumes the supplied system is an adequate description of the
+data. The filter and smoother are exact for the model, so all of the
+approximation lives in the gap between the model and reality. There is
+no goodness-of-fit test in this package, and a badly specified model
+will still produce a smooth, plausible metric trace. This is the
+assumption most likely to be wrong and the least likely to announce
+itself. The check has to come from outside the metric. One route
+available here is to draw realisations from the supplied model with
+[`aci_simulate()`](https://biometryhub.github.io/ACI/reference/aci_simulate.md)
+and compare their statistics against the observed record before reading
+anything into a peak.
+
+### Conditional Gaussian structure
+
+The unobserved process must enter its own drift linearly and the noise
+must not depend on the unobserved state. That is what makes the
+conditional statistics Gaussian in closed form. Systems outside this
+class are not approximated by aciR, they are simply not expressible in
+it. Such a system needs a filtering method that does not rely on
+closed-form conditional statistics, which is outside the scope of this
+package.
+
+### Known parameters
+
+The coefficients are taken as given. aciR does not estimate them and
+does not propagate uncertainty in them into the metric. Where the
+parameters came from a fit, the reported metric is conditional on a
+point estimate, and its true uncertainty is wider than anything the
+package reports by an amount the package cannot see. The route to that
+uncertainty is to rerun the analysis over a set of parameter values
+drawn from the fit and to report the spread of the metric across them.
+
+### State dimension
+
+The numerical core takes vector-valued states, an observed process of
+any dimension and an unobserved one of any dimension, with matrix
+coefficients that may vary in time. The filter, smoother and metric all
+dispatch on the shape of the components you supply.
+
+The fixed-lag online smoother and the causal influence range built on it
+dispatch the same way, so a vector system is carried end to end.
+
+One path is graded more weakly than the rest. The matrix
+noise-cross-covariance terms are implemented, but the reference
+implementation contains no model that exercises them (its ENSO script
+says so in as many words), so they are graded by collapse onto the
+scalar path and by analytic fixed points rather than against the
+authors’ numbers. Grading them against the authors’ numbers would
+require an upstream model carrying a non-zero cross-covariance, and no
+such model exists. The companion article *Validation and the independent
+oracle* records the exact scope of that grade.
+
+### Conditional questions
+
+With more than one observed component,
+[`aci_conditional()`](https://biometryhub.github.io/ACI/reference/aci_conditional.md)
+asks what one of them says about the unobserved state given that the
+others are also watched. This changes the **estimand**, not the
+arithmetic. The result answers a different question rather than
+answering the same one more precisely. The non-target components are not
+removed, and they still drive the system. What changes is that the
+filter stops assimilating them, which is not the same as never having
+observed them.
+
+### Self-drift measurable with respect to the observed path
+
+The self-drift `L_y` of the unobserved component may be constant in
+time, as in the reference dyad model, or it may vary, as in the noisy
+predator-prey model where the latent population’s growth rate is set by
+the population being watched. What it may *not* do is depend on the
+unobserved component itself. Such a dependence takes the system outside
+the conditional Gaussian class and leaves the closed-form recursions
+without a posterior to propagate.
+
+### Regular, complete sampling
+
+The recursions integrate a fixed step. The observed signal must be
+complete and sampled on a regular grid. There is no missing-observation
+contract. aciR rejects a signal containing `NA` or an infinite value
+rather than interpolating one, and rejects an irregular `time` grid
+rather than approximating it. Completing or regularising a record is
+therefore the caller’s step, and the choice made there should be
+reported alongside the result.
+
+``` r
+
+model <- aci_dyad_model()
+aci(c(1, NA, 3), model)
+#> Error:
+#> ! `x` must be complete and finite; it holds NA at index 2. The filter has no missing-observation contract: interpolate or subset to a complete, regularly sampled span before calling.
+```
+
+### Discretisation
+
+The filter and smoother are integrated with a first-order Euler scheme.
+Two consequences matter in practice. Identities that hold exactly in
+continuous time hold only to order `dt` here, and an explicit Euler step
+that is too large for the system can drive the posterior covariance out
+of its domain even when the model is perfectly admissible. In that state
+the relative entropy has no meaning, so aciR stops and names the step
+rather than returning a number. The remedy in both cases is a smaller
+`dt`, and the next section sets out how to check that the value chosen
+is small enough.
+
+``` r
+
+x <- aci_simulate(model, n = 200, seed = 1)$x
+aci(x, model, dt = 1)
+#> Error:
+#> ! The filter covariance must stay finite and strictly positive; it became -10.15666 at index 3 (time 2). Reduce `dt`, or check the model's noise covariance: an explicit Euler step too large for the system can drive the covariance out of its domain even when the model is admissible.
+```
+
+## Sensitivity you should report
+
+Three inputs are choices rather than data, and a result that changes
+materially across reasonable values of them is a result about the
+choice.
+
+- **The time step `dt`.** Halve it and confirm the metric is stable. The
+  package’s own tests show the discretisation residual falls at second
+  order in the step, so a halving that changes your conclusion means you
+  were not yet in the convergent regime.
+- **The initial filtered covariance `R0`.** Its influence decays as the
+  filter forgets its initial condition, but early steps are sensitive to
+  it.
+- **The initial filtered mean `mu0`.** Same reasoning.
+
+[`summary()`](https://rdrr.io/r/base/summary.html) surfaces the two
+diagnostics that bear on this. The smallest posterior covariances say
+how close the run came to losing positivity. The terminal-identity
+residual measures accumulated numerical error against a quantity that is
+zero analytically.
+
+``` r
+
+fit <- aci(aci_simulate(model, n = 5000, seed = 333)$x, model)
+summary(fit)
+#> <summary.aci> assimilative causal inference
+#>   model: nonlinear dyad model with intermittent extreme events
+#>   steps: 5000, dt: 0.001, time span: [0, 4.999]
+#> 
+#>   causal-information metric:
+#>    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+#> 0.00000 0.06962 0.11010 0.22070 0.25589 2.45911 
+#>   peak 2.45911 at time 0.382
+#> 
+#>   diagnostics:
+#>     smallest covariance: filter 0.1, smoother 0.0682916
+#>     terminal identity residual: 0 (zero analytically)
+#>     round-off clamps to zero: 0 of 5000 steps
+```
+
+## What an ACI peak does and does not support
+
+A peak supports one claim. **Under the supplied model**, the future of
+the observed signal is unusually informative about the unobserved
+component at that moment. For a well-specified model this is a statement
+about the mechanism, and it is the statement the method was designed to
+make.
+
+A peak does not support any of the four claims below.
+
+1.  **That the model is right.** The metric is computed conditional on
+    the model, so it cannot test it. A misspecified system yields a
+    confident metric about a mechanism that does not exist.
+2.  **That an intervention would have an effect.** The estimand is
+    defined by conditioning, not by intervening. Nothing here identifies
+    a causal effect in the interventional sense, and no assumption made
+    by this package licenses that step.
+3.  **That causality has been discovered from data alone.** The causal
+    content comes from the model, which encodes which process drives
+    which. The data locate *where in time* that assumed structure
+    carries information. Structure in, structure out.
+4.  **That a larger value in one system exceeds a larger value in
+    another.** The metric is in nats and is comparable across time
+    within one model and one record. Comparing across models,
+    parameterisations or sampling rates compares the conditioning as
+    much as the coupling.
+
+In short, assimilative causal inference reads *when* a mechanism you
+have specified transmits information. It does not establish *whether*
+that mechanism exists. The first of those is a useful thing to know, and
+it is narrower than the phrase “causal inference” suggests to a reader
+arriving from the potential-outcomes literature. State the distinction
+explicitly in anything published from the method.
+
+## Reading the causal influence range
+
+The range is a **last-exit time, not a duration**. It is the last moment
+at which the divergence still exceeds a threshold, which is at least the
+amount of time spent above that threshold and is strictly more whenever
+the sequence rises again after falling.
+
+That distinction decides how the two objective ranges relate.
+`objective`, the efficient integral, and `objective_exact`, the average
+of the subjective ranges over the threshold grid, are the same
+functional only when the comparison sequence decreases with lag.
+[`summary()`](https://rdrr.io/r/base/summary.html) reports how often
+that holds; where it does not, seeing one below the other is a
+definitional gap rather than a numerical defect in either.
+
+A time marked `censored` is a **lower bound, not a missing value**. Its
+range consumed more of the record than the retained margin allows, so
+the record cannot settle it. The record does support the statement that
+the range is at least this long, and that statement is what is returned.
+Only a record long enough for the range to fit inside it will resolve
+the value.
+
+[`aci_conditional()`](https://biometryhub.github.io/ACI/reference/aci_conditional.md)
+carries its own estimand note; see
+[`?aci_conditional`](https://biometryhub.github.io/ACI/reference/aci_conditional.md)
+for what conditioning does and does not mean.
+
+## Diagnostics to report
+
+For a result intended for publication, report at least the following,
+all of which the package makes available.
+
+- The full model specification and the provenance of every parameter,
+  stating which were estimated and from what.
+- `dt`, `mu0`, `R0`, and the sensitivity of the conclusion to each.
+- The smallest posterior covariance over the run.
+- The sampling rate of the observed record and any preprocessing used to
+  make it regular and complete.
+- The package version, since the metric depends on the numerical core.
+
+## Further reading
+
+The method is due to Andreou, Chen and Bollt (2026),
+[doi:10.1038/s41467-026-68568-0](https://doi.org/10.1038/s41467-026-68568-0).
+The companion article *Validation and the independent oracle* records
+how this implementation is graded and what that grade covers.
