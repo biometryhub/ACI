@@ -12,8 +12,8 @@
 # correctness, so these assert the branch was taken and the number reached the
 # page.
 
-.cir_case <- function(
-    which = c("plain", "single", "censored", "below", "end")) {
+.cir_case <- function(which = c("plain", "single", "censored",
+                                "below", "end")) {
   which <- match.arg(which)
   model <- aci_dyad_model()
   sim <- aci_simulate(model, n = 900L, seed = 1L)
