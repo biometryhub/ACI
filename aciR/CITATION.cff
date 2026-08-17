@@ -32,9 +32,9 @@ preferred-citation:
     email: max.moldovan@gmail.com
   year: '2026'
   notes: R package version 0.1.0
-  url: https://github.com/max578/aciR
-repository-code: https://github.com/max578/aciR
-url: https://github.com/max578/aciR
+  url: https://github.com/biometryhub/ACI
+repository-code: https://github.com/biometryhub/ACI
+url: https://github.com/biometryhub/ACI
 contact:
 - family-names: Moldovan
   given-names: Max

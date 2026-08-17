@@ -5,7 +5,7 @@ that a contribution is not turned away for a reason it could not have known.
 
 ## Reporting a problem
 
-Open an issue at <https://github.com/max578/aciR/issues>. A numerical report is
+Open an issue at <https://github.com/biometryhub/ACI/issues>. A numerical report is
 most useful with the model specification, `dt`, `mu0`, `R0`, the output of
 `summary()` on the result, and `sessionInfo()`. If the metric looks wrong, say
 what you expected and why. For this package that is usually the most

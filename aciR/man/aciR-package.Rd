@@ -42,8 +42,8 @@ Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
 \seealso{
 Useful links:
 \itemize{
-  \item \url{https://github.com/max578/aciR}
-  \item Report bugs at \url{https://github.com/max578/aciR/issues}
+  \item \url{https://github.com/biometryhub/ACI}
+  \item Report bugs at \url{https://github.com/biometryhub/ACI/issues}
 }
 
 }

@@ -444,7 +444,7 @@ cover.
 
 * An independent-oracle fixture for the noise-cross-covariance path
   (`cross_signal_x.csv`, `cross_reference.csv`) and the harness that generates
-  it (`oracle/aci_oracle_cross.m`). Every scalar model in the reference
+  it (`tools/oracle/aci_oracle_cross.m`). Every scalar model in the reference
   implementation sets the noise cross-covariance to zero, so the dyad fixture
   executes the terms that carry it but pins them at zero and never grades them,
   while `aci_cgns_model(S_yoS_x = )` exposes those terms publicly. The new

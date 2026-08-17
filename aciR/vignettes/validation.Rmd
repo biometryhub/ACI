@@ -279,4 +279,4 @@ testthat::test_local(system.file(package = "aciR"))
 ```
 
 Regenerating the fixtures needs MATLAB and the harnesses in the project's
-`oracle/` directory. The commands are in the manifest.
+`tools/oracle/` directory. The commands are in the manifest.

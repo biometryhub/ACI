@@ -18,3 +18,4 @@
 ^PROJECT_LOG.*$
 ^README\.Rmd$
 ^README\.html$
+^SUPPORT\.md$

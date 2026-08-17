@@ -1,0 +1,240 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Parity Ledger</title>
+<style>
+  :root{
+    --bg:#FBFAF8; --surface:#FFFFFF; --ink:#1A1D21; --muted:#5A6169;
+    --rule:#E3E1DC; --accent:#0F6E6E; --warn:#A85B12; --code:#F5F4F1;
+    --ok-bg:#E7F1EF; --ok-fg:#0F5E58; --bad-bg:#F7EBDD; --bad-fg:#8F4A0C;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#14171A; --surface:#1B1F23; --ink:#E6E8EA; --muted:#98A1A9;
+      --rule:#2A3037; --accent:#46B3AE; --warn:#DC9A52; --code:#1F252A;
+      --ok-bg:#12312E; --ok-fg:#69C9C2; --bad-bg:#332415; --bad-fg:#E0A468;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14171A; --surface:#1B1F23; --ink:#E6E8EA; --muted:#98A1A9;
+    --rule:#2A3037; --accent:#46B3AE; --warn:#DC9A52; --code:#1F252A;
+    --ok-bg:#12312E; --ok-fg:#69C9C2; --bad-bg:#332415; --bad-fg:#E0A468;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg); color:var(--ink); margin:0;
+    font:16px/1.62 ui-sans-serif,-apple-system,"Segoe UI",system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  .wrap{max-width:1160px; margin:0 auto; padding:64px 28px 96px}
+  h1,h2,h3{font-family:"Iowan Old Style",Palatino,Georgia,ui-serif,serif;
+    font-weight:600; text-wrap:balance; letter-spacing:-.01em; margin:0}
+  h1{font-size:clamp(2rem,4.4vw,3rem); line-height:1.1}
+  h2{font-size:1.55rem; margin:56px 0 8px}
+  h3{font-size:1.12rem; margin:0 0 4px; font-family:ui-monospace,"SF Mono",Menlo,monospace;
+    font-weight:600; letter-spacing:0}
+  .eyebrow{font:600 11px/1 ui-monospace,"SF Mono",Menlo,monospace;
+    letter-spacing:.16em; text-transform:uppercase; color:var(--accent); margin-bottom:18px}
+  .lede{color:var(--muted); font-size:1.08rem; max-width:64ch; margin:18px 0 0}
+  hr{border:0; border-top:1px solid var(--rule); margin:44px 0}
+  .stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+    gap:1px; background:var(--rule); border:1px solid var(--rule); margin:40px 0 0}
+  .stat{background:var(--surface); padding:20px 22px}
+  .stat b{display:block; font:600 1.85rem/1.15 ui-monospace,"SF Mono",Menlo,monospace;
+    font-variant-numeric:tabular-nums; color:var(--accent)}
+  .stat span{display:block; color:var(--muted); font-size:.82rem; margin-top:6px}
+  p{max-width:70ch}
+  .cap{color:var(--muted); font-size:.92rem; margin:2px 0 14px; max-width:78ch}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:1px;
+    background:var(--rule); border:1px solid var(--rule)}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}}
+  .pane{background:var(--surface); min-width:0; display:flex; flex-direction:column}
+  .pane-h{display:flex; justify-content:space-between; gap:12px; align-items:baseline;
+    padding:11px 15px; border-bottom:1px solid var(--rule); background:var(--bg)}
+  .pane-t{font:600 .78rem/1 ui-monospace,"SF Mono",Menlo,monospace;
+    letter-spacing:.1em; text-transform:uppercase; color:var(--accent)}
+  .pane-s{font:.72rem/1 ui-monospace,"SF Mono",Menlo,monospace; color:var(--muted);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  pre{margin:0; padding:15px; overflow-x:auto; background:var(--code); flex:1}
+  /* Soft wrap rather than clip: the longest reference line is 101 characters,
+     and a line a reader cannot see is worse than a line that wraps. */
+  code{font:12px/1.55 ui-monospace,"SF Mono",Menlo,monospace;
+    white-space:pre-wrap; overflow-wrap:break-word}
+  .pair{margin:34px 0 0}
+  /* The side-by-side breaks out of the reading column: two panes of 100-column
+     code do not fit a 70ch measure, and the code is the point of the page. */
+  .pair .grid{width:min(1560px,calc(100vw - 48px)); margin-left:50%;
+    transform:translateX(-50%)}
+  @media (max-width:1216px){.pair .grid{width:auto; margin-left:0; transform:none}}
+  .tw{overflow-x:auto; border:1px solid var(--rule); margin-top:20px}
+  table{border-collapse:collapse; width:100%; background:var(--surface); font-size:.86rem}
+  th{text-align:left; font:600 .72rem/1 ui-monospace,"SF Mono",Menlo,monospace;
+    letter-spacing:.09em; text-transform:uppercase; color:var(--muted);
+    padding:11px 13px; border-bottom:1px solid var(--rule); background:var(--bg);
+    white-space:nowrap}
+  td{padding:8px 13px; border-bottom:1px solid var(--rule)}
+  tr:last-child td{border-bottom:0}
+  td.n{font-family:ui-monospace,"SF Mono",Menlo,monospace; font-variant-numeric:tabular-nums;
+    text-align:right; white-space:nowrap}
+  td.q{font-family:ui-monospace,"SF Mono",Menlo,monospace; font-size:.8rem}
+  .v{display:inline-block; padding:2px 8px; border-radius:2px;
+    font:600 .72rem/1.5 ui-monospace,"SF Mono",Menlo,monospace}
+  .v.ok{background:var(--ok-bg); color:var(--ok-fg)}
+  .v.bad{background:var(--bad-bg); color:var(--bad-fg)}
+  .find{border-left:2px solid var(--warn); padding:2px 0 2px 18px; margin:22px 0}
+  .find h4{margin:0 0 4px; font-size:.98rem}
+  .find p{margin:0; color:var(--muted); font-size:.94rem}
+  .note{background:var(--surface); border:1px solid var(--rule); padding:18px 20px; margin:26px 0}
+  .note p{margin:0; font-size:.94rem}
+  .companion{display:flex; flex-wrap:wrap; gap:14px; align-items:baseline;
+    background:var(--surface); border:1px solid var(--rule); padding:16px 20px; margin:34px 0 0}
+  .companion b{font:600 .72rem/1.5 ui-monospace,"SF Mono",Menlo,monospace;
+    letter-spacing:.09em; text-transform:uppercase; color:var(--accent)}
+  .companion span{color:var(--muted); font-size:.94rem; max-width:78ch}
+  a{color:var(--accent)}
+  strong{font-weight:650}
+</style>
+<div class="wrap">
+  <div class="eyebrow">aciR &middot; verification record</div>
+  <h1>Parity Ledger</h1>
+  <p class="lede">The authors' MATLAB and the R package, run on the same data and
+  compared quantity by quantity. The reference publishes seven scripts and no
+  function library, so its kernels are hoisted into callable functions as
+  byte-exact slices. Nothing is retyped.</p>
+
+  <div class="stats">
+    <div class="stat"><b>{{G1}}</b><span>extract outputs reproducing the reference's own workspace, difference 0</span></div>
+    <div class="stat"><b>{{VERBATIM_LINES}}</b><span>verbatim reference lines, {{N_EXTRACTS}} extracts, zero retyped</span></div>
+    <div class="stat"><b>0</b><span>fixture disagreement at published settings (dyad, 8 quantities)</span></div>
+    <div class="stat"><b>1.4e-14</b><span>objective causal influence range vs the reference, was 4.6e-09</span></div>
+  </div>
+
+  <div class="companion">
+    <b>Companion document</b>
+    <span>How the package came to be, rather than whether its numbers are right:
+    the design decisions, the alternatives rejected, and the issues found, in the
+    <a href="{{COMPANION}}">Development
+    Ledger</a>. In the repository it is at
+    <code>docs/aciR_development_ledger_2026-08-15.html</code>.</span>
+  </div>
+
+  <h2>Side by side</h2>
+  <p>Each pair below is the reference on the left, read from the published
+  script at the line range the manifest declares, and aciR on the right. Both
+  panes are pulled at render time, so this page cannot drift from the code it
+  documents.</p>
+{{PAIRS}}
+
+  <h2>Measured agreement</h2>
+  <p>Criterion <code>|a&nbsp;&minus;&nbsp;b|&nbsp;&le;&nbsp;atol&nbsp;+&nbsp;rtol&middot;|b|</code>
+  with <code>atol&nbsp;=&nbsp;1e-12</code>. <em>Headroom</em> is the reciprocal
+  of the fraction of the permitted budget the worst element used, so it
+  separates a comfortable pass from a marginal one.</p>
+  <div class="tw"><table>
+    <thead><tr><th>Dataset</th><th>Quantity</th><th>n</th><th>max |diff|</th><th>Headroom</th><th>Verdict</th></tr></thead>
+    <tbody>
+{{ROWS}}
+    </tbody>
+  </table></div>
+
+  <div class="note"><p><strong>The causal influence range is graded on the
+  reference's own conventions.</strong> Until <code>horizon</code> existed this
+  comparison could not be made: the harness put aciR's whole-record answer beside
+  the reference's truncated one and called the gap a disagreement, when they are
+  answers to different questions. Rows marked <em>by design</em> report aciR's
+  default behaviour with its magnitude, so the size of the design choice is on
+  the record rather than hidden.</p></div>
+
+  <h2>Findings</h2>
+
+  <div class="find"><h4>F1. The comparison horizon and the quadrature closure <em>(closed)</em></h4>
+  <p>The package's own harness for the causal influence range looped
+  <code>obs = j:(N+1)</code>, which is aciR's convention rather than the
+  reference's, so every grading of that quantity had been taken against a
+  harness sharing the convention under test. <code>aci_cir()</code> now takes
+  <code>horizon</code>, and at the reference's value the subjective range
+  agrees to <strong>2.22e-16</strong>, against 1.16 time units at the default.
+  The remaining 4.58e-09 on <code>objective</code> was the odd-interval Simpson
+  closure. We had eliminated that hypothesis by argument rather than by
+  measurement, and the argument held only for a full-record row, whose last
+  entry is exactly zero; at the reference horizon it is 2.7e-04 of the peak.
+  Adopting the reference's closure took <code>objective</code> to
+  <strong>1.37e-14</strong>, the maximum over the full reported region of both
+  datasets, and removed a latent defect, since the previous panel assumed equal
+  spacing on a logarithmic grid.</p></div>
+
+  <div class="find"><h4>F2. The exact objective range was absent from aciR <em>(fixed)</em></h4>
+  <p>The reference computes the objective range in two ways, as an efficient
+  underestimate and by its definition, and aciR implemented only the first.
+  <code>objective_exact</code> now agrees with the reference's
+  <code>defn_objective_CIR</code> to <strong>1.59e-14</strong>. It cost less
+  than we estimated, because an earlier report was wrong that
+  <code>.aci_simpson()</code> assumed unit spacing. It always took an
+  abscissa.</p></div>
+
+  <div class="find"><h4>F6. The predator-prey script cannot be run from top to bottom</h4>
+  <p>Fourteen blocks, seven for each causal direction, all assigning the same
+  names. <code>filter_mean</code> is written for direction one and overwritten
+  by direction two before anything consumes it, so a whole-script run computes
+  the direction-one smoother from direction two's filter, silently and with
+  plausible numbers. This is not a defect when the script is used as its own
+  banners direct, one section at a time. It is a hazard for anyone automating
+  it. Each direction is therefore composed from its own declared line ranges,
+  guarded by a condition that holds in one direction only.</p></div>
+
+  <div class="find"><h4>F7. Conditional ACI is enabled in three of the five ENSO scripts</h4>
+  <p>This finding has been corrected three times, and only the present form was
+  measured. The earlier answers came from reading source lines whose
+  distinguishing feature is a comment marker. The present one comes from the
+  observation-noise inverse that each script's filter actually consumed. With
+  the per-step pseudoinverse live, <code>S_xoS_x_inv</code> varies from slice to
+  slice and is dense; with it commented out and one diagonal entry overwritten,
+  every slice from the second onward is the same matrix with exactly one
+  non-zero entry. On that measurement <code>h_W_unobs.m</code>,
+  <code>T_C_unobs.m</code> and <code>u_unobs.m</code> are conditional, while
+  <code>tau_unobs.m</code> and <code>u_h_W_tau_unobs.m</code> are not. The
+  hazard is greater than the earlier description of "one character of
+  indentation" suggested, since two of the three live lines sit in column one.
+  The consequence for this package is favourable. <code>aci_conditional()</code>
+  has three upstream counterparts to be graded against, where the earlier
+  reading had concluded there were none.</p></div>
+
+  <div class="find"><h4>F9. The conditional scripts leave their first filter step unmasked</h4>
+  <p>The pseudoinverse fills the first slice before the single target entry is
+  overwritten, and the filter consumes that slice at <code>j = 2</code>. aciR
+  masks every slice. Measured on <code>h_W</code> by running the same
+  byte-verified extract twice and changing only its input, the filtered mean
+  differs by <strong>0.2376 at step 2</strong>, which is 73&nbsp;% of the
+  largest value that state ever reaches, and remains above 1e-6 for 6,256 of
+  20,001 steps. The difference is a transient, and it is not a small one. It is
+  recorded now so that the eventual grading of <code>aci_conditional()</code>
+  can match the convention deliberately, rather than reporting a difference of
+  0.238 as though it were a disagreement.</p></div>
+
+  <div class="find"><h4>F8. The reference pseudo-inverts where aciR declines</h4>
+  <p>The ENSO filter forms <code>pinv(S_x * S_x')</code>, a Moore-Penrose
+  pseudoinverse the authors chose for stability. aciR uses a Cholesky inverse
+  and requires positive-definiteness at every slice, so on a singular slice the
+  reference continues where aciR stops. This is a difference in behaviour rather
+  than in implementation, and it is documented rather than repaired. A
+  quantitative comparison of the two inverses over the ENSO slices appeared here
+  previously. It has been withdrawn, because no artefact in
+  <code>reports/</code> supports those figures, and a number that has not been
+  measured does not belong on this page. Re-measuring it is open work, and the
+  probe needed is a short one.</p></div>
+
+  <div class="find"><h4>F3, F4 and F5. A silent empty range, a vacuous pass, and three interface asymmetries</h4>
+  <p>The reference's exact objective CIR evaluates to an empty range rather than
+  erroring on a short window. This harness contained an instance of the same
+  fault, now fixed. An empty comparison reported <em>ok</em> for having compared
+  nothing, because <code>max(numeric(0))</code> is <code>-Inf</code>. It is now a named failure,
+  and it fired on the next run.</p></div>
+
+  <hr>
+  <p class="cap">MATLAB R2025b (25.2.0.3042426 Update 1), macOS arm64, 32&nbsp;GB.
+  Excerpts between the VERBATIM markers are Copyright &copy; 2025 Marios Andreou,
+  reproduced under the MIT Licence. Scope: the dyad in full; predator-prey in
+  full in both causal directions, reference side and aciR side; the ENSO vector
+  filter and smoother, compared against aciR at 5/5; and the reference side of
+  all four scalar-latent ENSO configurations, gated at difference 0. What
+  remains open is the aciR side of those four, including
+  <code>aci_conditional()</code>, which is held up by the bundle export shape
+  and by F9. The report records it.</p>
+</div>

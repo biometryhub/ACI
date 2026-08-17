@@ -25,15 +25,13 @@ adjudicated when they arise rather than at submission time.
 Maintainer: 'Max Moldovan <max.moldovan@gmail.com>'
 New submission
 Found the following (possibly) invalid URLs:
-  URL: https://github.com/max578/aciR  ... Status: 404
+  URL: https://github.com/biometryhub/ACI  ... Status: 404
 ```
 
-Expected and accurate. The declared repository is private, so its URL returns
-404 to an anonymous checker. The URL is correct and is the canonical home of
-the package; it is not reachable without authentication. This note will persist
-for as long as the repository is private. It would be resolved, rather than
-suppressed, by making the repository public, which is a decision for a later release
-rather than something to work around in metadata.
+Expected and accurate. The declared URL is the canonical home of the package
+and is correct, but the repository has not yet been published, so an anonymous
+checker receives a 404. The note resolves on the initial public push and is not
+something to work around in metadata.
 
 ### Note 2. HTML manual validation skipped
 

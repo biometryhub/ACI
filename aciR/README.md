@@ -9,7 +9,7 @@
 
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
-[![R-CMD-check](https://github.com/max578/aciR/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/max578/aciR/actions/workflows/R-CMD-check.yaml)
+[![R-CMD-check](https://github.com/biometryhub/ACI/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/biometryhub/ACI/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
 `aciR` implements assimilative causal inference (ACI) for conditional
@@ -35,7 +35,7 @@ Install the development version from GitHub with:
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("max578/aciR", subdir = "aciR")
+remotes::install_github("biometryhub/ACI", subdir = "aciR")
 ```
 
 The package lives in the `aciR/` subdirectory of its repository,

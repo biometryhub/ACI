@@ -31,8 +31,8 @@ Description: Reimplements the assimilative causal inference (ACI) method of
     construction are supported throughout, including the fixed-lag online
     smoother and the causal influence range built on it.
 License: MIT + file LICENSE
-URL: https://github.com/max578/aciR
-BugReports: https://github.com/max578/aciR/issues
+URL: https://github.com/biometryhub/ACI
+BugReports: https://github.com/biometryhub/ACI/issues
 Depends:
     R (>= 4.1.0)
 Imports:

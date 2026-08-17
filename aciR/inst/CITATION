@@ -9,7 +9,7 @@ bibentry(
   ),
   year    = "2026",
   note    = sprintf("R package version %s", meta$Version),
-  url     = "https://github.com/max578/aciR"
+  url     = "https://github.com/biometryhub/ACI"
 )
 
 bibentry(
