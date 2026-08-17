@@ -1,5 +1,23 @@
 # aciR 0.2.3
 
+## Testing
+
+* Coverage rises from 81% to 97%, against the 95% floor the continuous
+  integration enforces. The gate had never run before this release, because
+  nothing had been pushed with the workflows active, and the first run failed.
+
+  The largest gap was the whole family of reporting methods for `aci_cir()`,
+  at zero. `print()`, `summary()`, `as.data.frame()` and `plot()` are all
+  exported and documented, and none had a test. They now do, including the
+  branches that decide whether a censored range is announced as a bound.
+
+  The remainder were the guards that reject a malformed model: a missing
+  parameter, an unrecognised causal direction, an observed process with no
+  noise for the filter to invert, a target channel with no observation noise
+  of its own. Each exists because the alternative is not an error but a
+  plausible-looking number, and each is now exercised through the public
+  entry point rather than by calling the internal checker.
+
 ## Documentation
 
 * The reference for the fixed-lag online smoother, which `aci_online_smoother()`
