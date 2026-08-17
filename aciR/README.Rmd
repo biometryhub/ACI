@@ -30,7 +30,14 @@ err <- as.numeric(sub(".*dyad: ", "",
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![R-CMD-check](https://github.com/biometryhub/ACI/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/biometryhub/ACI/actions/workflows/R-CMD-check.yaml)
+[![lint](https://github.com/biometryhub/ACI/actions/workflows/lint.yaml/badge.svg)](https://github.com/biometryhub/ACI/actions/workflows/lint.yaml)
+[![pkgdown](https://github.com/biometryhub/ACI/actions/workflows/pkgdown.yaml/badge.svg)](https://github.com/biometryhub/ACI/actions/workflows/pkgdown.yaml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/biometryhub/ACI/blob/main/LICENSE)
 <!-- badges: end -->
+
+Documentation, including the two ledgers that record how the numbers were
+checked and how the software came to be, is at
+<https://biometryhub.github.io/ACI/>.
 
 `aciR` implements assimilative causal inference (ACI) for conditional Gaussian
 nonlinear systems. A conditional Gaussian nonlinear system (CGNS) pairs an

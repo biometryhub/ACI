@@ -1,7 +1,7 @@
 Package: aciR
 Title: Assimilative Causal Inference for Conditional Gaussian Nonlinear
     Systems
-Version: 0.2.2
+Version: 0.2.3
 Authors@R: c(
     person(given = "Max",
            family = "Moldovan",
@@ -31,7 +31,8 @@ Description: Reimplements the assimilative causal inference (ACI) method of
     construction are supported throughout, including the fixed-lag online
     smoother and the causal influence range built on it.
 License: MIT + file LICENSE
-URL: https://github.com/biometryhub/ACI
+URL: https://github.com/biometryhub/ACI,
+    https://biometryhub.github.io/ACI/
 BugReports: https://github.com/biometryhub/ACI/issues
 Depends:
     R (>= 4.1.0)

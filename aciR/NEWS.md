@@ -1,3 +1,28 @@
+# aciR 0.2.3
+
+## Documentation
+
+* The reference for the fixed-lag online smoother, which `aci_online_smoother()`
+  and `aci_cir()` both cite, now points at the published article rather than at
+  the preprint. It appeared in *Journal of Nonlinear Science* **36**(4), 71,
+  [doi:10.1007/s00332-026-10271-x](https://doi.org/10.1007/s00332-026-10271-x),
+  after the preprint was cited here.
+
+* The project website is at <https://biometryhub.github.io/ACI/>. It carries
+  the function reference and the three articles, together with two ledgers
+  published nowhere else: one recording how this package's numbers were graded
+  against the authors' own code, quantity by quantity, and one recording the
+  design decisions, the alternatives set aside, and what remains open.
+
+## Internal
+
+* `DESCRIPTION` lists the website alongside the repository in `URL`, which is
+  what lets the documentation link back to itself.
+
+* `CITATION.cff` and `codemeta.json` are regenerated from `DESCRIPTION`. Both
+  had been left at an earlier version, and the citation file disagreed with
+  itself about which one.
+
 # aciR 0.2.2
 
 ## New features
@@ -305,7 +330,9 @@
   and reduces it immediately, leaving the memory linear in the window.
 
 * `aci_online_smoother()` runs the fixed-lag forward-in-time online smoother of
-  Andreou, Chen and Li (2026) <doi:10.48550/arXiv.2411.05870>. Where
+  Andreou, Chen and Li (2026),
+  [doi:10.1007/s00332-026-10271-x](https://doi.org/10.1007/s00332-026-10271-x).
+  Where
   `aci_smoother()` conditions every step on the whole observed path, the online
   smoother conditions step `j` on the path up to `j + lag`, so it is the
   estimator available while the signal is still arriving. It is the object

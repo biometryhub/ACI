@@ -6,6 +6,57 @@ url: https://biometryhub.github.io/ACI/
 template:
   bootstrap: 5
 
+# Everything under `pkgdown/assets/` is copied verbatim into the built site.
+# The two ledgers live there rather than in the repository root, because they
+# are HTML: GitHub serves them as source, so the rendered site is the only
+# place a reader can actually read them.
+
+navbar:
+  structure:
+    left: [intro, reference, articles, evidence, news]
+    right: [search, github]
+  components:
+    articles:
+      text: Articles
+      menu:
+      - text: Assumptions and interpretation
+        href: articles/assumptions.html
+      - text: Validation and the independent oracle
+        href: articles/validation.html
+    evidence:
+      text: Evidence
+      menu:
+      - text: Parity ledger
+      - text: The reference and this package side by side, quantity by quantity
+        href: ledgers/parity_ledger.html
+      - text: ---------
+      - text: Development ledger
+      - text: How the software came to be, and what remains open
+        href: ledgers/development_ledger.html
+
+home:
+  title: Assimilative causal inference for conditional Gaussian nonlinear systems
+  description: >
+    How much the future of an observed signal tells us about the present state
+    of something we cannot observe, for systems whose filter and smoother are
+    both available in closed form.
+  links:
+  - text: Parity ledger, the numbers side by side
+    href: ledgers/parity_ledger.html
+  - text: Development ledger, how it came to be
+    href: ledgers/development_ledger.html
+  - text: The method's paper in Nature Communications
+    href: https://doi.org/10.1038/s41467-026-68568-0
+  - text: The authors' reference MATLAB implementation
+    href: https://github.com/marandmath/ACI_code
+
+authors:
+  Max Moldovan:
+    href: https://orcid.org/0000-0001-9680-8474
+  Marios Andreou:
+    html: Marios Andreou
+    href: https://github.com/marandmath
+
 reference:
 - title: Model layer
   desc: >

@@ -37,12 +37,20 @@
   .esc(title), .esc(sub), .esc(code))
 
 # `companion` is the href to the development ledger, which differs by output
-# location. The in-tree record sits four levels below `docs/`, the delivery copy
-# sits beside it. Rendering rather than copying is what keeps the two from
-# drifting apart.
+# location: the in-tree record sits four directories below the repository root,
+# the delivery copy sits beside its companion. Rendering rather than copying is
+# what keeps the two from drifting apart.
+#
+# The delivery copy goes to `aciR/pkgdown/assets/ledgers/`, which pkgdown copies
+# verbatim into the built site. That directory is the single home for these
+# documents: they are HTML, so GitHub serves them as source rather than as
+# pages, and the rendered site is the only place they are actually readable.
+# Use `render_parity_delivery()` rather than retyping the pair by hand, so that
+# a correct output path cannot depend on remembering this comment.
 render_parity <- function(out = "tools/oracle/parity/reports/parity.html",
-                          companion = paste0("../../../../docs/",
-                                             "aciR_development_ledger_2026-08-15.html")) {
+                          companion = paste0("../../../../aciR/pkgdown/",
+                                             "assets/ledgers/",
+                                             "development_ledger.html")) {
   ex <- read_manifest("tools/oracle/parity/manifest/extracts.dcf")
   # Every results file in reports/ is tabulated, not just the scalar one. The
   # predator-prey comparison was invisible on this page for exactly as long as
@@ -114,4 +122,24 @@ render_parity <- function(out = "tools/oracle/parity/reports/parity.html",
 
   writeLines(html, out)
   out
+}
+
+# ---- delivery copy ---------------------------------------------------------
+
+# The published parity ledger. It lands beside the development ledger in the
+# pkgdown asset directory, so both are copied into the built site and their
+# reciprocal links are plain siblings. Rendering it through this function is
+# what stops the published copy and the in-tree record from diverging, and what
+# stops a hand-typed relative path from being wrong.
+render_parity_delivery <- function(
+    dir = file.path("aciR", "pkgdown", "assets", "ledgers")) {
+  if (!dir.exists(dir)) {
+    stop("ledger directory not found: ", dir, call. = FALSE)
+  }
+  companion <- file.path(dir, "development_ledger.html")
+  if (!file.exists(companion)) {
+    stop("companion ledger not found: ", companion, call. = FALSE)
+  }
+  render_parity(out = file.path(dir, "parity_ledger.html"),
+                companion = "development_ledger.html")
 }
