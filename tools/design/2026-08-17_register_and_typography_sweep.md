@@ -115,7 +115,7 @@ The audit's other findings held up and were fixed.
 
 | Finding | Status |
 |---|---|
-| Manifest header at `package_version: 0.1.0`, package at 0.2.2 | corrected |
+| Manifest header at `package_version: 0.1.0`, package at 0.2.2 | corrected, then **reverted on 2026-08-17**: the field records the version under which the fixtures were generated, alongside `generated_on: 2026-07-15`, and 0.1.0 was right. Verified at commit `bad2c76`, which wrote both the fixtures and the manifest with `Version: 0.1.0` in `DESCRIPTION`. The key is now `generated_under_package_version` so the reading cannot be mistaken again. |
 | Manifest platform `x86_64`, machine is `arm64` | corrected |
 | Manifest naming 2 enforcing tests where there are 7 | corrected |
 | `NEWS.md` contradicting itself on what a censored time returns | corrected |

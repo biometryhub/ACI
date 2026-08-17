@@ -123,8 +123,8 @@
 #'
 #' Andreou, M., Chen, N. and Li, Y. (2026). An adaptive online smoother with
 #' closed-form solutions and information-theoretic lag selection for
-#' conditional Gaussian nonlinear systems. *Journal of Nonlinear Science*.
-#' \doi{10.48550/arXiv.2411.05870}
+#' conditional Gaussian nonlinear systems. *Journal of Nonlinear Science*,
+#' 36(4), 71. \doi{10.1007/s00332-026-10271-x}
 #'
 #' @examples
 #' model <- aci_dyad_model()
@@ -381,7 +381,7 @@ aci_cir <- function(x, comp, dt, filt = NULL, window = NULL,
 #' The sequence is built from cumulative sums, so the row costs one pass over
 #' the remaining record and is discarded by the caller once reduced.
 #'
-#' @param aux The auxiliary quantities from [.aci_online_aux()].
+#' @param aux The auxiliary quantities from `.aci_online_aux()`.
 #' @param filt A list with numeric vectors `mean` and `cov`.
 #' @param j Integer scalar. The reported step.
 #' @param n Integer scalar. Length of the observed signal.

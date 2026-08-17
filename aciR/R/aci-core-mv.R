@@ -126,7 +126,7 @@
 #' @param comp A vector-valued conditional Gaussian components list.
 #' @param dt Numeric scalar. The integration time step.
 #' @param filt A list with `mean` and `cov`, as returned by
-#'   [.aci_filter_mv()].
+#'   `.aci_filter_mv()`.
 #'
 #' @returns A list with the numeric matrix `mean` and the numeric array `cov`.
 #'

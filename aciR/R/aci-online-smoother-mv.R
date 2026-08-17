@@ -162,7 +162,9 @@
 
 #' One row of the vector causal-influence-range divergence sequence
 #'
-#' @param aux Auxiliary matrices from [.aci_online_aux_mv()].
+#' @param aux Auxiliary matrices from `.aci_online_aux_mv()`. Written as code
+#'   rather than as a link, because the helper is internal and so has no help
+#'   page for a link to resolve against.
 #' @param filt A list with `mean` and `cov`.
 #' @param j Integer scalar. The reported step.
 #' @param n Integer scalar. Length of the observed signal.

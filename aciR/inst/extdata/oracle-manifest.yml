@@ -13,7 +13,14 @@
 # grades the paths its parameters exercise, and no others.
 
 manifest_version: 1
-package_version: 0.2.2
+
+# Provenance of the generation run, not a description of the current package.
+# These two travel together and are frozen: they say which version of aciR was
+# in the tree on the day these fixtures were produced. Bumping them to follow
+# the package version would destroy the only record of when the fixtures were
+# made, and the field was renamed from `package_version` after exactly that
+# mistake was made and caught.
+generated_under_package_version: 0.1.0
 generated_on: 2026-07-15
 
 upstream:
