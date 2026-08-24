@@ -1,0 +1,157 @@
+---
+title: "Assimilative causal inference (ACI) in R"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Assimilative causal inference (ACI) in R}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(fig.width = 7, fig.height = 3.6, collapse = TRUE,
+                      comment = "#>")
+library(aci)
+set.seed(1)
+```
+
+## 1. Answering causal questions
+
+### Estimating causal effects
+Causal inference techniques provide useful tools for answering questions about
+causality using observational data, including tasks that require estimating the
+size of treatment effects. Many such frameworks and methods exist for causal effect
+estimation, including graphical modelling approaches for estimating the causal effect
+of a treatment (the cause) on an outcome (the effect). Such approaches require 
+observable causes and their effect(s), captured in the data, to identify a causal estimand.
+
+
+### Tracing backward from effects to causes
+Assimilative causal inference (ACI) (Andreou et al., 2026) is a complementary
+approach that formulates causality as an inverse problem, using Bayesian data 
+assimilation to trace causes backward from their observed effects. This approach
+can detect if one variable (a latent cause) influences another (an observed effect),
+and if so, for how long a causal influence persists.
+
+### The causal influence range (CIR)
+
+Andreou & Chen (2026) develop the causal influence range (CIR) for quantifying 
+the duration of a causal effect in both forward and backward directions. 
+This answers questions such as: (1) "for how long will a causal effect persist?" 
+(forward CIR); and (2) "when did the causal precursors of this event emerge?" 
+(backward CIR). 
+
+## 2. Getting started with ACI in R
+
+### A different way of thinking about modelling
+ACI requires a dynamical model to identify instantaneous causal relationships (Andreou et al., 2026).
+In a standard regression workflow the model is the output: `lm()` is handed
+data and returns coefficients. Here the model is the input: a statement of how
+the observed and hidden variables evolve together, and how noisy each is,
+supplied before the causal question is asked. Fitting still happens (in
+Section 3, `aci_fit()` learns the model from data), but what it produces is
+the object the causal question is answered relative to, not the answer itself.
+A model can also be written down directly (`cgns_model()`) or calibrated to
+data (`calibrate_cgns()`); the advanced vignette describes both routes.
+
+### The question ACI answers
+Some variables can be observable while others remain hidden, and for a latent
+process $y$ (the cause) influencing observed variables 
+(the effect) in a time series: **is a causal influence detected, and if so, how 
+strongly at each moment, and for how long?**
+
+To answer this question, we can compare two reconstructions of $y_t$:
+
+* the **filter** $p(y_t \mid x_{\le t})$: what past observations say;
+* the **smoother** $p(y_t \mid x_{\le T})$: what past *and future* observations say.
+
+If the future of $x$ sharpens our knowledge of $y_t$, then it confirms the existence
+of a causal influence. 
+
+The **ACI metric** is the relative entropy between the two posteriors,
+
+$$\mathrm{ACI}(t) \;=\; D_{\mathrm{KL}}\!\big(p^{\text{smoother}}_t \,\big\|\,
+p^{\text{filter}}_t\big) \;\ge\; 0,$$
+
+computed *along one trajectory* (causality as it happened, not on average).
+
+
+### Simulating example data
+
+Since the model comes first, we can simulate from it and hold the hidden
+truth aside to check the reconstruction against.
+
+```{r quickstart-data}
+truth <- model_dyad(params = list(d_x = 1, gamma = 2, f_x = 1.5, s_x = 0.7,
+                                  d_y = 1, f_y = 0.5, s_y = 2))
+sim <- simulate(truth, seed = 8, T = 5, dt = 5e-3, burn_in = 1)
+dat <- data.frame(t = sim$obs$t, x1 = sim$obs$x[, 1], y = sim$hidden[, 1])
+head(dat, 3)
+```
+
+## 3. Fit a model
+
+Supply a formula naming the latent cause and the observed effects to `aci_fit()`,
+along with a data frame. 
+
+`aci_fit()` learns a conditional Gaussian model and returns a single object.
+
+```{r quickstart-fit}
+fit <- aci_fit(y ~ x1, data = dat)
+fit
+```
+
+## 4. Plot and print the results
+
+`plot()` visualises the reconstruction and the metric:
+
+```{r quickstart-latent}
+plot(fit, "latent", truth = dat$y)
+legend("topright", c("reconstruction ± 2 sd", "withheld truth"),
+       col = c(1, 2), lty = 1, bty = "n")
+```
+
+```{r quickstart-metric}
+plot(fit, "metric")
+```
+
+`summary()` shows the learned equations and, with `verdict = TRUE`, a
+significance test against the decoupled null, the fitted model with its
+coupling removed (see the significance and validation section of
+`vignette("vignette-2-advanced")`):
+
+```{r quickstart-summary}
+suppressWarnings(summary(fit, verdict = TRUE, B = 9))
+```
+
+## 5. Obtain the CIR
+
+The causal influence range (CIR) (*for how long does $y$ influence $x_1$?*) 
+is obtained using `cir()`:
+
+```{r quickstart-cir}
+cir(fit)
+plot(fit, "cir")
+```
+
+Each row is one anchor time `t`: `tau` is the range in the model's time units
+and `strength` is the peak finite-lag divergence there. `cir(fit)` reports the
+forward direction; the backward question of Section 1 is
+`cir(fit, direction = "backward")`.
+
+## 6. When the cause was never measured
+
+Drop the `y` column and `aci_fit()` switches to partial-observation mode:
+the latent path is reconstructed by data assimilation around a seed model,
+then the dynamics are learned from posterior samples. This mode is
+**experimental** (single learning pass; see `?learn_model` notes).
+
+```{r partial, fig.height=3.2}
+fitp <- aci_fit(y ~ x1, data = dat[, c("t", "x1")], n_samples = 8)
+plot(fitp, "latent", truth = dat$y)
+```
+
+We're well on our way to seeing what ACI can do. The underlying machinery is
+covered in `vignette("vignette-2-advanced")`.

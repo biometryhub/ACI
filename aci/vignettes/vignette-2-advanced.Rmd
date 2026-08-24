@@ -1,0 +1,342 @@
+---
+title: "The ACI engine: from models to extremes"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{The ACI engine: from models to extremes}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(fig.width = 7, fig.height = 3.6, collapse = TRUE,
+                      comment = "#>")
+library(aci)
+set.seed(1)
+```
+
+## 1. Models and observations
+
+ACI uses a class of models called **conditional Gaussian nonlinear systems
+(CGNS)**: given the observed path the hidden dynamics are linear-Gaussian,
+which gives a closed-form filter and smoother.
+
+The package includes benchmark models from the ACI literature; the full
+catalogue is summarised in the README and on each constructor's help page.
+The dyad is the running example:
+
+```{r benchmark-models}
+m <- model_dyad()   # andreou2026aci Sec 3.1 / SI.4.1 defaults, MATLAB-checked
+m
+```
+
+`simulate()` integrates the SDE (Euler-Maruyama) and returns the observed
+trajectory and the hidden truth separately, so reconstructions can be scored
+against the truth:
+
+```{r simulate}
+sim <- simulate(m, seed = 7, T = 6, dt = 5e-3, burn_in = 1)
+str(sim$obs, max.level = 1)
+```
+
+For your own data, `observed_trajectory(t, x)` builds the observation object
+(uniform grid, noise-free observations of the resolved variables).
+
+Build custom mechanistic models with `cgns_model()` (explicit coefficients)
+or `cgns_from_affine()` for a full drift; the latter checks conditional
+linearity and splits the drift accordingly. `calibrate_cgns()` fits a bounded
+subset of a user-supplied builder's parameters by deterministic least
+squares, then estimates observed-channel noise from increment residuals (a
+package extension).
+
+
+## 2. The engine: filter, smoother, metric
+
+```{r engine}
+init <- list(mean = 0, cov = diag(1, 1))
+filt <- da_filter(m, sim$obs, init = init)
+smoo <- da_smooth(m, sim$obs, filter = filt)
+plot(smoo, truth = sim$hidden[, 1])
+```
+
+`aci()` combines the pair into the metric and names its two parts: a
+**signal** term, from disagreement between the posterior means, and a
+**dispersion** term, from disagreement between the posterior spreads:
+
+```{r metric}
+aci_out <- aci(m, sim$obs, init = init)
+plot(aci_out)
+```
+
+Numerical note: the default explicit stepper is the reference scheme and the
+convention the lag table in Section 3 assumes; the CIR machinery rejects
+`stepper = "implicit"` outright, and discards a supplied implicit filter to
+rebuild an explicit one with a warning (`cir()` on an `aci_fit` rebuilds
+silently). For stiff learned models or very
+diffuse priors, switch to the positivity-preserving implicit stepper:
+`da_filter(..., stepper = "implicit", nsub = 5)`; `aci_fit()` takes the same
+two arguments.
+
+
+## 3. The causal influence range (CIR)
+
+The ACI metric says *how strongly now*. The **causal influence range
+(CIR)** says *for how long*: at each time $t$, how far into the future do
+observations still carry information that $y_t$ planted?
+
+### The forward CIR
+
+`lag_table()` stores the finite-lag divergences plus a heuristic tail
+estimate; cost is proportional to the retained lag cells, up to $O(N^2)$ for
+a full table. `forward_cir()` reads off the exact ("layer-cake") length, or
+the cheaper ratio bound that the ACI reference code calls its efficient
+approximation. Both integrate with composite Simpson: the exact form always, and the
+ratio by default, following the ACI and EnKBS codebases rather than the plain
+L1 grid sum on the FBCIR scripts' active line. The table below is adaptively
+truncated (`tol = 1e-4`); the bound labels record this in `fc$bound` as
+`objective_on_truncated_table` and `lower_ratio_on_truncated_table_only`,
+and `tol = 0` reproduces the
+untruncated convention of the published figures:
+
+```{r cir-forward}
+tab <- lag_table(m, sim$obs, mode = "forward", tol = 1e-4, init = init)
+fc  <- forward_cir(tab)
+l1  <- forward_cir(tab, method = "l1_linf")
+plot(fc$t, fc$tau, type = "l", xlab = "t", ylab = expression(tau[f]),
+     ylim = c(0, 1.3 * max(fc$tau, na.rm = TRUE)),
+     main = "Forward CIR: exact vs efficient approximation")
+lines(l1$t, l1$tau, col = 4, lty = 2)
+legend("top", c("exact", "l1/linf (underestimate)"), col = c(1, 4),
+       lty = 1:2, bty = "n", horiz = TRUE)
+```
+
+The final anchor is masked: the forward metric is exactly zero at the final
+time. The decline through the end of the record is a finite record artefact of
+those short rows, since no anchor can report a range longer than the
+observations that follow it; the reference code sidesteps this with a lookahead
+margin. A lag table uses the complete online Theorem 3 smoother
+(Andreou & Chen, 2026) as its reference rather than the backward ODE smoother
+`da_smooth()` returns, so their finite-grid diagonals can differ at finite
+$\Delta t$.
+
+### The subjective CIR
+
+The $\varepsilon$-resolved **subjective CIR** (how far ahead the influence
+last exceeds each threshold) is reached through the `eps` argument
+(Andreou & Chen, 2026):
+
+```{r cir-subjective, fig.height=3.2}
+eps <- 10^seq(-4, 0, length.out = 60)
+sc  <- forward_cir(tab, eps = eps)
+filled.contour(sc$t, log10(eps), sc$subjective, xlab = "t",
+               ylab = expression(log[10]~epsilon),
+               main = "Subjective CIR length",
+               color.palette = function(n) hcl.colors(n, "viridis"))
+```
+
+### The backward CIR
+
+The **backward** direction (*when did the causal precursors of this event
+emerge?*) is the attribution estimand:
+
+```{r cir-backward}
+b <- backward_cir(m, obs = sim$obs, T = c(2.5, 4, 5.5), init = init)
+data.frame(T = b$t, tau = b$tau, M = b$M,
+           from = b$interval[, 1], to = b$interval[, 2])
+```
+
+For a reference anchor $T$, the one-observation discrepancy grid ends at
+$T-\Delta t$, following the FBCIR reference code. `t` is therefore the anchor
+$T$, while the reported interval ends at $T-\Delta t$.
+
+Exact and ratio results are labelled `layer_cake_on_O(dt)_T_minus_dt_grid`
+and `upper_ratio_on_O(dt)_T_minus_dt_grid`. Unlike the forward ratio, the
+backward ratio is a plain L1 grid sum (Andreou & Chen, 2026, eq. G.14),
+following the FBCIR reference code's convention; `quadrature` switches either
+direction's ratio to the other rule.
+
+Low-signal anchors, those whose peak finite-lag divergence $M$ is small, are
+masked by the default `min_M = "auto"` rule rather than reported as inflated
+lengths; the default `masked_value = "na"` keeps
+the masking visible, and `masked_value = "zero"` restores the published zero
+convention. Interpret CIRs jointly with the metric (Andreou & Chen, 2026,
+Remarks B.4 and C.4). The ensemble counterpart of the forward table is in
+Section 6.
+
+
+## 4. Conditional ACI
+
+With several observed effects, the conditional question is
+$y \to x_A \mid x_B$: keep $x_B$'s values in the dynamics but give its
+innovations no assimilation weight. That is `strategy = "inflate"`, used
+below; the default, `strategy = "prescribed_forcing"`, instead substitutes the
+non-target channels as known forcing and drops them from the observed block.
+Here we use the model's recorded reference partition; choosing the `hidden`
+partition of a benchmark model is a separate modelling decision:
+
+```{r conditional}
+me <- model_enso6(hidden = "tau")   # tau (wind bursts) hidden; u, hW, TC, TE, I observed
+se <- simulate(me, seed = 12, T = 1.5, dt = 5e-3, burn_in = 0.5)
+init_cond <- list(mean = 0, cov = diag(1, me$l))
+a_all  <- aci(me, se$obs, init = init_cond)
+a_cond <- aci(me, se$obs, init = init_cond,
+              nontarget = nontarget(blocks = me$meta$conditioning_obs_idx,
+                                    strategy = "inflate"))
+plot(a_all$t, a_all$aci, type = "l", xlab = "t", ylab = "ACI",
+     ylim = range(a_all$aci, a_cond$aci),
+     main = "Total vs conditional influence of the wind bursts")
+lines(a_cond$t, a_cond$aci, col = 2)
+legend("topright", c("tau -> all observed", "tau -> TC,TE,I | u,hW"),
+       col = 1:2, lty = 1, bty = "n")
+```
+
+
+## 5. Significance and validation
+
+Two independent checks guard against wishful reading; both are package
+extensions, recorded as such on each result (`source_status`). The
+structural check asks whether a queried direction is *nil*: whether the model's
+direct coupling block reaches it, and whether the empirical metric agrees. On the coupled
+dyad both flags come back `FALSE`, meaning coupling is present and the metric
+sees it; `TRUE` would flag the direction as nil. `direct sensitivity` is the
+largest direct model coupling from the queried cause into the queried effect
+along the record, and `empirical peak` is the largest metric value on it.
+Supplying `obs` runs the empirical half on the series in hand; omitting it
+simulates a fresh one:
+
+```{r nilcheck}
+nil_causality_check(m, sim$obs, direction = list(cause = 1, effect = 1))
+```
+
+The statistical check asks whether the *data* could have produced this
+evidence without coupling. It is a likelihood-ratio parametric bootstrap
+against the decoupled null (the candidate with its coupling removed), with
+a flagged linearized fallback when most null simulations diverge:
+
+```{r surrogate}
+nil_surrogate_test(m, sim$obs, B = 19, seed = 2,
+                   init = list(mean = 0, cov = diag(1, 1)))
+```
+
+`B = 19` keeps the vignette cheap; 0.05 is the floor of the p-grid at that
+`B`. When the model was learned from the same series (via `aci_fit()`,
+Section 7), the test is not out of sample: the coupled model was tuned to
+these observations, and neither model is re-estimated on the surrogate
+replicates, so the null ratios carry no matching fitting advantage. Small
+p-values are optimistic there.
+
+
+## 6. The ensemble engine
+
+For systems outside the CGNS class (or as an independent cross-check), the
+ensemble Kalman-Bucy filter/smoother needs only pointwise drift and diffusion
+evaluations, not the conditional Gaussian split; it does require independent
+observation and signal noise, and a member-independent signal diffusion. The
+smoother **must reuse the forward Wiener increments** (Jiang et al., 2026).
+
+### Filter and smoother
+
+The package records and checks those increments before the backward pass.
+The filter is started from the same prior as the closed-form run so the two
+smoothers are comparable:
+
+```{r ensemble}
+ef <- enkbf(model = m, sim$obs, m = 40, seed = 4, ic_sampler = init)
+es <- enkbs(m, ef$path, ef$noise)
+em <- rowMeans(es$members[1, , ])
+plot(sim$obs$t, smoo$mean[, 1], type = "l", xlab = "t", ylab = "y",
+     ylim = range(smoo$mean[, 1], em),
+     main = "Closed-form vs ensemble smoother (m = 40)")
+lines(sim$obs$t, em, col = 4, lty = 2)
+legend("topright", c("closed form", "EnKBS mean"), col = c(1, 4),
+       lty = 1:2, bty = "n")
+```
+
+For high-dimensional systems (`model_l96()`), localization
+(`localization_spec()`) tapers spurious long-range sample correlation and
+inflation counters spread collapse in small ensembles; both are state
+estimation devices, and the ACI metric and the ensemble CIR still require the
+ensemble size to exceed the hidden dimension.
+
+### The ensemble CIR
+
+The **forward ensemble CIR** is reached through `aci()`. It reuses one causal
+EnKBF run and repeats the EnKBS backward pass at each observation horizon,
+building the complete versus lagged smoother family of Andreou & Chen (2026).
+Jiang et al. (2026) use it for their forward CIR experiment. The construction
+is $O(N^2)$ in time points, for both work and storage, with full-dimensional
+Gaussian ensemble-moment KL. It is not run here: on this 1201-point series it
+takes roughly ten minutes. Try it on a short series, and check results across
+seeds and ensemble sizes:
+
+```{r ensemble-cir, eval=FALSE}
+ae  <- aci(model = m, obs = sim$obs, engine = "ensemble", m = 50, seed = 4,
+           keep = "table")
+cef <- forward_cir(ae)
+# equivalently: forward_cir(ensemble_lag_table(m, sim$obs, m = 50, seed = 4))
+```
+
+
+## 7. Learning models from data
+
+The learning layer supplies the components `aci_fit()` is built from:
+polynomial function libraries (`cgns_library()`), structure selection by
+**causation entropy** (`causation_entropy()`, thresholded through
+`aci_fit(ce_threshold = )`), and constrained maximum likelihood including
+cross-equation **energy conservation** constraints of the dyad/triad family.
+`learn_model()` itself is the partial-observation path:
+
+```{r discovery}
+lib <- cgns_library(k = 1, l = 1, degree = 2)
+lm_ <- learn_model(m, sim$obs, lib, n_samples = 10, seed = 3,
+                   energy_pairs = list(c(obs = 1, hid = 1)), init = init)
+round(c("dx1: x1*y1" = lm_$equations$dx1$coef[["x1*y1"]],
+        "dy1: x1^2"  = lm_$equations$dy1$coef[["x1^2"]]), 3)
+```
+
+The two coefficients sum to zero because `energy_pairs` imposes that equality
+as a hard constraint on the joint refit: the exact zero is the constraint being
+met, not a recovery check. The recovery check is the magnitude itself, against
+the dyad's true `gamma = 2`; the overshoot is the documented one-pass bias on
+quadratic terms, which is why partial-observation fitting carries the
+experimental label (see `?learn_model` and `vignette("vignette-1-intro")`).
+
+
+## 8. The extreme-event workflow
+
+The Moser et al. (2026) event workflow links the ACI metric to intermittent
+extreme events; the dyad's antidamping bursts are the example used here. The
+package covers this workflow only in part; see the limitations and roadmap
+section of the README. `threshold = "event_peak_quantile"` is the Moser
+dyad convention (the raw trajectory quantile route serves the pathways-style
+workflow instead):
+
+```{r extremes, fig.height=3.2}
+sl <- simulate(m, seed = 5, T = 14, dt = 2e-3, burn_in = 2)
+ev <- detect_events(sl$obs, component = 1, threshold = "event_peak_quantile",
+                    q = 0.95)
+plot(sl$obs$t, sl$obs$x[, 1], type = "l", xlab = "t", ylab = "x",
+     main = sprintf("%d detected events", nrow(ev)))
+abline(v = ev$t_star, col = 2, lty = 3)
+```
+
+The rest of the event layer:
+
+* `event_onset()`: precursor times.
+* `event_influence()`: per-event forward and backward influence windows.
+* `event_stats()`: event-locked hidden-state composites against climatology.
+* `classify_events()`: mechanism clustering, fed by the model-specific
+  `features_pathways()` or `features_topographic()`; neither applies to the
+  dyad.
+* `sensitive_directions()`: the hidden-state directions along which
+  event-conditioned posteriors depart most from climatology (a multistart
+  numerical search, not a certified optimum).
+
+In `event_influence()`, the windows combine a last-exceedance objective
+(Andreou & Chen, 2026) with event anchors (Moser et al., 2026). Both windows
+are package syntheses: the forward value agrees with the Moser et al. (2026)
+definition when the finite-lag divergence decreases monotonically and differs
+on non-monotone rows; the returned `forward_bound` and `backward_bound`
+columns carry the CIR labels.

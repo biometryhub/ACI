@@ -1,0 +1,33 @@
+bibentry(
+  bibtype  = "Manual",
+  header   = "To cite the aci package itself:",
+  title    = paste0("{aci}: ", meta$Title),
+  author   = person("Aidan", "Moller"),
+  year     = "2026",
+  note     = paste("R package version", meta$Version),
+  textVersion = paste0(
+    "Moller, A. (2026). aci: ", meta$Title,
+    ". R package version ", meta$Version, "."
+  )
+)
+
+bibentry(
+  bibtype  = "Article",
+  header   = paste("To cite the method, cite the paper the component you used",
+                   "implements. The full source list is in ?aci_references;",
+                   "the primary reference is:"),
+  title    = "Assimilative causal inference",
+  author   = c(person("Marios", "Andreou"),
+               person("Nan", "Chen"),
+               person("Erik", "Bollt")),
+  journal  = "Nature Communications",
+  year     = "2026",
+  volume   = "17",
+  pages    = "1854",
+  doi      = "10.1038/s41467-026-68568-0",
+  textVersion = paste(
+    "Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal",
+    "inference. Nature Communications, 17, 1854.",
+    "doi:10.1038/s41467-026-68568-0"
+  )
+)
