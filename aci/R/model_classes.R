@@ -159,6 +159,70 @@ print.stochastic_model <- function(x, ...) {
 # CGNS class: coefficients, Grams, validation, affine constructor
 ################################################################################
 
+
+# Private identity used to recognize constructor-attached batch realisers.
+# It deliberately does not survive namespace/process substitution: an object
+# whose descriptor cannot be authenticated simply uses generic compilation.
+.cgns_realizer_sentinel <- new.env(parent = emptyenv())
+.cgns_coefficient_fields <- c(
+  "Lx", "fx", "Ly", "fy", "Sx1", "Sx2", "Sy1", "Sy2"
+)
+
+
+#' Attach a sealed compiled-realiser descriptor (internal)
+#'
+#' The descriptor records pure constructor data and the exact canonical
+#' coefficient functions.  Dispatch never trusts mutable names or metadata,
+#' and the realiser implementation is selected inside the package rather than
+#' from a function stored on the model.
+#'
+#' @param model A newly constructed `cgns_model`.
+#' @param id Internal realiser identifier.
+#' @param spec Pure-data constructor specification consumed by that realiser.
+#' @returns `model` with a locked private descriptor.
+#' @noRd
+.attach_cgns_realizer <- function(model, id, spec) {
+  if (!inherits(model, "cgns_model") || !is.character(id) ||
+      length(id) != 1L || is.na(id) || !nzchar(id) || !is.list(spec))
+    aci_abort("aci_error_internal", "Invalid internal CGNS realiser descriptor.")
+  descriptor <- new.env(parent = emptyenv())
+  descriptor$sentinel <- .cgns_realizer_sentinel
+  descriptor$abi <- 1L
+  descriptor$id <- id
+  descriptor$k <- model$k
+  descriptor$l <- model$l
+  descriptor$spec <- spec
+  descriptor$functions <- model[.cgns_coefficient_fields]
+  lockEnvironment(descriptor, bindings = TRUE)
+  attr(model, ".aci_realizer") <- descriptor
+  model
+}
+
+
+#' Authenticate a constructor-attached compiled realiser (internal)
+#'
+#' @param model A `cgns_model`.
+#' @returns The locked descriptor, or `NULL` when generic compilation is
+#'   required.
+#' @noRd
+.cgns_realizer_descriptor <- function(model) {
+  descriptor <- attr(model, ".aci_realizer", exact = TRUE)
+  if (!is.environment(descriptor) ||
+      !identical(descriptor$sentinel, .cgns_realizer_sentinel) ||
+      !identical(descriptor$abi, 1L) ||
+      !is.character(descriptor$id) || length(descriptor$id) != 1L ||
+      !identical(descriptor$k, model$k) ||
+      !identical(descriptor$l, model$l) ||
+      !is.list(descriptor$spec) ||
+      !is.list(descriptor$functions) ||
+      !identical(names(descriptor$functions), .cgns_coefficient_fields) ||
+      !all(vapply(.cgns_coefficient_fields, function(field) {
+        identical(model[[field]], descriptor$functions[[field]])
+      }, logical(1))))
+    return(NULL)
+  descriptor
+}
+
 #' Conditional-Gaussian nonlinear system
 #'
 #' Constructs a conditional-Gaussian nonlinear system, in which the observed
@@ -187,6 +251,13 @@ print.stochastic_model <- function(x, ...) {
 #' @param meta Optional named list of metadata carried on the object.
 #' @returns An object of class `cgns_model`, which also inherits from
 #'   `stochastic_model`.
+#'
+#' @details CGNS coefficient functions are mathematical coefficients: for a
+#'   fixed `(t, x)` they must return deterministic values with stable shapes and
+#'   diffusion-channel counts. Random-number generation or result-changing
+#'   mutable state inside a coefficient function is outside the model contract.
+#'   Closed-form execution may realise each coefficient once on the observation
+#'   grid and reuse that realised path.
 #'
 #' @seealso [cgns_from_affine()], [da_filter()], [aci()]
 #'
@@ -488,9 +559,16 @@ cgns_from_affine <- function(f_full, g_full, Sx, Sy_hidden, k, l, name = NULL,
   fy <- function(t, x) g_full(t, x, rep(0, l))
   LxM <- function(t, x) matrix(Lx(t, x), k, l)
   LyM <- function(t, x) matrix(Ly(t, x), l, l)
-  cgns_model(Lx = LxM, fx = fx, Ly = LyM, fy = fy,
-             Sx1 = Sx, Sx2 = Sx2, Sy1 = Sy_shared, Sy2 = Sy_hidden,
-             k = k, l = l, name = name, meta = meta)
+  model <- cgns_model(
+    Lx = LxM, fx = fx, Ly = LyM, fy = fy,
+    Sx1 = Sx, Sx2 = Sx2, Sy1 = Sy_shared, Sy2 = Sy_hidden,
+    k = k, l = l, name = name, meta = meta
+  )
+  .attach_cgns_realizer(
+    model,
+    id = "affine_model_v1",
+    spec = list(f_full = f_full, g_full = g_full)
+  )
 }
 
 

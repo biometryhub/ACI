@@ -77,6 +77,38 @@ gaussian_kl <- function(mu_p, R_p, mu_q, R_q, decompose = TRUE) {
 }
 
 
+#' Gaussian KL arithmetic for already dimension-validated values (internal)
+#'
+#' Covariances remain strict: the reference is checked before the integrating
+#' covariance, matching [gaussian_kl()].
+#'
+#' @param mu_p,R_p Integrating Gaussian moments.
+#' @param mu_q,R_q Reference Gaussian moments.
+#' @param decompose Return the three-component result.
+#' @returns A named numeric vector or scalar total.
+#' @noRd
+.gaussian_kl_validated <- function(mu_p, R_p, mu_q, R_q,
+                                   decompose = TRUE) {
+  Lq <- .strict_chol(R_q, "R_q")
+  Lp <- .strict_chol(R_p, "R_p")
+  d <- mu_q - mu_p
+  w <- forwardsolve(t(Lq), d)
+  signal <- 0.5 * sum(w * w)
+  A <- forwardsolve(t(Lq), t(Lp))
+  dispersion <- 0.5 * (
+    sum(A * A) - length(mu_p) +
+      2 * sum(log(diag(Lq))) - 2 * sum(log(diag(Lp)))
+  )
+  signal <- max(signal, 0)
+  dispersion <- max(dispersion, 0)
+  total <- signal + dispersion
+  if (isTRUE(getOption("aci.debug_assert", FALSE)) && total < -1e-10)
+    aci_abort("aci_error_internal", "Negative KL encountered.")
+  if (isTRUE(decompose))
+    c(total = total, signal = signal, dispersion = dispersion) else total
+}
+
+
 #' Relative entropy gained by an update
 #'
 #' Relative entropy of an updated Gaussian from the one it replaced, oriented so
@@ -141,15 +173,36 @@ gaussian_kl_path <- function(p, q, decompose = TRUE) {
       !identical(dim(q$cov), c(lp, lp, n)) ||
       any(!is.finite(c(p$t, q$t, p$mean, q$mean, p$cov, q$cov))))
     aci_abort("aci_error_dims", "gaussian_kl_path: incompatible or non-finite moments.")
+  if (lp == 1L) {
+    R_p <- as.numeric(p$cov)
+    R_q <- as.numeric(q$cov)
+    # Preserve gaussian_kl()'s per-index validation order: reference covariance
+    # first, integrating covariance second, before vectorised arithmetic.
+    for (j in seq_len(n)) {
+      if (R_q[j] <= 0)
+        aci_abort("aci_error_spd", "Matrix (R_q) must be positive definite.")
+      if (R_p[j] <= 0)
+        aci_abort("aci_error_spd", "Matrix (R_p) must be positive definite.")
+    }
+    scalar <- .gaussian_kl_scalar_kernel(
+      as.numeric(p$mean), R_p, as.numeric(q$mean), R_q,
+      decompose = decompose
+    )
+    return(data.frame(t = p$t, scalar, check.names = FALSE))
+  }
   if (!isTRUE(decompose)) {
     total <- vapply(seq_len(n), function(j)
-      gaussian_kl(p$mean[j, ], p$cov[, , j], q$mean[j, ], q$cov[, , j],
-                  decompose = FALSE), numeric(1))
+      .gaussian_kl_validated(
+        p$mean[j, ], p$cov[, , j], q$mean[j, ], q$cov[, , j],
+        decompose = FALSE
+      ), numeric(1))
     return(data.frame(t = p$t, total = total))
   }
   out <- matrix(NA_real_, n, 3, dimnames = list(NULL, c("total", "signal", "dispersion")))
   for (j in seq_len(n))
-    out[j, ] <- gaussian_kl(p$mean[j, ], p$cov[, , j], q$mean[j, ], q$cov[, , j])
+    out[j, ] <- .gaussian_kl_validated(
+      p$mean[j, ], p$cov[, , j], q$mean[j, ], q$cov[, , j]
+    )
   data.frame(t = p$t, out)
 }
 
@@ -316,14 +369,17 @@ aci <- function(model, obs, engine = c("auto", "cgns", "ensemble"),
                                         "unspecified_lag_table_reference")),
                      class = "aci_result"))
   }
+  bundle <- NULL
   if (engine == "cgns") {
     if (length(dots))
       aci_abort("aci_error_dims", "Unused arguments were supplied to the closed-form ACI engine.")
     if (!inherits(model, "cgns_model"))
       aci_abort("aci_error_model_contract", "engine='cgns' requires a cgns_model.")
-    filt <- da_filter(model, obs, init = init, nontarget = nontarget,
-                      stepper = stepper, nsub = nsub)
-    smoo <- da_smooth(model, obs, filter = filt, nontarget = nontarget)
+    bundle <- .compile_cgns_run(model, obs, nontarget)
+    filt <- .cgns_filter_compiled(
+      bundle, init = init, stepper = stepper, nsub = nsub, validate = FALSE
+    )
+    smoo <- .cgns_smoother_compiled(bundle, filt, validate = FALSE)
   } else {
     if (!is.numeric(m) || length(m) != 1L || !is.finite(m) ||
         m != floor(m) || m < 2L)
@@ -342,12 +398,17 @@ aci <- function(model, obs, engine = c("auto", "cgns", "ensemble"),
     aci_warn("aci_warn_ensemble_kl", sprintf(
       "ACI from ensemble moments (m = %d): jiang2026enkbs s3.2 finds m ~ 50 faithful; m = 10 preserves timing/sign but distorts magnitudes.", m))
   }
-  klp <- gaussian_kl_path(smoo, filt, decompose = decompose)
+  klp <- if (engine == "cgns")
+    .gaussian_kl_path_compiled(
+      bundle, smoo, filt, decompose = decompose, validate = FALSE
+    ) else gaussian_kl_path(smoo, filt, decompose = decompose)
   tab <- NULL
   if (keep == "table") {
     tab <- if (engine == "cgns")
-      lag_table(model, obs, mode = "forward", nontarget = nontarget,
-                filter = filt, init = filt$meta$init) else
+      .lag_table_compiled(
+        bundle, mode = "forward", filter = filt, init = filt$meta$init,
+        validate = FALSE
+      ) else
       .ensemble_lag_table_from_run(model, obs, fr, sm,
                                    nontarget = nontarget,
                                    localization = localization)
@@ -706,11 +767,13 @@ forward_cir.aci_result <- function(x, ...) {
     aci_abort("aci_error_not_implemented", paste(
       "The forward ensemble CIR needs the lagged EnKBS family; recompute",
       "aci(..., engine = 'ensemble', keep = 'table')."))
-  tab <- x$table %||% lag_table(x$handles$model, x$handles$obs, mode = "forward",
-                                nontarget = x$handles$nontarget,
-                                filter = x$paths$filter,
-                                init = x$handles$init)
-  forward_cir(tab, ...)
+  if (!is.null(x$table)) return(forward_cir(x$table, ...))
+  bundle <- .compile_cgns_run(
+    x$handles$model, x$handles$obs, x$handles$nontarget
+  )
+  .forward_cir_compiled(
+    bundle, filter = x$paths$filter, init = x$handles$init, ...
+  )
 }
 
 
@@ -855,12 +918,47 @@ backward_cir.aci_result <- function(x, T = "end", method = "exact", ...) {
   if (length(Ts) > 20)
     aci_warn("aci_warn_truncation",
              "backward_cir over >20 reference times is O(|T| N l^3) in v0.")
-  res <- lapply(Ts, function(Tv) {
-    keep <- ob$t <= Tv + 1e-12
-    if (sum(keep) < 5) aci_abort("aci_error_dims", "Reference time too early.")
-    obs_sub <- observed_trajectory(ob$t[keep], ob$x[keep, , drop = FALSE])
-    tb <- lag_table(mdl, obs_sub, mode = "one_lag", nontarget = nt,
-                    init = x$handles$init)
+  prefix_lengths <- vapply(Ts, function(Tv)
+    sum(ob$t <= Tv + 1e-12), integer(1))
+  if (any(prefix_lengths < 5L))
+    aci_abort("aci_error_dims", "Reference time too early.")
+  # Coefficients after the latest requested reference time are not part of any
+  # backward-CIR estimand. Compile the maximal required prefix once so multiple
+  # references share work without evaluating irrelevant future coefficients.
+  max_N1 <- max(prefix_lengths)
+  prefix_obs <- if (max_N1 == length(ob$t)) ob else observed_trajectory(
+    ob$t[seq_len(max_N1)], ob$x[seq_len(max_N1), , drop = FALSE],
+    names = colnames(ob$x)
+  )
+  bundle <- .compile_cgns_run(mdl, prefix_obs, nt)
+  full_filter <- x$paths$filter %||% NULL
+  can_reuse <- !is.null(full_filter) &&
+    nrow(full_filter$mean) >= max_N1 &&
+    identical(full_filter$meta$stepper %||% "explicit", "explicit") &&
+    (full_filter$meta$nsub %||% 1L) == 1L
+  if (can_reuse) {
+    full_filter <- .slice_compiled_filter(full_filter, bundle)
+    compatible <- tryCatch({
+      .validate_gaussian_path(
+        full_filter, bundle$obs, bundle$l, "filter", bundle$nontarget,
+        model = bundle$model, source_model = bundle$source_model
+      )
+      TRUE
+    }, error = function(e) FALSE)
+    can_reuse <- isTRUE(compatible)
+  }
+  if (!can_reuse)
+    full_filter <- .cgns_filter_compiled(
+      bundle, init = x$handles$init, stepper = "explicit", nsub = 1L,
+      validate = FALSE
+    )
+  res <- lapply(prefix_lengths, function(N1) {
+    prefix <- .slice_compiled_cgns(bundle, N1)
+    prefix_filter <- .slice_compiled_filter(full_filter, prefix)
+    tb <- .lag_table_compiled(
+      prefix, mode = "one_lag", filter = prefix_filter,
+      init = prefix_filter$meta$init, validate = FALSE
+    )
     backward_cir(tb, method = method, ...)
   })
   actual_T <- vapply(res, function(z) as.numeric(z$t)[1], numeric(1))

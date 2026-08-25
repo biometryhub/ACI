@@ -1,9 +1,11 @@
 ^aci\.Rproj$
-^\.Rproj\.user$
+^\.Rproj\.user($|/)
 ^\.DS_Store$
 ^\.Rhistory$
-^\.github$
+^\.github($|/)
 ^\.gitignore$
 ^LICENSE\.md$
-^build$
+^build($|/)
 ^vignettes/.*\.html$
+^benchmarks($|/)
+^\.gitattributes$

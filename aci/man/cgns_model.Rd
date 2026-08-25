@@ -61,6 +61,14 @@ that the conditional statistics of the hidden component are Gaussian in
 closed form. The noise is described by up to two shared Wiener channels, so
 that correlated observation and signal noise can be represented.
 }
+\details{
+CGNS coefficient functions are mathematical coefficients: for a
+fixed \verb{(t, x)} they must return deterministic values with stable shapes and
+diffusion-channel counts. Random-number generation or result-changing
+mutable state inside a coefficient function is outside the model contract.
+Closed-form execution may realise each coefficient once on the observation
+grid and reuse that realised path.
+}
 \examples{
 cgns_model(
   Lx = function(t, x) matrix(1, 1, 1),

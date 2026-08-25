@@ -95,13 +95,34 @@ model_dyad <- function(variant = c("p1", "p3", "p4"),
   p <- .complete_scalar_params(params, defaults, "dyad",
                                c("d_x", "gamma", "s_x", "d_y", "s_y"))
   if (observe == "x") {
-    m <- cgns_model(
+    # The observed-x dyad has a package batch realiser.  Its coefficient
+    # closures share a locked environment so the attached realiser descriptor
+    # cannot silently outlive mutation of captured constructor parameters.
+    coefficient_env <- list2env(list(p = p), parent = baseenv())
+    lockEnvironment(coefficient_env, bindings = TRUE)
+    coefficient_functions <- list(
       Lx = function(t, x) matrix(p$gamma * x, 1, 1),
       fx = function(t, x) -p$d_x * x + p$f_x,
       Ly = function(t, x) matrix(-p$d_y, 1, 1),
       fy = function(t, x) -p$gamma * x^2 + p$f_y,
       Sx1 = function(t, x) matrix(p$s_x, 1, 1),
-      Sy2 = function(t, x) matrix(p$s_y, 1, 1),
+      Sx2 = function(t, x) matrix(0, 1, 1),
+      Sy1 = function(t, x) matrix(0, 1, 1),
+      Sy2 = function(t, x) matrix(p$s_y, 1, 1)
+    )
+    coefficient_functions <- lapply(coefficient_functions, function(fun) {
+      environment(fun) <- coefficient_env
+      fun
+    })
+    m <- cgns_model(
+      Lx = coefficient_functions$Lx,
+      fx = coefficient_functions$fx,
+      Ly = coefficient_functions$Ly,
+      fy = coefficient_functions$fy,
+      Sx1 = coefficient_functions$Sx1,
+      Sx2 = coefficient_functions$Sx2,
+      Sy1 = coefficient_functions$Sy1,
+      Sy2 = coefficient_functions$Sy2,
       k = 1, l = 1, name = sprintf("dyad[%s] y->x", variant))
   } else {
     m <- stochastic_model(
@@ -147,6 +168,10 @@ model_dyad <- function(variant = c("p1", "p3", "p4"),
   m$meta$ic_default <- if (observe == "x")
     list(x0 = p$f_x / p$d_x, y0 = p$f_y / p$d_y) else
     list(x0 = p$f_y / p$d_y, y0 = p$f_x / p$d_x)
+  if (observe == "x")
+    m <- .attach_cgns_realizer(
+      m, "dyad_observed_x_v1", list(params = p)
+    )
   m
 }
 

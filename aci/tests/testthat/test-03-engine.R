@@ -8,9 +8,10 @@ lin_model <- function(a = 1, b = -1, fx0 = 0.2, fy0 = 0.3, sx = 0.5, sy = 0.6)
              Sy2 = function(t, x) matrix(sy, 1, 1), k = 1, l = 1)
 
 online_smoother <- function(model, obs, filter) {
-  .smoother_thmD1(model, as_obs(obs), filter,
-                  ginv = function(g) chol_solve(g, diag(nrow(g)), "gxx"),
-                  warn_cost = FALSE)
+  bundle <- .compile_cgns_run(model, obs)
+  .smoother_thmD1_compiled(
+    bundle, filter, validate = TRUE, warn_cost = FALSE
+  )
 }
 
 # exact discrete KF/RTS for the Euler-discretized linear pair:
@@ -365,9 +366,13 @@ test_that("contraction certificate reports per-step E diagnostics", {
   # independent plumbing check at one step: rebuild E from a fresh filter
   filt <- da_filter(m, as_obs(s), init = init)
   co <- eval_coefs(m, s$obs$t[5], s$obs$x[5, ])
-  aux <- .thmD1_aux(co, filt$cov[, , 5],
-                    function(g) chol_solve(g, diag(1), "gxx"), 0.01, 1L)
-  expect_equal(cert$enorm[5], abs(aux$E[1, 1]), tolerance = 1e-12)
-  expect_equal(cert$lambda_min[5], (1 - aux$E[1, 1]) / 0.01,
+  Rf <- filt$cov[, , 5]
+  Rfi <- chol_solve(Rf, diag(1), "Rf")
+  Gi <- chol_solve(co$gxx, diag(1), "gxx")
+  Gx <- co$Lx + t(co$gyx) %*% Rfi
+  Gy <- co$Ly + co$gyy %*% Rfi
+  E <- diag(1) + (co$gyx %*% Gi %*% Gx - Gy) * 0.01
+  expect_equal(cert$enorm[5], abs(E[1, 1]), tolerance = 1e-12)
+  expect_equal(cert$lambda_min[5], (1 - E[1, 1]) / 0.01,
                tolerance = 1e-8)
 })
