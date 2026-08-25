@@ -1,3 +1,35 @@
+# aci 0.0.30
+
+## CGNS execution engine
+
+* Closed-form CGNS workflows now realise a model's coefficient functions once
+  on the observation grid and execute compiled scalar or matrix kernels. This
+  engine covers explicit and implicit filtering, backward smoothing,
+  predictive log-likelihood, ACI decomposition, lag tables, online smoothing,
+  FFBS sampling, and forward/backward CIR; the retired private per-step
+  coefficient kernels are no longer installed.
+* Arbitrary deterministic `cgns_model()` closures use a generic one-pass
+  compiler. Authenticated dyad and affine-model realisers provide faster
+  specialisations without changing the public model contract or exposing a new
+  API.
+* Both non-target conditioning strategies are applied to realised coefficient
+  arrays before the same compiled kernels run. Existing equations, time and
+  likelihood indexing, covariance-floor policy, warnings, and result/model
+  provenance are preserved.
+* Forward CIR can reduce lag rows as they are produced instead of retaining a
+  quadratic lag triangle. Backward CIR reuses one compiled run and slices its
+  prefixes across reference times.
+
+## Validation and development evidence
+
+* Added scalar, matrix, conditioning, lag, CIR, regression, and public-routing
+  tests, including bundled authors-source and independent MATLAB-derived
+  fixtures. The supplied FBCIR archive contains source but no author-produced
+  numerical outputs, so author-output parity for that route is not claimed.
+* Added a reproducible development benchmark harness that records compilation,
+  warm-kernel, complete-run and public-call timings separately, together with
+  allocations, inputs, source hashes, parity checks, and environment details.
+
 # aci 0.0.21
 
 ## Features

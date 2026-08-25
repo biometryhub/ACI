@@ -5,10 +5,9 @@
 ## Contents:
 ##   * closed-form CGNS filter/smoother and the Theorem 3 lag table:
 ##       - da_filter, da_smooth, new_da_path, print.da_path_gaussian,
-##         as.data.frame.da_path_gaussian, .default_init, .cgns_filter,
-##         .cgns_smoother, .smoother_thmD1, da_filter.cgns_model,
-##         da_smooth.cgns_model, .chol_or_floor, .kl_fast, .thmD1_aux,
-##         .onelag_stats, lag_table, .lagtable_core, lt_diag, lt_onelag, lt_row,
+##         as.data.frame.da_path_gaussian, .default_init,
+##         da_filter.cgns_model, da_smooth.cgns_model, .chol_or_floor,
+##         .kl_fast, .onelag_stats, lag_table, lt_diag, lt_onelag, lt_row,
 ##         lt_tail_bound, truncation_profile, lt_contraction_certificate,
 ##         print.lag_table, as.data.frame.lag_table
 ##
@@ -174,8 +173,8 @@ as.data.frame.da_path_gaussian <- function(x, ...) {
               sprintf("%s was computed from different observation values.", label))
   # A prescribed-forcing reduction contains newly-created lookup closures on
   # every call, so two valid reductions of the same source model are not
-  # `identical()`.  Public paths therefore carry the stable original model;
-  # fall back to the resolved model only for legacy/internal paths.
+  # `identical()`. Public paths therefore carry the stable original model;
+  # fall back to the resolved model only for reduced/internal paths.
   expected_model <- source_model %||% model
   stored_model <- path$meta$source_model %||% path$meta$model
   if (!is.null(expected_model) && is.null(stored_model))
@@ -206,229 +205,6 @@ as.data.frame.da_path_gaussian <- function(x, ...) {
 }
 
 
-#' Closed-form conditional-Gaussian filter (internal)
-#'
-#' Runs the forward filter recursion, accumulating the one-step predictive
-#' log-likelihood of the observed increments alongside the hidden moments.
-#'
-#' @param m A `cgns_model` object.
-#' @param ob An `obs_traj` object.
-#' @param ginv Function inverting the observation Gram matrix.
-#' @param init Optional list with the initial `mean` and `cov`; `NULL` uses a
-#'   diffuse prior and warns.
-#' @param stepper Either `"explicit"` or `"implicit"`; the implicit Riccati step
-#'   preserves positivity.
-#' @param nsub Positive whole number of sub-steps taken per observation.
-#' @param likelihood_idx Optional integer vector of observed channels entering
-#'   the accumulated log-likelihood.
-#' @returns A `da_path_gaussian` object of kind `"filter"`.
-#' @noRd
-.cgns_filter <- function(m, ob, ginv, init = NULL,
-                         stepper = c("explicit", "implicit"), nsub = 1L,
-                         likelihood_idx = NULL) {
-  stepper <- match.arg(stepper)
-  if (length(nsub) != 1L || !is.finite(nsub) || nsub < 1 || nsub != as.integer(nsub))
-    aci_abort("aci_error_dims", "nsub must be a positive integer.")
-  nsub <- as.integer(nsub)
-  N1 <- length(ob$t); N <- N1 - 1L; dt <- ob$dt; l <- m$l; h <- dt / nsub
-  co0 <- eval_coefs(m, ob$t[1], ob$x[1, ])
-  used_default_cov <- is.null(init) || is.null(init$cov)
-  if (used_default_cov) {
-    di <- .default_init(m, co0)
-    if (is.null(init)) init <- di else init$cov <- di$cov
-    aci_warn("aci_warn_diffuse_init",
-      "No init$cov supplied; using a diffuse prior. Discard an initial burn-in window when interpreting results.")
-  }
-  mu <- as.numeric(init$mean %||% rep(0, l))
-  R <- as.matrix(init$cov)
-  if (length(mu) != l || !identical(dim(R), c(l, l)) ||
-      !is.numeric(R) || any(!is.finite(c(mu, R))))
-    aci_abort("aci_error_dims", "init$mean/init$cov have incompatible dimensions or values.")
-  if (max(abs(R - t(R))) > 1e-12 * max(1, max(abs(R))))
-    aci_abort("aci_error_spd", "init$cov must be symmetric.")
-  R <- sym(R)
-  if (is.null(tryCatch(chol(R), error = function(e) NULL)))
-    aci_abort("aci_error_spd", "init$cov must be positive definite; it is not regularized implicitly.")
-  actual_init <- list(mean = mu, cov = R,
-                      source = if (used_default_cov) "default_diffuse" else "user")
-  if (is.null(likelihood_idx)) likelihood_idx <- seq_len(m$k)
-  if (!is.numeric(likelihood_idx) || !length(likelihood_idx) ||
-      any(!is.finite(likelihood_idx)) || any(likelihood_idx != floor(likelihood_idx)) ||
-      any(likelihood_idx < 1L) || any(likelihood_idx > m$k) ||
-      anyDuplicated(likelihood_idx))
-    aci_abort("aci_error_dims", "likelihood_idx contains invalid observation indices.")
-  likelihood_idx <- as.integer(likelihood_idx)
-  if (dt * max(abs(as.matrix(co0$Ly))) > 0.1 && nsub == 1L)
-    aci_warn("aci_warn_dt_stability",
-             "dt * ||Ly|| > 0.1 at t0; Euler updates may be inaccurate (consider nsub > 1).")
-  MU <- matrix(NA_real_, N1, l); CV <- array(NA_real_, c(l, l, N1))
-  MU[1, ] <- mu; CV[, , 1] <- R
-  Il <- diag(l); ll <- 0; kll <- length(likelihood_idx); stab <- 0
-  for (j in seq_len(N)) {
-    co <- eval_coefs(m, ob$t[j], ob$x[j, ])
-    Gi <- ginv(co$gxx)
-    rate <- (ob$x[j + 1, ] - ob$x[j, ]) / dt
-    # one-step predictive log-likelihood of the observed increment at the
-    # interval-start moments: Dx = (fx + Lx y) dt + Sx dW sqrt(dt) with
-    # y ~ N(mu, R) gives iota ~ N(0, Lx R Lx' dt^2 + gxx dt): the hidden-
-    # uncertainty term is O(dt^2); noise term is O(dt).
-    ia <- likelihood_idx
-    iota0 <- (rate[ia] - (co$fx[ia] +
-                drop(co$Lx[ia, , drop = FALSE] %*% mu))) * dt
-    Lxa <- co$Lx[ia, , drop = FALSE]
-    Sd <- sym(Lxa %*% R %*% t(Lxa) * dt +
-              co$gxx[ia, ia, drop = FALSE]) * dt
-    cS <- .chol_or_floor(Sd)
-    w <- forwardsolve(t(cS$ch), iota0)
-    ll <- ll - 0.5 * sum(w * w) - sum(log(diag(cS$ch))) -
-      0.5 * kll * log(2 * pi)
-    if (stepper == "implicit") {
-      GiLx <- Gi %*% co$Lx
-      Lt <- co$Ly - co$gyx %*% GiLx
-      gt <- sym(co$gyy - co$gyx %*% Gi %*% t(co$gyx))
-      Ss <- t(co$Lx) %*% GiLx
-    } else {
-      # explicit Riccati: the sign-definite information term is -R S R h with
-      # S = Lx' gxx^-1 Lx. Stability needs ||S R|| h < 2; past that the update
-      # overshoots, spd_floor() clamps to ~0, and the covariance oscillates.
-      stab <- max(stab, max(abs(diag(as.matrix(t(co$Lx) %*% Gi %*% co$Lx %*% R)))) * h)
-    }
-    for (ss in seq_len(nsub)) {
-      Kg <- (R %*% t(co$Lx) + co$gyx) %*% Gi
-      if (stepper == "implicit") {
-        Am <- co$Ly - Kg %*% co$Lx
-        bm <- co$fy + drop(Kg %*% (rate - co$fx))
-        BEm <- Il - h * Am
-        BEr <- Il - h * Lt
-        if (rcond(BEm) < 1e-12 || rcond(BEr) < 1e-12)
-          aci_abort("aci_error_stepper",
-                    "Implicit filter step is singular; increase nsub or reduce dt.")
-        mu <- drop(solve(BEm, mu + h * bm))
-        Q <- spd_floor(sym(R + h * gt))
-        left <- solve(BEr, Q)
-        Rp <- spd_floor(sym(t(solve(BEr, t(left)))))
-        info <- sym(chol_solve(Rp, Il, "implicit predicted covariance") + h * Ss)
-        R <- spd_floor(sym(chol_solve(info, Il, "implicit information matrix")))
-      } else {
-        mu <- mu + (co$fy + drop(co$Ly %*% mu)) * h +
-              drop(Kg %*% ((rate - (co$fx + drop(co$Lx %*% mu))) * h))
-        R <- R + (co$Ly %*% R + R %*% t(co$Ly) + co$gyy -
-                  Kg %*% (co$Lx %*% R + t(co$gyx))) * h
-        R <- spd_floor(sym(R))
-      }
-    }
-    MU[j + 1, ] <- mu; CV[, , j + 1] <- R
-  }
-  if (stepper == "explicit" && stab > 1)
-    aci_warn("aci_warn_riccati_stiff", sprintf(paste(
-      "Explicit Riccati step is unstable (max ||Lx' gxx^-1 Lx R|| dt = %.3g > 1):",
-      "the covariance can overshoot, be floored by spd_floor(), and oscillate.",
-      "Use the positivity-preserving implicit stepper, or reduce dt / increase nsub."), stab))
-  p <- new_da_path(ob$t, MU, CV, "filter")
-  p$meta$stepper <- stepper; p$meta$nsub <- nsub; p$meta$loglik <- ll
-  p$meta$likelihood_idx <- likelihood_idx; p$meta$init <- actual_init
-  p$meta$obs_x <- ob$x; p$meta$model <- m
-  p
-}
-
-
-#' Closed-form backward-ODE smoother (internal)
-#'
-#' @param m A `cgns_model` object.
-#' @param ob An `obs_traj` object.
-#' @param filt The forward filter path, a `da_path_gaussian` object.
-#' @param ginv Function inverting the observation Gram matrix.
-#' @returns A `da_path_gaussian` object of kind `"smoother"`, whose
-#'   `meta$route` records whether the correlated-noise terms were active.
-#' @noRd
-.cgns_smoother <- function(m, ob, filt,
-                           ginv = function(g) chol_solve(g, diag(nrow(g)), "gxx")) {
-  N1 <- length(ob$t); l <- m$l; dt <- ob$dt
-  # Cross-noise can vanish at t0 but be active later, so metadata records the
-  # realised coefficient path rather than relying on a constructor flag.
-  correlated <- isTRUE(m$meta$correlated_noise) || any(vapply(seq_len(N1), function(j) {
-    .has_cross_noise(eval_coefs(m, ob$t[j], ob$x[j, ]))
-  }, logical(1)))
-  nsub <- max(1L, as.integer(filt$meta$nsub %||% 1L)); h <- dt / nsub
-  MU <- matrix(NA_real_, N1, l); CV <- array(NA_real_, c(l, l, N1))
-  MU[N1, ] <- filt$mean[N1, ]; CV[, , N1] <- filt$cov[, , N1]
-  mus <- MU[N1, ]; Rs <- CV[, , N1]
-  for (j in (N1 - 1):1) {
-    # Left-endpoint Euler convention used by the supplied ACI MATLAB sources:
-    # the step from t_j to t_{j+1} uses coefficients and filter moments at j.
-    co <- eval_coefs(m, ob$t[j], ob$x[j, ])
-    Gi <- ginv(co$gxx)
-    Cgi <- co$gyx %*% Gi
-    A0 <- co$Ly - Cgi %*% co$Lx
-    B <- sym(co$gyy - Cgi %*% t(co$gyx))
-    Rfi <- chol_solve(filt$cov[, , j], diag(l), "Rf")
-    H <- A0 + B %*% Rfi
-    rate <- (ob$x[j + 1L, ] - ob$x[j, ]) / dt
-    for (ss in seq_len(nsub)) {
-      # Every RHS term uses the old mus/Rs. For nsub=1 this is a direct
-      # transcription of the active correlated MATLAB smoother loop.
-      d <- drop(Rfi %*% (filt$mean[j, ] - mus))
-      mus <- mus + h * (-co$fy - drop(co$Ly %*% mus) + drop(B %*% d) +
-                        drop(Cgi %*% (-rate + co$fx + drop(co$Lx %*% mus))))
-      Rs <- Rs + h * (-(H %*% Rs) - Rs %*% t(H) + B)
-      Rs <- spd_floor(sym(Rs))
-    }
-    MU[j, ] <- mus; CV[, , j] <- Rs
-  }
-  p <- new_da_path(ob$t, MU, CV, "smoother")
-  p$meta$route <- if (correlated) "backward_ode_correlated" else "backward_ode"
-  p$meta$nsub <- nsub
-  p$meta$init <- filt$meta$init
-  p$meta$obs_x <- ob$x; p$meta$model <- m
-  p
-}
-
-
-#' Complete online Theorem 3 smoother (internal)
-#'
-#' Evaluates the complete member of the online smoother family by an O(N)
-#' backward affine recursion, avoiding the quadratic triangular history needed
-#' only to obtain its endpoint.
-#'
-#' @param m A `cgns_model` object.
-#' @param ob An `obs_traj` object.
-#' @param filt The forward filter path, a `da_path_gaussian` object.
-#' @param ginv Function inverting the observation Gram matrix.
-#' @param warn_cost `TRUE` to warn about the cost of the recursion.
-#' @returns A `da_path_gaussian` object of kind `"smoother"`, with
-#'   `meta$route` set to `"thmD1"`.
-#' @noRd
-.smoother_thmD1 <- function(m, ob, filt, ginv, warn_cost = TRUE) {
-  if (!identical(filt$meta$stepper %||% "explicit", "explicit") ||
-      (filt$meta$nsub %||% 1L) != 1L)
-    aci_abort("aci_error_stepper",
-              "Theorem 3 smoothing requires an explicit single-step filter.")
-  # The complete online smoother has an O(N) backward representation.  At each
-  # step, Theorem 3 supplies the affine conditional transition
-  #   y_j | y_{j+1}, x_0:(j+1) ~ N(E_j y_{j+1} + b_j, Pt_j).
-  # Applying that transition to the already-smoothed distribution at j+1 is
-  # algebraically identical to the final member of the O(N^2) online sweep,
-  # while avoiding a second triangular history solely to obtain its endpoint.
-  N1 <- length(ob$t); l <- m$l; dt <- ob$dt
-  MU <- matrix(NA_real_, N1, l); CV <- array(NA_real_, c(l, l, N1))
-  MU[N1, ] <- filt$mean[N1, ]; CV[, , N1] <- filt$cov[, , N1]
-  for (j in (N1 - 1L):1L) {
-    co <- eval_coefs(m, ob$t[j], ob$x[j, ])
-    aux <- .thmD1_aux(co, filt$cov[, , j], ginv, dt, l)
-    st <- .onelag_stats(co, aux, filt$mean[j, ], filt$cov[, , j],
-                        MU[j + 1L, ], CV[, , j + 1L],
-                        ob$x[j + 1L, ] - ob$x[j, ], dt, l)
-    MU[j, ] <- st$mu; CV[, , j] <- st$R
-  }
-  p <- new_da_path(ob$t, MU, CV, "smoother")
-  p$meta$route <- "thmD1"
-  p$meta$nsub <- 1L
-  p$meta$init <- filt$meta$init
-  p$meta$obs_x <- ob$x; p$meta$model <- m
-  p
-}
-
-
 #' @describeIn da_filter Closed-form filter for a conditional-Gaussian model.
 #' @param init Optional list with the initial hidden `mean` and `cov`; `NULL`
 #'   uses a diffuse prior and warns.
@@ -446,13 +222,11 @@ da_filter.cgns_model <- function(model, obs, init = NULL, nontarget = NULL,
   obs <- as_obs(obs)
   if (obs$k != model$k)
     aci_abort("aci_error_dims", "Observation dimension does not match the CGNS model.")
-  rs <- .resolve_nontarget(model, obs, nontarget)
-  p <- .cgns_filter(rs$model, rs$obs, rs$ginv, init,
-                    stepper = match.arg(stepper), nsub = nsub,
-                    likelihood_idx = rs$likelihood_idx)
-  p$meta$nontarget <- rs$tag; p$meta$engine <- "cgns"
-  p$meta$source_model <- model
-  p
+  bundle <- .compile_cgns_run(model, obs, nontarget)
+  .cgns_filter_compiled(
+    bundle, init, stepper = match.arg(stepper), nsub = nsub,
+    validate = FALSE
+  )
 }
 
 
@@ -476,12 +250,14 @@ da_smooth.cgns_model <- function(model, obs, filter = NULL, nontarget = NULL,
   obs <- as_obs(obs)
   if (obs$k != model$k)
     aci_abort("aci_error_dims", "Observation dimension does not match the CGNS model.")
-  rs <- .resolve_nontarget(model, obs, nontarget)
+  bundle <- .compile_cgns_run(model, obs, nontarget)
   if (!is.null(filter))
-    .validate_gaussian_path(filter, rs$obs, rs$model$l, "filter", rs$tag,
-                            model = rs$model, source_model = model)
+    .validate_gaussian_path(
+      filter, bundle$obs, bundle$l, "filter", bundle$nontarget,
+      model = bundle$model, source_model = model
+    )
   if (!is.null(filter) && !is.null(init) &&
-      !.same_gaussian_init(init, filter$meta$init, rs$model$l))
+      !.same_gaussian_init(init, filter$meta$init, bundle$l))
     aci_abort("aci_error_dims",
               "init conflicts with the prior stored on the supplied filter.")
   if (!is.null(filter) && stepper_supplied &&
@@ -490,14 +266,12 @@ da_smooth.cgns_model <- function(model, obs, filter = NULL, nontarget = NULL,
   if (!is.null(filter) && nsub_supplied &&
       !identical(as.integer(filter$meta$nsub), as.integer(nsub)))
     aci_abort("aci_error_stepper", "The supplied filter uses a different nsub value.")
-  filt <- filter %||% .cgns_filter(rs$model, rs$obs, rs$ginv, init,
-                                   stepper = stepper, nsub = nsub,
-                                   likelihood_idx = rs$likelihood_idx)
-  p <- .cgns_smoother(rs$model, rs$obs, filt, ginv = rs$ginv)
+  filt <- filter %||% .cgns_filter_compiled(
+    bundle, init, stepper = stepper, nsub = nsub, validate = FALSE
+  )
+  p <- .cgns_smoother_compiled(bundle, filt, validate = FALSE)
   # invariant #3: terminal condition equals filter terminal (asserted)
   stopifnot(max(abs(p$mean[length(p$t), ] - filt$mean[length(p$t), ])) < 1e-12)
-  p$meta$nontarget <- rs$tag; p$meta$engine <- "cgns"
-  p$meta$source_model <- model
   p
 }
 
@@ -537,37 +311,10 @@ da_smooth.cgns_model <- function(model, obs, filter = NULL, nontarget = NULL,
 }
 
 
-#' Theorem 3 auxiliary matrices at one grid index (internal)
-#'
-#' @param co Coefficient list from `eval_coefs()`.
-#' @param Rf Filtered covariance at the index.
-#' @param ginv Function inverting the observation Gram matrix.
-#' @param dt Positive 1-length numeric step.
-#' @param l Hidden dimension.
-#' @returns A list with the auxiliary matrices `E` and `F`.
-#' @noRd
-.thmD1_aux <- function(co, Rf, ginv, dt, l) {
-  Gi  <- ginv(co$gxx)
-  Rfi <- chol_solve(Rf, diag(l), "Rf")
-  gxy <- t(co$gyx)
-  Gx  <- co$Lx + gxy %*% Rfi                      # k x l
-  Gy  <- co$Ly + co$gyy %*% Rfi                   # l x l
-  K   <- Gi %*% Gx                                # k x l
-  H   <- Rfi %*% (co$Ly %*% Rf + Rf %*% t(co$Ly) + co$gyy)
-  E   <- diag(l) + (co$gyx %*% Gi %*% Gx - Gy) * dt
-  KR  <- K %*% Rf
-  F_  <- -Rf %*% (t(K) +
-           (t(Gx) %*% KR %*% t(K) - Rfi %*% t(H) %*% Rf %*% t(K) +
-            t(co$Ly) %*% t(K)) * dt -
-           t(co$Lx) %*% (Gi + KR %*% t(K) * dt))
-  list(E = E, F = F_)
-}
-
-
 #' One-lag smoothed statistics (internal)
 #'
 #' @param co Coefficient list from `eval_coefs()`.
-#' @param aux Auxiliary matrices from `.thmD1_aux()`.
+#' @param aux Theorem-3 auxiliary matrices `E` and `F`.
 #' @param muf_nm1 Filtered mean at the earlier index.
 #' @param Rf_nm1 Filtered covariance at the earlier index.
 #' @param muf_n Smoothed or filtered mean at the later index.
@@ -666,79 +413,11 @@ lag_table <- function(model, obs, mode = c("forward", "one_lag", "full"),
     aci_abort("aci_error_dims", "max_lag must be a positive integer or Inf.")
   if (mode == "full" && is.finite(max_lag))
     aci_abort("aci_error_dims", "mode = 'full' requires max_lag = Inf.")
-  rs <- .resolve_nontarget(model, obs, nontarget)
-  filt <- filter; smoo <- smoother
-  if (!is.null(filt))
-    .validate_gaussian_path(filt, rs$obs, rs$model$l, "filter", rs$tag,
-                            model = rs$model, source_model = model)
-  if (!is.null(smoo))
-    .validate_gaussian_path(smoo, rs$obs, rs$model$l, "smoother", rs$tag,
-                            model = rs$model, source_model = model)
-  if (!is.null(filt) && !is.null(init) &&
-      !.same_gaussian_init(init, filt$meta$init, rs$model$l))
-    aci_abort("aci_error_dims",
-              "init conflicts with the prior stored on the supplied filter.")
-  if (!is.null(filt) &&
-      (!identical(filt$meta$stepper %||% "explicit", "explicit") ||
-       (filt$meta$nsub %||% 1L) != 1L)) {
-    aci_warn("aci_warn_stepper", paste(
-      "lag_table requires the explicit single-step filter/smoother (the",
-      "Theorem 3 recursions are exact for that discretization);",
-      "recomputing both internally."))
-    init <- filt$meta$init %||% init
-    filt <- NULL; smoo <- NULL
-  }
-  filt <- filt %||% .cgns_filter(rs$model, rs$obs, rs$ginv, init,
-                                 likelihood_idx = rs$likelihood_idx)
-  filt$meta$source_model <- model
-  # A lag table is a family of Theorem 3 online fixed-interval smoothers.
-  # Its complete reference must be the n = N member of that same discrete
-  # family.  The separate backward-ODE smoother is a first-order approximation
-  # to the same continuous posterior, but substituting it here leaves a
-  # non-zero P[j,N] at finite dt and can materially bias CIRs on coarse grids.
-  # This is the convention used by the supplied FBCIR *forward* CIR code;
-  # its headline ACI still uses the separate backward-ODE smoother.
-  supplied_smoo <- smoo
-  if (!is.null(supplied_smoo) &&
-      !identical(supplied_smoo$meta$route %||% NULL, "thmD1")) {
-    aci_warn("aci_warn_stepper", paste(
-      "lag_table uses the complete Theorem 3 online smoother as its",
-      "finite-step reference; the supplied backward-ODE smoother is",
-      "incompatible and is being recomputed."))
-  }
-  smoo <- .smoother_thmD1(rs$model, rs$obs, filt,
-                          ginv = rs$ginv, warn_cost = FALSE)
-  if (!is.null(supplied_smoo) &&
-      identical(supplied_smoo$meta$route %||% NULL, "thmD1")) {
-    scale <- max(1, max(abs(c(smoo$mean, smoo$cov,
-                              supplied_smoo$mean, supplied_smoo$cov))))
-    if (max(abs(smoo$mean - supplied_smoo$mean)) > 1e-10 * scale ||
-        max(abs(smoo$cov - supplied_smoo$cov)) > 1e-10 * scale)
-      aci_abort("aci_error_model_contract", paste(
-        "The supplied Theorem 3 smoother was not generated from the",
-        "same filter/prior as this lag table."))
-  }
-  smoo$meta$source_model <- model
-  eff_tol <- if (mode == "full") 0 else tol
-  eff_win <- if (mode == "full") Inf else as.integer(window)
-  eff_max_lag <- if (mode == "full") Inf else max_lag
-  res <- .lagtable_core(rs$model, rs$obs, filt, smoo, mode = mode,
-                        tol = eff_tol, window = eff_win, max_lag = eff_max_lag,
-                        ginv = rs$ginv)
-  dec <- gaussian_kl_path(smoo, filt, decompose = TRUE)
-  structure(list(t = rs$obs$t, dt = rs$obs$dt, mode = mode,
-                 diag = res$diag, rows = res$rows, L = res$L,
-                 diag_signal = dec$signal,
-                 diag_dispersion = dec$dispersion,
-                 tailbnd = res$tailbnd, onelag = res$onelag,
-                 meta = list(nontarget = rs$tag, tol = eff_tol,
-                             window = eff_win, max_lag = eff_max_lag,
-                             init = filt$meta$init,
-                             source_model = model,
-                             source_obs_x = obs$x,
-                             reference_smoother = "thmD1_online_complete",
-                             stop_index = res$stop_index)),
-            class = "lag_table")
+  bundle <- .compile_cgns_run(model, obs, nontarget)
+  .lag_table_compiled(
+    bundle, mode = mode, tol = tol, window = window, max_lag = max_lag,
+    filter = filter, smoother = smoother, init = init, validate = FALSE
+  )
 }
 
 
@@ -776,175 +455,6 @@ lag_table <- function(model, obs, mode = c("forward", "one_lag", "full"),
     aci_abort("aci_error_dims",
               "The supplied lag table was computed with a different initialization.")
   invisible(TRUE)
-}
-
-
-#' Row recursion behind the lag table (internal)
-#'
-#' @param m A `cgns_model` object.
-#' @param ob An `obs_traj` object.
-#' @param filt The forward filter path.
-#' @param smoo The reference smoother path.
-#' @param mode One of `"forward"`, `"one_lag"` or `"full"`.
-#' @param tol Positive tolerance for the adaptive freeze rule.
-#' @param window Consecutive steps below `tol` required before freezing.
-#' @param max_lag Maximum positive lag retained.
-#' @param ginv Function inverting the observation Gram matrix.
-#' @returns A list of retained rows and the accompanying storage diagnostics.
-#' @noRd
-.lagtable_core <- function(m, ob, filt, smoo, mode, tol, window, max_lag, ginv) {
-  N1 <- length(ob$t); N <- N1 - 1L; dt <- ob$dt; l <- m$l
-  MUf <- filt$mean; CVf <- filt$cov
-  diagv <- rep(NA_real_, N1)
-  if (!is.null(smoo)) for (j in seq_len(N1))
-    diagv[j] <- unname(gaussian_kl(smoo$mean[j, ], smoo$cov[, , j],
-                                   MUf[j, ], CVf[, , j], decompose = FALSE))
-
-  if (mode == "one_lag") {
-    # E^j for j = 0..N-2 and the one-lag stats at n = N (SPEC-01 s5.4)
-    coN1 <- eval_coefs(m, ob$t[N], ob$x[N, ])
-    auxN1 <- .thmD1_aux(coN1, CVf[, , N], ginv, dt, l)
-    ol <- .onelag_stats(coN1, auxN1, MUf[N, ], CVf[, , N], MUf[N1, ],
-                        CVf[, , N1], ob$x[N1, ] - ob$x[N, ], dt, l)
-    dmu <- ol$mu - MUf[N, ]; dR <- ol$R - CVf[, , N]
-    P <- rep(0, N1); D <- diag(l)
-    for (jj in N:1) {                       # time index t_{jj-1}; j = jj-1 (0-based)
-      if (jj < N) {
-        co <- eval_coefs(m, ob$t[jj], ob$x[jj, ])
-        E  <- .thmD1_aux(co, CVf[, , jj], ginv, dt, l)$E
-        D  <- E %*% D
-      }
-      RsjN <- smoo$cov[, , jj]
-      A    <- sym(D %*% dR %*% t(D))
-      Rlag <- spd_floor(RsjN - A)
-      v    <- drop(D %*% dmu)
-      sig  <- 0.5 * sum(v * chol_solve(Rlag, v, "Rlag"))
-      trA  <- sum(diag(chol_solve(Rlag, A, "Rlag")))
-      ld   <- logdet_chol(RsjN) - logdet_chol(Rlag)
-      P[jj] <- max(sig + 0.5 * (trA - ld), 0)
-    }
-    return(list(diag = diagv, rows = NULL, L = NULL, tailbnd = NULL,
-                onelag = P, stop_index = NA_integer_))
-  }
-
-  # forward / full / smoother_only: n-sweep with per-j running state
-  rows <- if (mode != "smoother_only") vector("list", N1) else NULL
-  if (!is.null(rows)) for (j in seq_len(N1)) rows[[j]] <- diagv[j]
-  L <- rep(NA_integer_, N1); tailb <- rep(0, N1)
-  act_D <- vector("list", N1); act_mu <- vector("list", N1)
-  act_R <- vector("list", N1); act_cnt <- integer(N1)
-  active <- frozen <- logical(N1)
-  # Adaptive criterion (v0, deviates from the increment-based draft in
-  # SPEC-01 s5.5 for a robustness reason found in testing): KL *increments*
-  # can sit below tol through quiet observation stretches while the row is
-  # still far from converged, then resurge: premature truncation. The
-  # row's stored value P[j, n] = KL(complete smoother_j || current lagged
-  # stats) is itself the distance to completion, is ~flat (not small) during
-  # quiet stretches, and only becomes small at genuine convergence. Rows
-  # freeze STORAGE + KL evaluation when P[j, n] < tol for `window`
-  # consecutive n; their (cheap, l x l) mean/cov recursions keep running so
-  # downstream state (e.g. smoother_only capture) stays exact.
-  Ehist <- vector("list", N1)
-  smu <- matrix(NA_real_, N1, l); scov <- array(NA_real_, c(l, l, N1))
-  smu[N1, ] <- MUf[N1, ]; scov[, , N1] <- CVf[, , N1]
-
-  ## pre-sweep: one-lag increments, E matrices, and future-mass suffix sums ##
-  DMU <- matrix(NA_real_, N, l); DRl <- vector("list", N)
-  OLmu <- matrix(NA_real_, N, l); OLR <- vector("list", N)
-  s_n <- r_n <- e_n <- numeric(N)
-  for (n in seq_len(N)) {
-    co  <- eval_coefs(m, ob$t[n], ob$x[n, ])       # coefs at n-1 (R index n)
-    aux <- .thmD1_aux(co, CVf[, , n], ginv, dt, l)
-    Ehist[[n]] <- aux$E
-    ol <- .onelag_stats(co, aux, MUf[n, ], CVf[, , n], MUf[n + 1, ],
-                        CVf[, , n + 1], ob$x[n + 1, ] - ob$x[n, ], dt, l)
-    OLmu[n, ] <- ol$mu; OLR[[n]] <- ol$R
-    DMU[n, ] <- ol$mu - MUf[n, ]; DRl[[n]] <- ol$R - CVf[, , n]
-    s_n[n] <- sqrt(sum(DMU[n, ]^2)); r_n[n] <- sqrt(sum(DRl[[n]]^2))
-    e_n[n] <- if (l == 1) abs(aux$E[1, 1]) else norm(aux$E, "2")
-  }
-  # Per-step-KL future mass: T2_n = sum_{n' > n} (prod ghat)^2 s_{n'}^2 and
-  # U_n = sum (prod ghat)^2 r_{n'} with ghat = max(1, ||E||_2) growth
-  # clipping. Bounding the sum of per-step KL increments (not the squared
-  # sum of shifts) keeps the freeze bound ~||row||-tight instead of
-  # signed-random-walk pessimistic.
-  T2 <- Ub <- numeric(N + 1)
-  for (n in N:1) {
-    eh2 <- max(1, e_n[n])^2
-    T2[n] <- if (n < N) s_n[n + 1]^2 + eh2 * T2[n + 1] else 0
-    Ub[n] <- if (n < N) r_n[n + 1]   + eh2 * Ub[n + 1] else 0
-    if (!is.finite(T2[n]) || T2[n] > 1e12) T2[n] <- Inf
-    if (!is.finite(Ub[n]) || Ub[n] > 1e12) Ub[n] <- Inf
-  }
-  lam_j <- rep(NA_real_, N1); sch <- vector("list", N1)
-  if (!is.null(smoo)) for (j in seq_len(N1)) {
-    cs <- .chol_or_floor(smoo$cov[, , j]); sch[[j]] <- cs$ch
-    lam_j[j] <- min(eigen(cs$R, symmetric = TRUE, only.values = TRUE)$values)
-  }
-
-  for (n in seq_len(N)) {                    # observational index t_n
-    dmu <- DMU[n, ]; dR <- DRl[[n]]
-    ol <- list(mu = OLmu[n, ], R = OLR[[n]])
-    if (!is.null(rows) && !is.null(smoo))
-      rows[[n]] <- c(rows[[n]], .kl_fast(smoo$mean[n, ], sch[[n]], ol$mu, ol$R))
-    for (jj in which(active)) {             # deep lags: j <= n-2 (R index jj <= n-1)
-      laglen <- (n + 1L) - jj
-      # `max_lag` counts positive-lag cells; the anchor is stored separately.
-      # Enforce the cap before evaluating/appending the next deep lag.
-      if (mode != "smoother_only" && is.finite(max_lag) && laglen > max_lag) {
-        frozen[jj] <- TRUE; L[jj] <- as.integer(max_lag)
-        tailb[jj] <- utils::tail(rows[[jj]], 1L)
-        active[jj] <- FALSE
-        act_D[jj] <- list(NULL); act_mu[jj] <- list(NULL); act_R[jj] <- list(NULL)
-        next
-      }
-      act_D[[jj]] <- act_D[[jj]] %*% Ehist[[n - 1]]
-      new_mu <- act_mu[[jj]] + drop(act_D[[jj]] %*% dmu)
-      new_R  <- sym(act_R[[jj]] + act_D[[jj]] %*% dR %*% t(act_D[[jj]]))
-      act_mu[[jj]] <- new_mu; act_R[[jj]] <- new_R
-      if (frozen[jj]) next                   # state stays exact; storage/KL skipped
-      Pval <- if (!is.null(smoo)) .kl_fast(smoo$mean[jj, ], sch[[jj]],
-                                           new_mu, new_R) else NA_real_
-      if (!is.null(rows) && !is.na(Pval)) rows[[jj]] <- c(rows[[jj]], Pval)
-      if (!is.na(Pval) && tol > 0) {
-        # Heuristic offline freeze: current value < tol (window consecutive)
-        # AND an estimate of future row mass < tol. Future updates carry
-        # approximately ||D_j|| Tb[n] mean mass and ||D_j||^2 Ub[n]
-        # covariance mass. The 1.5x Gaussian-KL linearisation is deliberately
-        # conservative in typical regimes but is not a proved error bound.
-        Dn <- if (l == 1) abs(act_D[[jj]][1, 1]) else sqrt(sum(act_D[[jj]]^2))
-        fut <- 1.5 * (Dn^2 * T2[n] / (2 * lam_j[jj]) +
-                      Dn^2 * Ub[n] * sqrt(l) / (2 * lam_j[jj]))
-        ok <- is.finite(fut) && (Pval + fut) < tol
-        act_cnt[jj] <- if (ok) act_cnt[jj] + 1L else 0L
-        if (act_cnt[jj] >= window || laglen >= max_lag) {
-          frozen[jj] <- TRUE
-          L[jj] <- laglen
-          tailb[jj] <- if (is.finite(fut)) Pval + fut else Pval
-          if (mode != "smoother_only") {     # nothing reads a frozen row's
-            active[jj] <- FALSE              # state in banded modes: retire it
-            act_D[jj] <- list(NULL); act_mu[jj] <- list(NULL); act_R[jj] <- list(NULL)
-          }
-        }
-      } else if (laglen >= max_lag) {
-        frozen[jj] <- TRUE; L[jj] <- laglen; tailb[jj] <- Pval
-        if (mode != "smoother_only") {
-          active[jj] <- FALSE
-          act_D[jj] <- list(NULL); act_mu[jj] <- list(NULL); act_R[jj] <- list(NULL)
-        }
-      }
-    }
-    active[n] <- TRUE                        # row j = n-1 enters with D = I
-    act_D[[n]] <- diag(l); act_mu[[n]] <- ol$mu; act_R[[n]] <- ol$R
-    act_cnt[n] <- 0L
-  }
-  for (jj in which(active & !frozen)) { L[jj] <- N1 - jj; tailb[jj] <- 0 }
-  if (mode == "smoother_only") for (jj in which(active)) {
-    smu[jj, ] <- act_mu[[jj]]; scov[, , jj] <- act_R[[jj]]
-  }
-  L[N1] <- 0L
-  list(diag = diagv, rows = rows, L = L, tailbnd = tailb, onelag = NULL,
-       stop_index = NA_integer_, smu = smu, scov = scov)
 }
 
 
@@ -1148,14 +658,16 @@ lt_contraction_certificate <- function(x) {
     aci_abort("aci_error_dims",
               "This lag table carries no model/observation handles.")
   obs <- observed_trajectory(x$t, x$meta$source_obs_x)
-  rs  <- .resolve_nontarget(model, obs, x$meta$nontarget)
-  filt <- .cgns_filter(rs$model, rs$obs, rs$ginv, x$meta$init,
-                       likelihood_idx = rs$likelihood_idx)
-  l <- rs$model$l; dt <- x$dt; N1 <- length(x$t)
+  bundle <- .compile_cgns_run(model, obs, x$meta$nontarget)
+  filt <- .cgns_filter_compiled(
+    bundle, x$meta$init, stepper = "explicit", nsub = 1L,
+    validate = FALSE
+  )
+  l <- bundle$l; dt <- x$dt; N1 <- length(x$t)
   lam <- en <- rh <- numeric(N1 - 1L)
   for (j in seq_len(N1 - 1L)) {
-    co  <- eval_coefs(rs$model, rs$obs$t[j], rs$obs$x[j, ])
-    aux <- .thmD1_aux(co, filt$cov[, , j], rs$ginv, dt, l)
+    co <- .compiled_co(bundle, j)
+    aux <- .thmD1_aux_compiled(bundle, j, filt$cov[, , j], co = co)
     Hm  <- (diag(l) - aux$E) / dt
     Hm  <- (Hm + t(Hm)) / 2
     lam[j] <- min(eigen(Hm, symmetric = TRUE, only.values = TRUE)$values)

@@ -345,8 +345,8 @@ sample_paths <- function(model, obs, n_samples = 20,
   if (length(dots))
     aci_abort("aci_error_dims", "Unused arguments were supplied to FFBS path sampling.")
   source_model <- model
-  rs <- .resolve_nontarget(model, obs, nontarget)
-  m <- rs$model; ob <- rs$obs
+  bundle <- .compile_cgns_run(model, obs, nontarget)
+  m <- bundle$model; ob <- bundle$obs
   if (stepper != "explicit" || nsub != 1L)
     aci_abort("aci_error_stepper",
               "FFBS requires stepper = 'explicit' and nsub = 1 to match its Euler transition.")
@@ -355,21 +355,21 @@ sample_paths <- function(model, obs, n_samples = 20,
        (filter$meta$nsub %||% 1L) != 1L))
     aci_abort("aci_error_stepper", "The supplied FFBS filter is not explicit single-step.")
   if (!is.null(filter))
-    .validate_gaussian_path(filter, ob, m$l, "filter", rs$tag, model = m,
+    .validate_gaussian_path(filter, ob, m$l, "filter", bundle$nontarget, model = m,
                             source_model = source_model)
   if (!is.null(filter) && !is.null(init) &&
       !.same_gaussian_init(init, filter$meta$init, m$l))
     aci_abort("aci_error_dims", "init conflicts with the prior stored on the supplied filter.")
-  filt <- filter %||% .cgns_filter(m, ob, rs$ginv, init = init,
-                                   stepper = stepper, nsub = nsub,
-                                   likelihood_idx = rs$likelihood_idx)
+  filt <- filter %||% .cgns_filter_compiled(
+    bundle, init = init, stepper = stepper, nsub = nsub, validate = FALSE
+  )
   N1 <- length(ob$t); N <- N1 - 1L; dt <- ob$dt; l <- m$l
   Y <- array(NA_real_, c(l, N1, n_samples))
   chN <- safe_chol(filt$cov[, , N1])
   Y[, N1, ] <- filt$mean[N1, ] + t(chN) %*% matrix(stats::rnorm(l * n_samples), l)
   for (j in N:1) {
-    co <- eval_coefs(m, ob$t[j], ob$x[j, ])
-    Gi <- rs$ginv(co$gxx)
+    co <- .compiled_co(bundle, j)
+    Gi <- .compiled_ginv(bundle, j)
     A  <- diag(l) + (co$Ly - co$gyx %*% Gi %*% co$Lx) * dt
     cc <- co$fy * dt + drop(co$gyx %*% Gi %*%
             (ob$x[j + 1, ] - ob$x[j, ] - co$fx * dt))
