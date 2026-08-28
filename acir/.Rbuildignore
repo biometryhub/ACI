@@ -1,0 +1,12 @@
+^acir\.Rproj$
+^\.Rproj\.user($|/)
+^\.DS_Store$
+^\.Rhistory$
+^\.github($|/)
+^\.gitignore$
+^LICENSE\.md$
+^build($|/)
+^vignettes/.*\.html$
+^benchmarks($|/)
+^tools($|/)
+^\.gitattributes$

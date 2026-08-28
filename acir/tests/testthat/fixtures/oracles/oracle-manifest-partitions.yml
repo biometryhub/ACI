@@ -1,0 +1,802 @@
+# Provenance of the scalar-ENSO-partition oracle fixtures shipped with acir.
+#
+# Prepared in wave-3 preparation (task P2, plan D7; ACI_code coverage matrix
+# rows 9-11) and integrated in W3d.  The grading test is
+# tests/testthat/test-28-partition-oracles.R.
+#
+# READ THIS FIRST.  Every entry below is SOURCE-DERIVED.  The `dyad` and
+# `predprey` entries in oracle-manifest.yml are authors-source MATLAB; these
+# are not, and must never be cited as though they were.  They pin numbers this
+# project produced, corroborated by a second R implementation, on a path this
+# project simulated.
+#
+# WHY THIS IS A SEPARATE FILE.  These entries were drafted to splice into
+# oracle-manifest.yml and were deliberately not spliced.  The two manifests
+# describe different evidence classes, and a merged file would put one
+# expected-name list in front of two readers that disagree about which names
+# they are responsible for.  Two safeguards keep the separation honest, and
+# both live in tests/testthat/test-19-compiled-oracles.R: every entry of EVERY
+# manifest must be visible to the shared reader in
+# tests/testthat/helper-oracle-manifest.R, and every .csv in this directory
+# must be pinned by exactly one manifest.  Those assertions exist because the
+# original reader matched `^[A-Za-z_]+\.csv:$`, which excludes digits: had
+# these six `enso6_*` entries been merged into oracle-manifest.yml, that
+# reader would have skipped all six silently.
+
+partition_manifest_version: 1
+
+# Provenance of the generation run, not a description of the current package.
+# Frozen on the same policy as generated_under_package_version above: these
+# say which builds were in the tree on the day the numbers were produced.
+generated_on: 2026-08-27
+generator: tools/fixtures/make-partition-fixtures.R
+generator_command: >
+  Rscript tools/fixtures/make-partition-fixtures.R <outdir> aci <library>.
+  tools/ is build-ignored, so the generator ships in the repository and not in
+  the tarball.  <outdir> is required and must be outside the package: fixtures
+  are never regenerated in place.  The C3 regeneration proof is opt-in through
+  ACIR_FIXTURE_C3_DIR, because the comparison workspace it reads is not part
+  of this repository; it is reported as skipped when unset.
+producer:
+  package: aci
+  version: 0.0.30
+  git: 3417fe5
+  note: >
+    The producer is the package whose values are pinned.  It is deliberately
+    NOT the package under test.  aci 0.0.30 realised these coefficient arrays
+    and ran these recursions; acir is graded against them by
+    tests/testthat/test-28-partition-oracles.R.
+corroborating_implementation:
+  package: aciR
+  version: 0.2.3
+  max_abs_error: 2.11e-15
+  reached_via: >
+    aciR has no constructor for a scalar-hidden ENSO partition, so the
+    corroboration ran aciR's own multivariate filter, smoother and metric on
+    the IDENTICAL aci-realised coefficient arrays, adapted only by transposing
+    the two drift vectors and padding the Gram inverse to the slice count
+    aciR's validator demands.  It also required a one-expression in-process
+    shim of aciR:::.aci_slice, whose `[, , j, drop = FALSE][, , 1L]` drops
+    every singleton margin and aborts any hidden-dimension-1 vector system
+    before the recursion can run.  The shim was verified a bit-identical
+    no-op on aciR's own shipped three-by-three ENSO path.  The corroboration
+    is therefore real but conditional on an adapter, and it is recorded here
+    so that no reader mistakes it for an unassisted second run.
+
+upstream:
+  scripts:
+    - ENSO_model_cond_ACI_u_unobs.m
+    - ENSO_model_cond_ACI_h_W_unobs.m
+    - ENSO_model_cond_ACI_tau_unobs.m
+  note: >
+    ACI_code has five ENSO scripts, not one joint ENSO case.  The joint
+    three-hidden case is the `enso` fixture above.  These entries cover the
+    three scalar-hidden partitions.  No MATLAB output was read, generated or
+    compared for any of them; the upstream file names record which scripts the
+    partitions correspond to, not a numerical grounding.
+
+environment:
+  r_version: 4.5.2
+  platform: macOS (Darwin 25.5.0, arm64)
+
+signal:
+  file: enso6_partition_signal.csv
+  n_steps: 4001
+  dt: 0.005
+  t_range: [0, 20]
+  columns: [t, TC, TE, I, u, hW, tau]
+  generator_settings: >
+    aci_enso_model(variant = "aci_code", hidden = c("u", "hW", "tau")) then
+    simulate(seed = 42, T = 20, dt = 0.005), the settings recorded in the
+    comparison workspace's inputs/make_inputs.R.  All six state variables are
+    carried, because each partition observes five of them and takes its
+    initial filter mean and its truth column from the sixth.
+  regeneration: >
+    Re-simulated from those settings during fixture generation and found
+    byte-for-byte identical to the pinned file under aci 0.0.30, and again
+    under the merged package.  The bytes are still what is pinned: a filter is
+    graded on whatever signal drives it, and pinning the seed instead would
+    let a simulator change silently move every reference number.
+  files:
+    enso6_partition_signal.csv:
+      sha256: 77412008549a2980af8bc843c3548a673a4c2df952a40aea12ef2d30d8dec250
+      md5: e800007b04831ee4d6f3f4b353e9a502
+
+sampling:
+  sampled_indices: seq(1, 4001, by = 20)   # 201 rows
+  rationale: >
+    The house sampling for a 4001-step record, matching the `mv` and `enso`
+    entries above.  A recursion is sequential, so a defect at any of the 3800
+    unsampled steps propagates into the sampled ones; what sampling could hide
+    is a per-step OUTPUT defect that does not feed back, such as one confined
+    to the metric at a single index.  That gap is closed by
+    enso6_partition_fullpath_summary.csv, which reduces every series over all
+    4001 steps, so nothing is graded on 201 points alone.
+  precision: >
+    Written with write.csv defaults, fifteen significant digits, as every
+    fixture in this directory is.  The quantisation is at most half a unit in
+    the fifteenth digit, seven orders of magnitude inside the gate.
+
+fixtures:
+  - id: enso6_partition_u
+    provenance: source-derived harness
+    upstream_file: ENSO_model_cond_ACI_u_unobs.m
+    hidden: u
+    observed: [hW, TC, TE, tau, I]
+    observed_dimension: 5
+    unobserved_dimension: 1
+    realiser: affine_batch
+    initial_filter_mean: the true u at t = 0, read from the signal fixture
+    initial_filter_covariance: 0.1
+    files:
+      enso6_partition_u_reference.csv:
+        sha256: b9edd221b9f7d42617df902d00506ea3db621d5f59d9a2dc4a80228a0ef41f3b
+        md5: cd8e8b94eea893ae46a55377278b966f
+    columns: >
+      index and t, then the realised coefficient block as coef_Lx_*, coef_fx_*,
+      coef_Ly, coef_fy, coef_gxx_diag_*, coef_gyy, coef_gyx_*, then the graded
+      series as ref_filter_mean, ref_filter_cov, ref_smooth_mean,
+      ref_smooth_cov, ref_aci, then truth.  gxx is stored by its diagonal
+      alone, which is lossless here and only here: the off-diagonal is exactly
+      zero at every step, measured 0 and asserted by the test rather than
+      assumed.
+    grades: >
+      Coefficient realisation for this partition, and the scalar-hidden
+      recursions driven by it.  The coefficient columns grade
+      aci_enso_model(hidden = "u")'s seasonally modulated affine realisation
+      step by step; the reference columns grade the filter, the smoother and
+      the ACI metric on the matrix branch at k = 5, l = 1, a shape no other
+      fixture in this directory reaches.
+    does_not_grade: >
+      The MATLAB stochastic realisation.  Nothing here is a MATLAB oracle.
+      The signal is a source-derived simulation and aci_enso_model()'s metadata
+      records matlab_simulator_parity = FALSE, Euler-Maruyama against the
+      mixed Euler/Milstein MATLAB scheme.  Also ungraded: aciR's coefficient
+      realisation, which does not exist for these partitions, so aciR has no
+      "hidden = u" ENSO constructor and this agreement says nothing about
+      whether aciR would realise the same coefficients; the noise
+      cross-covariance, which this model sets to zero, measured exactly 0 at
+      every step, so the terms carrying it execute annihilated; and the
+      conditional convention of the upstream u script, which masks the Gram
+      inverse from its second slice onward while leaving the first filter step
+      unmasked.  This entry grades the UNCONDITIONAL five-dimensional
+      observation.  A conditional grade needs its own fixture and must match
+      that first-slice convention deliberately.
+
+  - id: enso6_partition_hW
+    provenance: source-derived harness
+    upstream_file: ENSO_model_cond_ACI_h_W_unobs.m
+    hidden: hW
+    observed: [u, TC, TE, tau, I]
+    observed_dimension: 5
+    unobserved_dimension: 1
+    realiser: affine_batch
+    initial_filter_mean: the true h_W at t = 0, read from the signal fixture
+    initial_filter_covariance: 0.1
+    files:
+      enso6_partition_hW_reference.csv:
+        sha256: a8ddd723525ccce7462968924ab811fce85b8673f2e1764439d45dbc463b8919
+        md5: 2ad42a687148b48af56e2cb0af7bd6e2
+    grades: >
+      Coefficient realisation for this partition and the scalar-hidden
+      recursions driven by it, as for enso6_partition_u.  This partition is
+      the one whose observed set contains the Walker circulation, whose
+      observation-noise variance is multiplicative in its own state, so the
+      Gram diagonal it contributes varies over the record rather than sitting
+      at a constant.
+    does_not_grade: >
+      The MATLAB stochastic realisation, aciR's coefficient realisation, the
+      noise cross-covariance and the upstream h_W script's conditional
+      convention, on the same terms as enso6_partition_u.
+
+  - id: enso6_partition_tau
+    provenance: source-derived harness
+    upstream_file: ENSO_model_cond_ACI_tau_unobs.m
+    hidden: tau
+    observed: [u, hW, TC, TE, I]
+    observed_dimension: 5
+    unobserved_dimension: 1
+    realiser: affine_batch
+    initial_filter_mean: the true tau at t = 0, read from the signal fixture
+    initial_filter_covariance: 0.1
+    constructed_by: >
+      aci_enso_model(variant = "aci_code", hidden = "tau", observations = "full").
+      The argument is not optional for this entry.  Since C2c the default for
+      hidden = "tau" is the REDUCED estimand pinned by the entry below, so a
+      caller who omits it grades the wrong fixture.
+    files:
+      enso6_partition_tau_reference.csv:
+        sha256: f5222e2750ae624765da9c4707d6f2eb014843f5e0885cf615544346c3d70caf
+        md5: b551ed9b9314ab06a47c02a53e53df95
+    grades: >
+      Coefficient realisation for the wind-burst partition and the recursions
+      driven by it, on the FULL five-dimensional observation.  This is the
+      arm the reduced entry below is measured against.
+    does_not_grade: >
+      The MATLAB stochastic realisation, aciR's coefficient realisation and
+      the noise cross-covariance, on the same terms as enso6_partition_u.
+      Also, and specifically, the reduced observation the upstream tau script
+      actually assimilates.  Any 0.1.0 tau-partition fidelity claim must state
+      which observation set it reproduces; they are different estimands, and
+      the size of the difference is pinned by the entry below.
+
+  - id: enso6_partition_tau_reduced3
+    provenance: source-derived harness
+    upstream_file: ENSO_model_cond_ACI_tau_unobs.m
+    hidden: tau
+    observed: [TC, TE, I]
+    observed_dimension: 3
+    unobserved_dimension: 1
+    conditional: aci_conditional(given = c("u", "hW"), method = "reduce")
+    initial_filter_mean: the true tau at t = 0, read from the signal fixture
+    initial_filter_covariance: 0.1
+    constructed_by: >
+      The pinned bytes were produced the way the line above reads: the
+      five-channel model with the reduction supplied by the caller.  acir
+      reaches the same run through aci_enso_model(hidden = "tau", observations =
+      "reduced"), which carries that specification as a declaration (C2c), and
+      test-28 asserts the two are bit-identical on every coefficient column and
+      every graded series rather than merely both passing the gate.  A model
+      that declares its own observation set refuses a second specification, so
+      the explicit form has to be built on observations = "full".
+    files:
+      enso6_partition_tau_reduced3_reference.csv:
+        sha256: 9650d81a879798c398bbd5b752cae9ea4e37c63d9351909f6b819e0b051dd991
+        md5: 242a87f8dec606e31adde552624f133d
+    exists_because: >
+      The upstream tau script assimilates a reduced three-dimensional
+      observation with u and h_W injected as prescribed deterministic forcing,
+      and asserts this equals assimilating the full five.  Measured on this
+      path, the assertion is FALSE: filter mean differs by up to 2.470e-01,
+      the ACI series by up to 7.765e-01 against a mean ACI level of 2.5e-01,
+      Pearson 0.90455, and discarding a burn-in changes nothing material.  The
+      shortcut roughly preserves the time-averaged ACI level while materially
+      distorting the time-resolved ACI curve, which is what the method
+      reports.  Pinning the reduced arm keeps the gap measurable instead of
+      letting a later change quietly close it and read as a fix.
+    branch_equivalence: >
+      The same channels under method = "mask", the masked-innovation
+      conditional convention, gave results bit-identical to
+      method = "reduce": identical() TRUE and max difference 0 on filter
+      mean, filter covariance, smoother mean, smoother covariance and ACI.
+      gxx is diagonal and gyx is zero, so zeroing the non-target rows of the
+      Gram inverse gives exactly the gain deleting those channels gives.  On
+      this model the two conditional strategies are the same operator, and the
+      test asserts the identity rather than a tolerance.
+    grades: >
+      Coefficient realisation under a non-target reduction, the reduction map
+      and its cross-Gram admissibility gate, and the recursions at k = 3,
+      l = 1.
+    does_not_grade: >
+      The MATLAB tau run.  This quantifies the upstream docstring's claim on
+      THIS path with THESE coefficients; it does not reproduce the MATLAB
+      realisation, and no MATLAB output was read.  Also ungraded: aciR's
+      constructors, which cannot build this reduction at all; the noise
+      cross-covariance; and the upstream first-slice conditional convention,
+      which leaves the first filter step's inverse unmasked before later
+      slices are masked.  aci applies its reduction uniformly from the first
+      step.  That is a convention difference, not a kernel failure, and a
+      fixture that grades it has to be built to match it deliberately.
+
+  - id: enso6_partition_fullpath_summary
+    provenance: source-derived harness
+    files:
+      enso6_partition_fullpath_summary.csv:
+        sha256: a6c3163f9e99bfe9f562e2ed3f5fc37462eaf88860de4a37bf6edfaf2638c9ce
+        md5: c96618aa8668add0818dc4b7ceb36c78
+    columns: [partition, series, n, min, max, mean, sum_abs]
+    exists_because: >
+      The four reference files are sampled every twentieth step.  This file is
+      not: each of its 108 rows reduces one series over all 4001 steps, so a
+      per-step output defect at an unsampled index moves at least one of min,
+      max, mean or sum_abs and cannot pass.  It costs 7 KB and removes the
+      only real objection to sampling.
+    grades: >
+      Every coefficient column and every reference series of all four
+      partitions, over the full record rather than the sampled indices.
+    does_not_grade: >
+      Anything the sampled files do not already grade.  It is a completeness
+      device, not a second oracle: the same producer computed both.
+
+# Structural facts measured during generation and asserted by the test rather
+# than assumed.  Each is a precondition of the fixture LAYOUT, so a change in
+# any of them makes the stored files lossy rather than merely stale.
+pinned_invariants:
+  gxx_offdiag_max: 0            # exactly, all four partitions
+  gyx_abs_max: 0                # exactly, all four partitions
+  gram_inverse_max_residual: 4.44089209850063e-16
+  gxx_weight_slices: 4000       # realised on the N intervals
+  coefficient_slices: 4001      # one more than the Gram inverse; consumers pad
+  mask_identical_to_reduce: true
+  smoother_terminal_equals_filter: true
+
+validation:
+  tolerance_gate: 1.0e-8
+  gate_semantics: >
+    Maximum absolute error across every graded quantity at the 201 sampled
+    indices: all coefficient columns, all five reference series and the truth
+    column.  The full-record reductions in
+    enso6_partition_fullpath_summary.csv are scored against the same constant
+    but divided by max(1, |pinned|), because a sum of absolute values over
+    4001 steps reaches 8002 here and fifteen significant digits quantise a
+    number that size at 4.0e-11, which is coarser than the gate itself.
+    Scaling those four reductions keeps one number in the manifest instead of
+    opening the gate three decades to accommodate a file format.
+  gate_rationale: >
+    The floor is the fixture files' own precision, not the arithmetic.  At
+    fifteen significant digits a pinned value of magnitude v is quantised at
+    5 * v * 1e-16, and the largest per-step quantity here is the Gram diagonal
+    for the wind burst at 3.383, so the floor is 1.7e-15.  The measured
+    agreement below, 5.33e-15, sits at that floor: it is dominated by the
+    coefficient columns, and the in-memory comparison recorded under
+    implementation_agreement shows the producer and the package under test
+    agree BIT-FOR-BIT on every coefficient array and every filter and smoother
+    moment, with the only non-zero difference being the ACI metric at 1.33e-15.
+    So the number being gated is a file round trip.  1e-8 sits six orders above
+    it and seven below the smallest divergence that would mean anything
+    scientifically, the reduced tau arm's 2.470e-01 departure from the full
+    one.  The directory's other entries use 1e-6; this one is two decades
+    tighter because these fixtures grade a same-project producer rather than a
+    foreign runtime, so there is no cross-language formatting or MATLAB
+    printing slack to absorb.  It is deliberately not tighter than 1e-8: the
+    recursion is 4001 sequential steps and a different BLAS could move the
+    accumulated sums by more than the floor without any code changing, and a
+    genuine regression in a realiser or a recursion would move a coefficient
+    far further than 1e-8 in any case.
+  measured_max_abs_error:
+    enso6_partition_u: 5.329071e-15
+    enso6_partition_hW: 5.329071e-15
+    enso6_partition_tau: 5.329071e-15
+    enso6_partition_tau_reduced3: 5.329071e-15
+    fullpath_summary_scaled: 4.729359e-15
+    note: >
+      Identical across the four partitions because the same column drives all
+      four: coef_gxx_diag_tau and coef_gyy carry the largest magnitudes pinned
+      and therefore the coarsest fifteen-digit quantisation.  The five
+      reference series are one to four times smaller, from 4.99e-18 on the
+      filtered covariance to 5.11e-15 on the reduced smoother mean.
+    per_partition_fullpath_scaled:
+      enso6_partition_u: 2.872040e-15
+      enso6_partition_hW: 3.765175e-15
+      enso6_partition_tau: 3.225419e-15
+      enso6_partition_tau_reduced3: 4.729359e-15
+  test_tally:
+    file: tests/testthat/test-28-partition-oracles.R
+    expectations_passed: 334
+    failures: 0
+    errors: 0
+    warnings: 0
+    skipped: 0
+  measured_on: 2026-08-28
+  measured_against:
+    package: acir
+    version: 0.0.0.9000
+    git: d5d1215
+    built: R 4.5.2; 2026-08-27 18:21:01 UTC; unix
+  remeasurement_note: >
+    The numbers in this block were first produced against a frozen install of
+    c6f9933 and were re-measured in W3d against d5d1215, because four
+    intervening commits touched the constructors and realisers these fixtures
+    grade: 7d7c83c (the tau observation set and the first-slice convention),
+    0bec004 (the authenticated whole-path ENSO realisation), and 6fadd0a and
+    3e6c050 (the 1x1 positivity test and the covariance policy).  Every figure
+    reproduced to the digits recorded here: the four sampled maxima at
+    5.329071e-15, the scaled full-record maximum at 4.729359e-15, and every
+    entry of implementation_agreement below.  The signal fixture also
+    regenerates byte-for-byte from its documented seed under the current build,
+    SHA-256 77412008549a2980af8bc843c3548a673a4c2df952a40aea12ef2d30d8dec250.
+    Two further identities were measured for the first time in W3d and are
+    asserted by test-28: aci_enso_model(hidden = "tau", observations = "reduced")
+    is bit-identical to the explicit prescribed-forcing run the pinned bytes
+    came from, on all 21 graded vectors; and the inflate branch is identical to
+    prescribed forcing on all five reference series, maximum difference exactly
+    0.
+
+# Measured directly, in one process with both packages loaded, on the same
+# signal and the same initial conditions. Not inferred from the fixture files.
+implementation_agreement:
+  compared: aci 0.0.30 (git 3417fe5) against acir 0.0.0.9000 (git d5d1215)
+  bit_identical:
+    - Lx
+    - fx
+    - Ly
+    - fy
+    - gxx
+    - gyy
+    - gyx
+    - gxx_weight
+    - filter mean
+    - filter covariance
+    - smoother mean
+    - smoother covariance
+  max_abs_difference:
+    aci_metric_u: 6.939e-16
+    aci_metric_hW: 1.332e-15
+    aci_metric_tau: 6.106e-16
+    aci_metric_tau_reduced3: 5.829e-16
+  reading: >
+    Every coefficient array and every filter and smoother moment matched
+    exactly, on all four partitions, with identical() TRUE and maximum
+    difference 0.  Four changes that could have moved them did not: the affine
+    realiser was rewritten to realise coefficient paths on the grid rather than
+    step by step, the ENSO benchmark's realisation was authenticated over the
+    whole grid, the smoother was given a trust path that skips revalidating a
+    filter it just produced, and the explicit inverses moved onto chol2inv of a
+    factor already in hand.  The metric alone differs, at round-off, which is
+    consistent with the adoption of cancellation-resistant scalar KL dispersion
+    arithmetic.  This is package-to-package agreement between two builds
+    sharing a lineage.  It is a regression result, NOT independent
+    corroboration, and it is recorded separately from the aciR figure above for
+    that reason.
+
+refresh:
+  policy: >
+    Same policy as oracle-manifest.yml.  Fixtures are never regenerated in
+    place.  Run tools/fixtures/make-partition-fixtures.R into a scratch
+    directory, diff the SHA-256 against the values here, and replace the
+    shipped files only as a deliberate maintainer step with the new hashes and
+    a NEWS entry.  With ACIR_FIXTURE_C3_DIR set, the generator also re-derives
+    the C3 comparison outputs in their original layout and checks them, so a
+    producer change shows up as a hash mismatch on the coefficient arrays
+    before it reaches the shipped files.
+  regeneration_proof: >
+    Verified on 2026-08-27 under aci 0.0.30, with the C3 comparison workspace
+    on hand.  The four realised coefficient arrays regenerate BYTE-FOR-BYTE,
+    identical SHA-256, against the originals written by the C3 comparison run.
+    The five output series per partition regenerate bit-for-bit through the
+    same write.csv formatting the originals used; the residual in-memory
+    difference against the originals as parsed back, at most 4.67 times
+    max|v| * 1e-15, is that file's fifteen-digit quantisation and not a
+    computation difference.  The half-unit bound for the last written digit is
+    5 times max|v| * 1e-15, which the measurement sits under on every series.
+    This proof is pinned to that run and is not re-run by the shipped tests;
+    what the shipped tests re-run is the signal's regeneration from its seed
+    and the four partitions' agreement with the pinned bytes.
+
+
+# =========================================================================
+# The T_C-hidden zeroth-order partition (integrated in W3e; ACI_code coverage
+# matrix row 12, the last ENSO script).  Its grading test is
+# tests/testthat/test-29-tc-zeroth-order.R.
+#
+# WHY IT IS IN THIS FILE AND NOT A THIRD ONE.  It is a scalar-hidden ENSO
+# partition graded on source-derived numbers, which is exactly what this
+# manifest is for.  Its evidence class is one step STRONGER than the four
+# entries above: those pin values a second build of this project's own lineage
+# produced, while these pin values an INDEPENDENT TRANSCRIPTION of the MATLAB
+# script produced.  Neither is authors-source, and neither may be cited as
+# though it were.
+# =========================================================================
+
+tc_zeroth_order:
+  generated_on: 2026-08-28
+  generator: tools/fixtures/make-tc-fixtures.R
+  generator_command: >
+    Rscript tools/fixtures/make-tc-fixtures.R <outdir> acir <library>.
+    tools/ is build-ignored, so the generator ships in the repository and not
+    in the tarball.  <outdir> is required and must be outside the package:
+    fixtures are never regenerated in place.
+
+  oracle:
+    what: >
+      An independent R transcription of the filter (:1198-1257), smoother
+      (:1263-1324) and ACI (:1394-1397) sections of
+      ACI_code-main/ENSO_model_cond_ACI_T_C_unobs.m, written for wave-3
+      preparation task P1 without reference to this package's kernels.  MATLAB
+      1-based indexing is kept verbatim, loops are written as loops, and the
+      masked observation-precision array is carried as a stored 2x2 array.  The
+      transcription now lives inside the generator, so the oracle ships with
+      the repository rather than in a scratch directory.
+    evidence_class: source-derived, independent transcription
+    reading: >
+      One step STRONGER than package-to-package agreement, because a second
+      author wrote a second realisation of the same equations.  One step
+      WEAKER than an authors-source fixture, because no MATLAB was executed
+      anywhere in this work.  Nothing here grades the MATLAB realisation, the
+      MATLAB stochastic scheme, or any authors' numerical output.
+    producer_role: >
+      The package is used for one thing only, simulating the two driving
+      paths.  A path is an input to a filter, not an oracle for one.
+
+  model:
+    upstream_file: ENSO_model_cond_ACI_T_C_unobs.m
+    hidden: TC
+    observed: [TE, I]
+    prescribed: [u, hW, tau]
+    observed_dimension: 2
+    unobserved_dimension: 1
+    realiser: generic_closure_one_pass
+    approximation: >
+      The six-state system is NOT conditionally Gaussian with T_C hidden: the
+      damping c_1(t, T_C) T_C is cubic in T_C.  The script restores conditional
+      linearity by a zeroth-order Taylor expansion of c_1 about the climatology
+      T_C = 0 (:1052, :1150), which turns the state-dependent damping into the
+      time-only series r_C - c_1(t, 0).  What is graded here is the
+      APPROXIMATING model's filter, smoother and metric.  The script's own
+      simulator keeps the full nonlinear c_1(t, T_C) (:1105-1106, :1124), so
+      simulator and inference model are two different parameterisations and
+      only the second is graded.
+    constructed_by: >
+      aci_enso_model(hidden = "TC", approximation = "zeroth_order_c1",
+      prescribed = <path>, matlab_defect_compat = <FALSE|TRUE>).  Neither
+      argument is optional: hidden = "TC" without the approximation is a
+      classed error, and this partition is the only one that is not
+      self-contained.
+    initial_filter_mean: the true T_C at the first grid point (:1223)
+    initial_filter_covariance: 0.1 (:1229)
+    conditional_mask: >
+      aci_conditional(target = 1L, method = "mask"), declared by the
+      constructor in meta$estimand_nontarget, the T_E target of :1209.  It is
+      EXACTLY INERT here: the I row of L_x is zero and the noise cross-Gram is
+      zero, so the I precision multiplies zero in the filter gain.  Masked and
+      unmasked runs, and the uniform and MATLAB first-slice conventions, are
+      identical() on all seven graded series with maximum difference exactly 0.
+      Recorded so that nobody grades the conditioning machinery on this
+      partition; h_W is the only live conditional test in this package.
+
+  coefficient_phase:
+    shipped: state_time
+    matlab_stored_arrays: >
+      Element 1 at state time and elements 2..N+1 one step ahead: :1046/:1052
+      write 0*dt at index 1, while :1140/:1150 write j*dt at index j, whose
+      state time is (j-1)*dt.
+    decision: >
+      acir evaluates every constructor's coefficients at state time, so that
+      is what these fixtures pin.  tc_coefficients_caseA.csv carries BOTH
+      columns for L_y and for the T_E row of f_x, so the difference stays
+      visible rather than becoming folklore.  No switch is shipped: no
+      ACI_code result depends on reproducing the one-step-ahead phase, and a
+      second convention knob on this constructor is not worth its surface.
+    measured_difference:
+      case_A_filter_mean: 9.27e-04
+      case_A_aci_total: 1.39e-02
+      case_B_window_filter_mean: 1.51e-03
+      case_B_window_aci_total: 2.57e-02
+
+  variance_floor:
+    what: >
+      sigma_I is stored twice in the coefficient fixture.  sigma_I_matlab is
+      the script's sqrt(lambda (4 - I) I) (:1144); sigma_I_floored adds the
+      1e-3 * lambda variance floor that aci_enso_model() applies throughout, and
+      is what the shipped model realises.
+    why: >
+      Not cosmetic here.  Without the floor this two-channel model does not
+      even construct: validate_cgns() probes at I = 0, where the unfloored
+      Gram is singular, and the constructor raises aci_error_gram.  ACI_code
+      instead pseudo-inverts the Gram and gives the I channel zero precision
+      where sigma_I vanishes (:1204, :1212-1213).
+    inert: >
+      The I row of L_x is zero and the noise cross-Gram is zero, so this entry
+      never reaches the hidden posterior, and the T_E-target mask zeroes its
+      precision in any case.  Measured: every graded moment agrees with the
+      transcription, which uses the unfloored expression, to 6.33e-15.
+    max_deviation: 3.7e-04
+
+  paths:
+    case_A:
+      file: enso6_partition_signal.csv
+      note: >
+        The shared 4001-point path the four partitions above are graded on,
+        already pinned by the signal block at the top of this manifest.  Its
+        4000 steps are 40 model months, so no 14-year window exists in it and
+        the whole record is the analysis window.
+      regeneration: >
+        Re-simulated from seed 42 during generation and found equal to the
+        pinned file to 5.11e-15, that file's fifteen-digit write precision.
+    case_B:
+      settings: >
+        aci_enso_model(variant = "aci_code", hidden = c("u", "hW", "tau")) then
+        simulate(seed = 4242, T = 110, dt = 0.005), 22001 points.
+      window: >
+        The MATLAB window arithmetic at :1351-1354 with sim_year_start = 3 and
+        ACI_period_years = 14: indices 3601:20401, t in [18, 102], 16801
+        points, 14 model years including the script's two-year buffers at each
+        end.  The filter runs from t = 0 over the whole record and the window
+        is a read-out, exactly as the script's is.
+      window_sha256: d677e0e0c0a18c350f32190e27c6eb778491af5d7511fa1c155763b9c6140cf0
+      not_shipped: >
+        The 16801-point window path is 2.0 MB and is NOT shipped.  It
+        regenerates byte-for-byte from its seed under the current build - the
+        SHA-256 above is of that regeneration, written with write.csv defaults
+        - and test-29 re-simulates it on every run and asserts its shape and
+        endpoints, so a change in simulate() fails loudly and correctly rather
+        than silently regrading against a different path.
+
+  fixtures:
+    - id: tc_coefficients
+      files:
+        tc_coefficients_caseA.csv:
+          sha256: 3f8ca7d0bff627e701678d890494471e4d964aac044be97e612245f752f99ae5
+          md5: 2c09fabe3865966f9799c36204a66ae9
+      rows: 4001
+      columns: >
+        t, then L_y and the T_E row of f_x under BOTH phase conventions
+        (L_y_state_time, L_y_matlab_phase, f_x_TE_state_time,
+        f_x_TE_matlab_phase), then the phase-independent f_y under both D1
+        variants (f_y_intended, f_y_literal), the I row of f_x, and sigma_I
+        under both the MATLAB and the floored expression.
+      grades: >
+        The realised coefficients of aci_enso_model(hidden = "TC"): the
+        zeroth-order L_y, both drift rows, both f_y variants and the observed
+        noise amplitude, step by step over the whole record.
+      does_not_grade: >
+        The MATLAB one-step-ahead phase, which the shipped constructor does not
+        implement; those two columns are a record of the difference, not a
+        grade.  Also aciR's realisation, which has no constructor for this
+        partition at all.
+
+    - id: tc_outputs_caseA
+      files:
+        tc_outputs_caseA_intended.csv:
+          sha256: a4ab328779fb89ca3b8cc95643ae9fda94aa824311ddb09adeacee624442059a
+          md5: af6c1d4da42a570ef19863201117e305
+        tc_outputs_caseA_literal.csv:
+          sha256: 2da46b9248a7b00dc072b5dcac9545352ef9fd6008c8012b40a3ac694f4980d6
+          md5: 5f8ab4f91f7735baf28003bc27ac4364
+      rows: 4001
+      columns: >
+        t, filter_mean, filter_cov, smoother_mean, smoother_cov, aci_signal,
+        aci_dispersion, aci_total.  Every step, not a subsample.
+      grades: >
+        The whole filter, smoother and ACI chain on the shared path, under
+        both D1 variants.
+      does_not_grade: >
+        The MATLAB realisation, the MATLAB integration scheme, and the
+        conditioning machinery, which is inert here.
+
+    - id: tc_outputs_caseB_window
+      files:
+        tc_outputs_caseB_window_monthly_intended.csv:
+          sha256: 8840e234429de03f1a2a910f17b9cf5adde9930dcdf6be362a803e80b5c3b02a
+          md5: 21aef49bd53b7e78377e57462905bcdd
+        tc_outputs_caseB_window_monthly_literal.csv:
+          sha256: de43a6a34f0097b6722749e6b11334122009d3c154666f50aa3b0f1e3bab6628
+          md5: e76d4c68da4d82bfbd82644b09e3b252
+        tc_outputs_caseB_window_head_intended.csv:
+          sha256: 9709a23e70b9b3ad3b624d83b187e2e94e9322e148c67ab1b48a13a3d6ef94a2
+          md5: d8cbf4766b677be9da1529c70b7b7839
+        tc_outputs_caseB_window_head_literal.csv:
+          sha256: 809c5301bc5adab5b0e81d000793e268d1a21248bbb81a8c97efced656462532
+          md5: ee98b0d69415c1dad5538f0ea9b27282
+      rows: 169 monthly (k_dt = 100), 200 consecutive head steps
+      grades: >
+        The same chain on the script's own 14-model-year analysis window,
+        after 3600 steps of filter transient.  The monthly files are the
+        script's reporting cadence; the head files are a step-level regression
+        that a monthly subsample could not provide.
+      does_not_grade: >
+        The monthly-climatology plotting pipeline (movmean and rescaling,
+        :1160-1195), which is plot-only and out of scope, and the fixed-lag
+        online smoother the script also runs (:1287, :1303-1304, :1400+),
+        which is separate, larger work with its own evidence.
+
+    - id: tc_d1_divergence
+      files:
+        tc_d1_divergence.csv:
+          sha256: c7240dff8f50a0bc13cc1978797a0ddfd4372f9fd5669badd1884e221d5ef8aa
+          md5: 2b6483dcd6949941e92eeac81e46e4df
+      rows: 16
+      columns: >
+        case, quantity, n, identical, max_abs, rmsd.  On the
+        aci_total_integrated rows only, max_abs holds the intended total and
+        rmsd the literal one: two numbers with no natural home in a difference
+        table, kept here so the headline figure is pinned beside the
+        per-quantity differences.
+      grades: >
+        The D1 measurement itself rather than only the default.  The
+        covariance rows are pinned as identical = TRUE and asserted by
+        test-29 as identity, not as a tolerance: f_y enters neither the
+        Riccati equation nor the backward covariance ODE, so anything non-zero
+        there means the flag has reached a covariance recursion.
+
+  defect:
+    key: fy_gamma_hW_omitted
+    source: ENSO_model_cond_ACI_T_C_unobs.m:1053,:1151
+    finding: >
+      The script's assimilation forcing f_y omits the thermocline term
+      gamma_C * h_W.  The same script's simulator drift includes it (:1124),
+      h_W is prescribed and observed in this script, and the sibling scripts
+      carry the term in the corresponding T_C coefficient rows
+      (tau_unobs.m:1138; u_h_W_tau_unobs.m:1016,:1131).  It is a source
+      defect, not a convention.
+    disposition: >
+      acir includes the term by default and reproduces the omission under
+      matlab_defect_compat = TRUE.  Both arms are pinned, so the published
+      script stays reproducible and the divergence stays measured.
+    measured_state_time_phase:
+      case_A_whole_record:
+        filter_mean_max_abs: 0.060902037
+        filter_mean_rmsd: 0.030457663
+        aci_total_max_abs: 0.620249643
+        aci_total_rmsd: 0.152246551
+        integrated_aci_intended: 2.060015
+        integrated_aci_literal: 2.601950
+        integrated_aci_change: +26.3%
+      case_B_14_year_window:
+        filter_mean_max_abs: 0.105225129
+        filter_mean_rmsd: 0.050660427
+        aci_total_max_abs: 2.775189422
+        aci_total_rmsd: 0.404750872
+        integrated_aci_intended: 13.603754
+        integrated_aci_literal: 27.516198
+        integrated_aci_change: +102.3%
+      covariances: >
+        Bit-identical between the two arms on both cases, filter and smoother,
+        identical() TRUE and maximum difference exactly 0.
+      note: >
+        Task P1 measured the same quantities on the MATLAB one-step-ahead
+        phase and recorded 0.105150 / 0.0506596 on the filter mean, 2.75317 /
+        0.403694 on ACI, and 13.6092 against 27.4482 integrated, +102%.  The
+        figures above are the state-time re-measurement of the same defect on
+        the shipped convention; they differ from P1's by the phase deltas
+        recorded under coefficient_phase and by nothing else.
+
+  validation:
+    tolerance_gate: 1.0e-12
+    gate_semantics: >
+      Maximum absolute error across every graded series of every fixture, at
+      every pinned row.  The coefficient fixture is scored the same way over
+      its six state-time columns.
+    gate_rationale: >
+      This is a regression gate on a pinned 15-significant-digit CSV, not a
+      claim about accuracy.  The largest per-step quantity pinned is the ACI
+      total, which reaches 4.2 on the case B window and is quantised at
+      5 * 4.2 * 1e-16 = 2.1e-15 by the file format alone.  The measured
+      agreement of this package's public chain against the transcription IN
+      MEMORY is 6.33e-15 at worst, so the number gated is a file round trip
+      plus one long sequential recursion.  1e-12 is about a hundred times
+      above the worst measured value and nine orders below the smallest
+      difference that would mean anything, the D1 defect's 0.105 on the filter
+      mean.  It is two decades tighter than the four entries above because
+      those grade a same-project producer through a coefficient array, while
+      these grade a chain against a second author's realisation of the same
+      equations and there is no formatting slack to absorb.  It is
+      deliberately not tighter: case B is 22000 sequential steps and a
+      different BLAS could move the accumulated sums past the floor with no
+      code change.
+    measured_max_abs_error:
+      tc_coefficients_caseA: 1.998401e-15
+      tc_outputs_caseA_intended: 5.551115e-15
+      tc_outputs_caseA_literal: 7.105427e-15
+      tc_outputs_caseB_window_monthly_intended: 6.661338e-15
+      tc_outputs_caseB_window_monthly_literal: 5.773160e-15
+      tc_outputs_caseB_window_head_intended: 9.325873e-15
+      tc_outputs_caseB_window_head_literal: 9.325873e-15
+    implementation_agreement:
+      compared: >
+        acir's public aci(keep = "paths") chain against the independent
+        transcription, in one process, on the identical paths and initial
+        conditions.  Not inferred from the fixture files.
+      max_abs_difference:
+        case_A_intended: 2.831069e-15
+        case_A_literal: 4.662937e-15
+        case_B_intended: 5.329071e-15
+        case_B_literal: 6.328271e-15
+        filter_and_smoother_moments: at most 1.943e-16 on any case or arm
+      reading: >
+        The moments agree to a few units in the last place and the divergence
+        is concentrated in the ACI metric, which is where a log and a ratio
+        are taken.  This is a second author's realisation of the same
+        equations, so it IS corroboration and not a regression result; it is
+        still not an authors-source grounding.
+    test_tally:
+      file: tests/testthat/test-29-tc-zeroth-order.R
+      expectations_passed: 461
+      failures: 0
+      errors: 0
+      warnings: 0
+      skipped: 0
+    measured_on: 2026-08-28
+    measured_against:
+      package: acir
+      version: 0.0.0.9000
+      built: R 4.5.2
+
+  refresh:
+    policy: >
+      Same policy as the entries above.  Fixtures are never regenerated in
+      place.  Run tools/fixtures/make-tc-fixtures.R into a scratch directory,
+      diff the SHA-256 against the values here, and replace the shipped files
+      only as a deliberate maintainer step with the new hashes and a NEWS
+      entry.  The generator checks the case A signal against its pinned
+      SHA-256 before it computes anything.

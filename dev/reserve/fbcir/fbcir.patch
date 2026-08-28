@@ -1,0 +1,1031 @@
+diff --git a/NAMESPACE b/NAMESPACE
+index bedda37..857dfe2 100644
+--- a/NAMESPACE
++++ b/NAMESPACE
+@@ -5,6 +5,7 @@ S3method(aci_filter,stochastic_model)
+ S3method(aci_online,cgns_model)
+ S3method(aci_online,stochastic_model)
+ S3method(aci_range,aci_result)
++S3method(aci_range,cgns_model)
+ S3method(aci_range,lag_table)
+ S3method(aci_smoother,cgns_model)
+ S3method(aci_smoother,stochastic_model)
+@@ -44,8 +45,10 @@ export(aci_range)
+ export(aci_simulate)
+ export(aci_smoother)
+ export(as_obs)
++export(cir_pair)
+ export(lag_table)
+ export(lt_diag)
++export(lt_onelag)
+ export(lt_row)
+ export(lt_tail_bound)
+ export(observed_trajectory)
+diff --git a/R/aci-assimilation.R b/R/aci-assimilation.R
+index 95c9813..dfcca9e 100644
+--- a/R/aci-assimilation.R
++++ b/R/aci-assimilation.R
+@@ -638,7 +638,8 @@ aci_online.stochastic_model <- function(model, obs, lag, ...)
+ #'
+ #' @param model A `cgns_model` object.
+ #' @param obs An observed trajectory, or anything [as_obs()] accepts.
+-#' @param mode Either `"forward"` or `"full"`, selecting which cells are
++#' @param mode One of `"forward"`, `"one_lag"` or `"full"`, selecting which
++#'   cells are
+ #'   retained.
+ #' @param tol Positive tolerance below which a row is frozen by the adaptive
+ #'   storage rule.
+@@ -678,7 +679,7 @@ aci_online.stochastic_model <- function(model, obs, lag, ...)
+ #' lag_table(m, ob, mode = "forward")
+ #'
+ #' @export
+-lag_table <- function(model, obs, mode = c("forward", "full"),
++lag_table <- function(model, obs, mode = c("forward", "one_lag", "full"),
+                       tol = getOption("aci.default_tol", 1e-8), window = 3L,
+                       max_lag = Inf, filter = NULL, smoother = NULL,
+                       conditional = NULL, init = NULL,
+@@ -780,6 +781,36 @@ lt_diag <- function(x) {
+ }
+ 
+ 
++#' One-lag sequence of a lag table
++#'
++#' Accesses the single-observation-lag entries used by the backward causal
++#' influence range.
++#'
++#' @param x A `lag_table` object.
++#' @returns Numeric vector of the one-lag divergences.
++#'
++#' @seealso [aci_range()], [lt_row()]
++#'
++#' @examples
++#' m <- aci_dyad_model()
++#' sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
++#' ob <- as_obs(sim)
++#' tb <- lag_table(m, ob, mode = "one_lag")
++#' head(lt_onelag(tb))
++#'
++#' @export
++lt_onelag <- function(x) {
++  if (!inherits(x, "lag_table"))
++    aci_abort("aci_error_dims", "x must be a lag_table.")
++  out <- x$onelag %||% aci_abort("aci_error_dims", "Table was not built in 'one_lag' mode.")
++  # A one-lag discrepancy exists for the N intervals only. The internal N+1
++  # allocation has a terminal zero sentinel used by the sweep; exposing that
++  # sentinel makes every suffix minimum zero and corrupts exact backward CIR.
++  if (length(out) == length(x$t)) out <- out[-length(out)]
++  out
++}
++
++
+ #' One row of a lag table
+ #'
+ #' Accesses the divergences at one anchor time across increasing positive lag,
+@@ -870,6 +901,10 @@ print.lag_table <- function(x, ...) {
+ #'   the anchor time, the lag and the divergence.
+ #' @export
+ as.data.frame.lag_table <- function(x, ...) {
++  if (is.null(x$rows)) {
++    ol <- lt_onelag(x)
++    return(data.frame(j = seq_along(ol), t = x$t[seq_along(ol)], onelag = ol))
++  }
+   do.call(rbind, lapply(seq_along(x$rows), function(j)
+     data.frame(j = j, n = j + seq_along(x$rows[[j]]) - 1, P = x$rows[[j]])))
+ }
+diff --git a/R/aci-cir.R b/R/aci-cir.R
+index 8f8e9ed..772b4ef 100644
+--- a/R/aci-cir.R
++++ b/R/aci-cir.R
+@@ -324,3 +324,87 @@
+     bound = .cir_bound(method, quadrature, reduced$structurally_truncated)
+   )
+ }
++
++
++#' Slice a compiled CGNS bundle at a prefix boundary (internal)
++#'
++#' Coefficients are immutable and filtering is causal, so backward-CIR reference
++#' times can share one maximal-prefix compilation and filter. This constructor
++#' keeps the ordinary compiled contract and provenance on a shorter prefix.
++#'
++#' @param bundle A compiled CGNS bundle.
++#' @param N1 Number of grid points retained, at least two.
++#' @returns A prefix `compiled_cgns` bundle.
++#' @noRd
++.slice_compiled_cgns <- function(bundle, N1) {
++  if (!inherits(bundle, "compiled_cgns") || length(N1) != 1L ||
++      !is.numeric(N1) || !is.finite(N1) || N1 != floor(N1) ||
++      N1 < 2L || N1 > bundle$N1)
++    aci_abort(
++      "aci_error_compiled_contract",
++      "A compiled CGNS bundle and a valid prefix length are required."
++    )
++  N1 <- as.integer(N1)
++  N <- N1 - 1L
++  k <- bundle$k
++  l <- bundle$l
++  source_obs <- observed_trajectory(
++    bundle$source_obs$t[seq_len(N1)],
++    bundle$source_obs$x[seq_len(N1), , drop = FALSE]
++  )
++  resolved_obs <- observed_trajectory(
++    bundle$t[seq_len(N1)], bundle$x[seq_len(N1), , drop = FALSE]
++  )
++  coefficients <- list(
++    Lx = array(bundle$coefficients$Lx[, , seq_len(N1), drop = FALSE],
++               c(k, l, N1)),
++    fx = matrix(bundle$coefficients$fx[seq_len(N1), , drop = FALSE], N1, k),
++    Ly = array(bundle$coefficients$Ly[, , seq_len(N1), drop = FALSE],
++               c(l, l, N1)),
++    fy = matrix(bundle$coefficients$fy[seq_len(N1), , drop = FALSE], N1, l),
++    gxx = array(bundle$coefficients$gxx[, , seq_len(N1), drop = FALSE],
++                c(k, k, N1)),
++    gyy = array(bundle$coefficients$gyy[, , seq_len(N1), drop = FALSE],
++                c(l, l, N1)),
++    gyx = array(bundle$coefficients$gyx[, , seq_len(N1), drop = FALSE],
++                c(l, k, N1)),
++    gxx_weight = array(
++      bundle$coefficients$gxx_weight[, , seq_len(N), drop = FALSE],
++      c(k, k, N)
++    )
++  )
++  rs <- list(
++    model = bundle$model,
++    obs = resolved_obs,
++    likelihood_idx = bundle$likelihood_idx,
++    tag = bundle$conditional
++  )
++  .new_compiled_cgns(
++    rs, bundle$source_model, source_obs, coefficients,
++    correlated_noise = bundle$correlated_noise,
++    realization = paste0(bundle$realization, "_prefix")
++  )
++}
++
++
++#' Slice a Gaussian filter path at a prefix boundary (internal)
++#'
++#' @param filter A filter path generated on the full bundle.
++#' @param bundle The matching prefix bundle.
++#' @returns A compatible prefix filter.
++#' @noRd
++.slice_compiled_filter <- function(filter, bundle) {
++  N1 <- bundle$N1
++  path <- new_da_path(
++    bundle$t,
++    filter$mean[seq_len(N1), , drop = FALSE],
++    filter$cov[, , seq_len(N1), drop = FALSE],
++    "filter"
++  )
++  path$meta <- filter$meta
++  path$meta$obs_x <- bundle$x
++  path$meta$model <- bundle$model
++  path$meta$conditional <- bundle$conditional
++  path$meta$source_model <- bundle$source_model
++  path
++}
+diff --git a/R/aci-core.R b/R/aci-core.R
+index 7ebd16f..6d66f8b 100644
+--- a/R/aci-core.R
++++ b/R/aci-core.R
+@@ -584,6 +584,29 @@ as.data.frame.aci_result <- function(x, ...) {
+ }
+ 
+ 
++#' Backward influence duration from the one-lag sequence (internal)
++#'
++#' @param p Numeric vector of finite, non-negative one-lag divergences.
++#' @param dt Positive 1-length numeric step.
++#' @param method Either `"exact"` or `"l1_linf"`.
++#' @returns Named numeric vector with the range `tau` and the strength `M`.
++#' @noRd
++.bwd_lengths <- function(p, dt, method, quadrature = "sum",
++                        simpson_close = "quadratic") {
++  if (!is.numeric(p) || !length(p) || any(!is.finite(p)) || any(p < 0) || length(dt) != 1L || !is.finite(dt) || dt <= 0){
++    aci_abort("aci_error_dims", "Backward discrepancy values must be finite and non-negative, with dt > 0.")
++  }
++  p_bc <- abs(p - p[1])  # bias-corrected backward CIR metric (andreou2026cir eq. 13)
++  M <- max(p_bc)
++  if (!is.finite(M) || M < 1e-14){ return(c(tau = NA_real_, M = M)) }
++  # lagged-grid convention from FBCIR is an O(dt) approximation to T' -> T^- in the paper
++  tau <- .calc_tau(p = p_bc, dt = dt, method = method, M = M,
++                   direction = "bwd", quadrature = quadrature,
++                   simpson_close = simpson_close)
++  return(c(tau = tau, M = M))
++}
++
++
+ #' Resolve the minimum influence strength (internal)
+ #'
+ #' @param min_M Either `"auto"` (reads `aci.cir_min_strength` option) or a finite non-negative number.
+@@ -732,16 +755,25 @@ print.cir_result <- function(x, ...) {
+ #' `l1_linf` estimators are ratios, integrated with composite Simpson over the
+ #' whole span, following the ACI reference code.
+ #'
+-#' Only `direction = "forward"` is in this release. The backward range is a
+-#' `FBCIR_code-main` feature: it appears in no ACI_code script, and it is held
+-#' in the development reserve (`reserve/fbcir/`) for the release that brings
+-#' that family in. `direction = "backward"` raises `aci_error_not_implemented`
+-#' rather than returning a forward answer under a backward label.
++#' `direction = "backward"` summarizes the duration of influence backward from
++#' a reference time. A backward result is anchored at `T`, but its computable
++#' lagged grid and physical interval end at `T - dt`; its bound label records
++#' this convention. The backward `l1_linf` ratio is evaluated with the plain
++#' Appendix G L1 sum, following the FBCIR code's active line; the exact form is
++#' the layer-cake sum of its suffix minima.
+ #'
+-#' @param x A `lag_table` or `aci_result` object.
+-#' @param direction `"forward"`, the only direction in this release. See above.
++#' A backward result also reports the andreou2026cir Section 2.3.4 validity
++#' gate in its `meta`: `baseline` (the initial-time information deficit, the
++#' one-lag metric at t = 0), `terminal` (the metric at the `T - dt` end of the
++#' grid), and `above_baseline` (their comparison, eq. 21 and Remark C.2).
++#' A large `M` with `above_baseline = FALSE` means the attribution evidence
++#' never rises above the initial-time baseline; treat such a range with
++#' caution rather than as a long attribution window.
++#'
++#' @param x A `lag_table`, `aci_result` or `cgns_model` object.
++#' @param direction `"forward"` (the default) or `"backward"`.
+ #' @param ... Arguments passed to methods.
+-#' @returns An object of class `cir_result` with `direction` `"forward"`.
++#' @returns An object of class `cir_result`.
+ #'
+ #' @references
+ #' Andreou, M. and Chen, N. (2026). Bridging prediction and attribution:
+@@ -749,7 +781,7 @@ print.cir_result <- function(x, ...) {
+ #' causal inference. arXiv:2510.21889v2, 4 August 2026.
+ #' \doi{10.48550/arXiv.2510.21889}
+ #'
+-#' @seealso [lag_table()]
++#' @seealso [lag_table()], [cir_pair()]
+ #'
+ #' @examples
+ #' m <- aci_dyad_model()
+@@ -757,25 +789,21 @@ print.cir_result <- function(x, ...) {
+ #' ob <- as_obs(sim)
+ #' tb <- lag_table(m, ob, mode = "forward")
+ #' aci_range(tb)
++#' tb1 <- lag_table(m, ob, mode = "one_lag")
++#' aci_range(tb1, direction = "backward")
+ #'
+ #' @export
+ aci_range <- function(x, direction = c("forward", "backward"), ...)
+   UseMethod("aci_range")
+ 
+ 
+-#' Resolve and gate the range direction (internal)
++#' Resolve the range direction (internal)
+ #'
+ #' @param direction The `direction` argument as the caller supplied it.
+-#' @returns `"forward"`; called for its error condition.
++#' @returns The resolved direction, `"forward"` or `"backward"`.
+ #' @noRd
+ .aci_range_direction <- function(direction) {
+   direction <- match.arg(direction, c("forward", "backward"))
+-  if (identical(direction, "backward"))
+-    aci_abort("aci_error_not_implemented", paste(
+-      "The backward causal influence range is not in this release: it is a",
+-      "FBCIR_code-main feature with no ACI_code counterpart, and is held in",
+-      "the development reserve (reserve/fbcir/) for the release that brings",
+-      "that family in."))
+   return(direction)
+ }
+ 
+@@ -816,7 +844,10 @@ aci_range <- function(x, direction = c("forward", "backward"), ...)
+ #'   instead reproduces the reference script's `defn_objective_CIR`, a Simpson
+ #'   quadrature of the subjective read-out over the threshold grid
+ #'   `epsilon_grid`.
+-#'   `"matlab_eps_grid"` is defined for `method = "exact"` only.
++#'   `"matlab_eps_grid"` is defined for `method = "exact"` only. For
++#'   `direction = "backward"` the choices are `"sum"` (the default there,
++#'   the FBCIR scripts' active line) and `"simpson"`; the backward exact
++#'   form is a finite sum and ignores this argument.
+ #' @param simpson_close Closing rule for the leftover interval when a grid has
+ #'   an even number of points: `"quadratic"` (the default) fits a quadratic
+ #'   through the last three points, following `simps.m` in the ACI reference
+@@ -857,7 +888,26 @@ aci_range.lag_table <- function(x, direction = c("forward", "backward"),
+   if (length(list(...)))
+     aci_abort("aci_error_dims",
+               "Unused arguments were supplied to aci_range().")
+-  .aci_range_direction(direction)
++  direction <- .aci_range_direction(direction)
++  if (identical(direction, "backward")) {
++    ## The backward range is a different functional with a different
++    ## parameter set, so it has its own reducer rather than a branch inside
++    ## the forward body.  Its quadrature default is the eq. G.14 L1 sum.
++    if (!is.null(anchors) || !is.null(epsilon_grid) || !missing(convention))
++      aci_abort("aci_error_dims", paste(
++        "anchors, convention and epsilon_grid are forward-range arguments; the",
++        "backward range reports one reference time."))
++    bq <- if (missing(quadrature)) "sum" else match.arg(quadrature)
++    if (identical(bq, "matlab_eps_grid"))
++      aci_abort("aci_error_dims", paste(
++        "quadrature = 'matlab_eps_grid' is a forward threshold quadrature;",
++        "the backward range takes 'sum' (the default) or 'simpson'."))
++    return(.aci_range_backward_table(
++      x, method = match.arg(method), epsilon = epsilon, min_M = min_M,
++      masked_value = match.arg(masked_value), quadrature = bq,
++      simpson_close = match.arg(simpson_close)
++    ))
++  }
+   masked_value <- match.arg(masked_value)
+   quadrature <- match.arg(quadrature)
+   simpson_close <- match.arg(simpson_close)
+@@ -958,7 +1008,9 @@ aci_range.lag_table <- function(x, direction = c("forward", "backward"),
+ #' @export
+ aci_range.aci_result <- function(x, direction = c("forward", "backward"),
+                                  ...) {
+-  .aci_range_direction(direction)
++  direction <- .aci_range_direction(direction)
++  if (identical(direction, "backward"))
++    return(.aci_range_backward_result(x, ...))
+   if (!is.null(x$table)) return(aci_range(x$table, ...))
+   bundle <- .compile_cgns_run(
+     x$handles$model, x$handles$obs, x$handles$conditional
+@@ -968,3 +1020,234 @@ aci_range.aci_result <- function(x, direction = c("forward", "backward"),
+     regularize = x$meta$regularization$policy, ...
+   )
+ }
++
++
++#' Backward influence duration from a one-lag table (internal)
++#'
++#' The FBCIR family reducer behind `aci_range(direction = "backward")`.
++#'
++#' @param x A `lag_table` built with `mode = "one_lag"`.
++#' @param method Either `"exact"` or `"l1_linf"`.
++#' @param epsilon Optional finite non-negative reporting thresholds.
++#' @param min_M Either `"auto"` or one finite non-negative number.
++#' @param masked_value Either `"na"` or `"zero"`.
++#' @param quadrature Either `"sum"` (eq. G.14) or `"simpson"`.
++#' @param simpson_close Even-grid Simpson closing convention.
++#' @param ... Unused; supplying anything is an error.
++#' @returns An object of class `cir_result` with `direction` `"backward"`.
++#' @noRd
++.aci_range_backward_table <- function(x, method = c("exact", "l1_linf"),
++                                      epsilon = NULL, min_M = "auto",
++                                      masked_value = c("na", "zero"),
++                                      quadrature = c("sum", "simpson"),
++                                      simpson_close = c("quadratic",
++                                                        "trapezoid"),
++                                      ...) {
++  if (length(list(...)))
++    aci_abort("aci_error_dims", "Unused arguments were supplied to aci_range().")
++  masked_value <- match.arg(masked_value)
++  quadrature <- match.arg(quadrature)
++  simpson_close <- match.arg(simpson_close)
++  method <- match.arg(method)
++  if (!inherits(x, "lag_table"))
++    aci_abort("aci_error_dims", "x must be a lag_table.")
++  P <- lt_onelag(x)
++  r <- .bwd_lengths(P, x$dt, method, quadrature, simpson_close)
++  ## andreou2026cir Section 2.3.4 validity gate: causal intensity at the
++  ## T - dt end of the grid versus the initial-time information deficit
++  ## P^0_T (eq. 21; Remark C.2).  The gate is a diagnostic beside tau and M,
++  ## not a change to the centred metric.
++  baseline <- unname(P[1L])
++  terminal <- unname(P[length(P)])
++  Tend <- x$t[length(x$t)]
++  lag_end <- Tend - x$dt
++  subj <- NULL
++  if (!is.null(epsilon)) {
++    if (!is.numeric(epsilon) || !length(epsilon) || any(!is.finite(epsilon)) || any(epsilon < 0))
++      aci_abort("aci_error_dims", "epsilon must contain finite non-negative thresholds.")
++    cc <- abs(P - P[1]); pt <- x$t[seq_along(P)]
++    subj <- vapply(epsilon, function(e) {
++      hit <- which(cc <= e)
++      if (!length(hit)) NA_real_ else lag_end - max(pt[hit])
++    }, numeric(1))
++    names(subj) <- format(epsilon)
++  }
++  if (!is.null(min_M) && is.finite(r["M"])) {
++    mm <- .cir_min_strength(min_M)
++    if (r["M"] < mm) {
++      r["tau"] <- if (masked_value == "zero") 0 else NA_real_
++      aci_warn("aci_warn_low_signal", sprintf(
++        "Backward CIR masked (M < %.3g); interpret it jointly with ACI.", mm))
++    }
++  }
++  new_cir_result(Tend, unname(r["tau"]), unname(r["M"]), "backward", method,
++                 x$dt, interval = cbind(lag_end - unname(r["tau"]), lag_end),
++                 subjective = subj,
++                 meta = list(quadrature = quadrature,
++                             simpson_close = simpson_close,
++                             reference_time = Tend,
++                             lagged_grid_end = lag_end,
++                             endpoint_convention = "T_minus_dt",
++                             dt_caveat = "one-lag limit approximated to O(dt) (andreou2026cir eq. G.12)",
++                             baseline = baseline,
++                             terminal = terminal,
++                             above_baseline = terminal > baseline,
++                             table_conditional = x$meta$conditional),
++                 bound = if (method == "exact")
++                   "layer_cake_on_O(dt)_T_minus_dt_grid" else
++                   "upper_ratio_on_O(dt)_T_minus_dt_grid")
++}
++
++
++#' Backward influence duration from an ACI result (internal)
++#'
++#' The FBCIR family reducer behind `aci_range(direction = "backward")` at one
++#' or more reference times.  Coefficients after the latest requested reference
++#' time are never realised.
++#'
++#' @param x An `aci_result`.
++#' @param T Either `"end"` or numeric reference times within the observed grid.
++#' @param method Either `"exact"` or `"l1_linf"`.
++#' @param ... Passed to the one-lag table reducer.
++#' @returns An object of class `cir_result` with `direction` `"backward"`.
++#' @noRd
++.aci_range_backward_result <- function(x, T = "end", method = "exact", ...) {
++  if (identical(x$meta$engine, "ensemble") ||
++      identical(x$table$meta$engine %||% NULL, "ensemble"))
++    aci_abort("aci_error_not_implemented", paste(
++      "jiang2026enkbs implements the EnKBS forward CIR but identifies ensemble backward",
++      "CIR as future work; this package does not invent that extension."))
++  mdl <- x$handles$model; ob <- x$handles$obs; nt <- x$handles$conditional
++  Ts <- if (identical(T, "end")) ob$t[length(ob$t)] else as.numeric(T)
++  if (!length(Ts) || any(!is.finite(Ts)) ||
++      any(Ts < ob$t[1] - 1e-12) || any(Ts > ob$t[length(ob$t)] + 1e-12))
++    aci_abort("aci_error_dims",
++              "T must contain finite reference times within the observation grid span.")
++  if (length(Ts) > 20)
++    aci_warn("aci_warn_truncation",
++             "A backward range over >20 reference times is O(|T| N l^3) in v0.")
++  prefix_lengths <- vapply(Ts, function(Tv)
++    sum(ob$t <= Tv + 1e-12), integer(1))
++  if (any(prefix_lengths < 5L))
++    aci_abort("aci_error_dims", "Reference time too early.")
++  # Coefficients after the latest requested reference time are not part of any
++  # backward-CIR estimand. Compile the maximal required prefix once so multiple
++  # references share work without evaluating irrelevant future coefficients.
++  max_N1 <- max(prefix_lengths)
++  prefix_obs <- if (max_N1 == length(ob$t)) ob else observed_trajectory(
++    ob$t[seq_len(max_N1)], ob$x[seq_len(max_N1), , drop = FALSE],
++    names = colnames(ob$x)
++  )
++  bundle <- .compile_cgns_run(mdl, prefix_obs, nt)
++  full_filter <- x$paths$filter %||% NULL
++  can_reuse <- !is.null(full_filter) &&
++    nrow(full_filter$mean) >= max_N1 &&
++    identical(full_filter$meta$stepper %||% "explicit", "explicit") &&
++    (full_filter$meta$nsub %||% 1L) == 1L
++  if (can_reuse) {
++    full_filter <- .slice_compiled_filter(full_filter, bundle)
++    compatible <- tryCatch({
++      .validate_gaussian_path(
++        full_filter, bundle$obs, bundle$l, "filter", bundle$conditional,
++        model = bundle$model, source_model = bundle$source_model
++      )
++      TRUE
++    }, error = function(e) FALSE)
++    can_reuse <- isTRUE(compatible)
++  }
++  if (!can_reuse)
++    full_filter <- .cgns_filter_compiled(
++      bundle, init = x$handles$init, stepper = "explicit", nsub = 1L,
++      validate = FALSE
++    )
++  res <- lapply(prefix_lengths, function(N1) {
++    prefix <- .slice_compiled_cgns(bundle, N1)
++    prefix_filter <- .slice_compiled_filter(full_filter, prefix)
++    tb <- .lag_table_compiled(
++      prefix, mode = "one_lag", filter = prefix_filter,
++      init = prefix_filter$meta$init, validate = FALSE
++    )
++    .aci_range_backward_table(tb, method = method, ...)
++  })
++  actual_T <- vapply(res, function(z) as.numeric(z$t)[1], numeric(1))
++  if (any(abs(actual_T - Ts) > 1e-10))
++    aci_warn("aci_warn_grid_snap",
++             "Some requested backward-CIR reference times were snapped down to the observation grid.")
++  if (length(res) == 1) return(res[[1]])
++  subj <- lapply(res, `[[`, "subjective")
++  if (all(vapply(subj, is.null, logical(1)))) subj <- NULL
++  common_bound <- unique(vapply(res, function(z) z$bound, character(1)))
++  new_cir_result(actual_T, sapply(res, `[[`, "tau"), sapply(res, `[[`, "M"),
++                 "backward", method, ob$dt,
++                 interval = do.call(rbind, lapply(res, `[[`, "interval")),
++                 subjective = subj,
++                 meta = list(per_reference = lapply(res, `[[`, "meta")),
++                 bound = if (length(common_bound) == 1L) common_bound else
++                   "mixed_reference_semantics")
++}
++
++
++#' @describeIn aci_range Backward range straight from a model and its
++#'   observations, without first assembling an ACI result. This method is the
++#'   FBCIR front door and takes `direction = "backward"` only; the forward
++#'   range is read off a lag table or an ACI result.
++#' @param obs An observed trajectory, or anything [as_obs()] accepts.
++#' @param T Either `"end"` or numeric reference times within the observed grid.
++#' @param conditional Optional `aci_conditional_spec`; see [aci_conditional()].
++#' @param init Optional list with the initial hidden `mean` and `cov`.
++#' @export
++aci_range.cgns_model <- function(x, direction = c("forward", "backward"),
++                                 obs, T, conditional = NULL, init = NULL, ...) {
++  direction <- .aci_range_direction(direction)
++  if (!identical(direction, "backward"))
++    aci_abort("aci_error_not_implemented", paste(
++      "The forward range is read off a lag table or an ACI result; a bare",
++      "model is the backward front door only."))
++  ar <- structure(list(handles = list(model = x, obs = as_obs(obs),
++                                      conditional = conditional, init = init)),
++                  class = "aci_result")
++  .aci_range_backward_result(ar, T = T, ...)
++}
++
++
++#' Forward and backward causal influence ranges together
++#'
++#' Runs the metric once and returns the forward and backward ranges alongside
++#' it, so that both directions share one filter pass and one prior.
++#'
++#' @param model A `cgns_model` object; the closed-form engine is required.
++#' @param obs An observed trajectory, or anything [as_obs()] accepts.
++#' @param engine One of `"auto"` or `"cgns"`.
++#' @param conditional Optional `aci_conditional_spec`; see [aci_conditional()].
++#' @param ... Passed to [aci()].
++#' @returns An object of class `cir_pair`, a list with the `aci` result and the
++#'   `forward` and `backward` ranges.
++#'
++#' @seealso [aci_range()], [lag_table()]
++#'
++#' @examples
++#' \donttest{
++#' m <- aci_dyad_model()
++#' sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
++#' ob <- as_obs(sim)
++#' cir_pair(m, ob)
++#' }
++#'
++#' @export
++cir_pair <- function(model, obs, engine = "auto", conditional = NULL, ...) {
++  resolved_engine <- if (identical(engine, "auto")) {
++    if (inherits(model, "cgns_model")) "cgns" else "ensemble"
++  } else engine
++  if (!identical(resolved_engine, "cgns"))
++    aci_abort("aci_error_not_implemented",
++              "cir_pair() requires the closed-form CGNS lag table engine.")
++  a <- aci(model, obs, engine = engine, conditional = conditional,
++           keep = "table", ...)
++  fwd_tab <- a$table
++  bwd_tab <- lag_table(model, as_obs(obs), mode = "one_lag", conditional = conditional,
++                       filter = a$paths$filter,
++                       init = a$handles$init)
++  structure(list(aci = a, forward = aci_range(fwd_tab),
++                 backward = aci_range(bwd_tab, direction = "backward")),
++            class = "cir_pair")
++}
+diff --git a/R/aci-online-smoother.R b/R/aci-online-smoother.R
+index 8ba9d1f..47d2c7a 100644
+--- a/R/aci-online-smoother.R
++++ b/R/aci-online-smoother.R
+@@ -370,7 +370,7 @@
+ #' @param bundle A compiled CGNS bundle.
+ #' @param filt The forward filter path.
+ #' @param smoo The complete Theorem-3 reference smoother.
+-#' @param mode Either `"forward"` or `"full"`.
++#' @param mode One of `"forward"`, `"one_lag"` or `"full"`.
+ #' @param tol Non-negative adaptive storage tolerance.
+ #' @param window Consecutive steps below `tol` required before freezing.
+ #' @param max_lag Maximum retained positive lag.
+@@ -393,6 +393,38 @@
+       MUf[j, ], CVf[, , j], decompose = FALSE
+     ))
+ 
++  if (mode == "one_lag") {
++    coN1 <- .compiled_co(bundle, N)
++    auxN1 <- .thmD1_aux_compiled(bundle, N, CVf[, , N], co = coN1)
++    ol <- .onelag_stats(
++      coN1, auxN1, MUf[N, ], CVf[, , N], MUf[N1, ], CVf[, , N1],
++      bundle$x[N1, ] - bundle$x[N, ], dt, l
++    )
++    dmu <- ol$mu - MUf[N, ]
++    dR <- ol$R - CVf[, , N]
++    P <- rep(0, N1)
++    D <- diag(l)
++    for (jj in N:1) {
++      if (jj < N) {
++        co <- .compiled_co(bundle, jj)
++        E <- .thmD1_aux_compiled(bundle, jj, CVf[, , jj], co = co)$E
++        D <- E %*% D
++      }
++      RsjN <- smoo$cov[, , jj]
++      A <- sym(D %*% dR %*% t(D))
++      Rlag <- spd_floor(RsjN - A)
++      v <- drop(D %*% dmu)
++      sig <- 0.5 * sum(v * chol_solve(Rlag, v, "Rlag"))
++      trA <- sum(diag(chol_solve(Rlag, A, "Rlag")))
++      ld <- logdet_chol(RsjN) - logdet_chol(Rlag)
++      P[jj] <- max(sig + 0.5 * (trA - ld), 0)
++    }
++    return(list(
++      diag = diagv, rows = NULL, L = NULL, tailbnd = NULL,
++      onelag = P, stop_index = NA_integer_
++    ))
++  }
++
+   rows <- vector("list", N1)
+   for (j in seq_len(N1)) rows[[j]] <- diagv[j]
+   L <- rep(NA_integer_, N1)
+@@ -534,7 +566,7 @@
+ #' policy, warnings and the established `lag_table` result structure.
+ #'
+ #' @param bundle A compiled CGNS bundle.
+-#' @param mode Either `"forward"` or `"full"`.
++#' @param mode One of `"forward"`, `"one_lag"` or `"full"`.
+ #' @param tol,window,max_lag Adaptive storage controls matching [lag_table()].
+ #' @param filter Optional compatible filter path.
+ #' @param smoother Optional compatible Theorem-3 smoother path.
+@@ -544,7 +576,7 @@
+ #' @returns A `lag_table` object.
+ #' @noRd
+ .lag_table_compiled <- function(
+-    bundle, mode = c("forward", "full"),
++    bundle, mode = c("forward", "one_lag", "full"),
+     tol = getOption("aci.default_tol", 1e-8), window = 3L,
+     max_lag = Inf, filter = NULL, smoother = NULL, init = NULL,
+     validate = TRUE, regularize = NULL) {
+diff --git a/tests/testthat/test-03-engine.R b/tests/testthat/test-03-engine.R
+index 9b84488..100e9e7 100644
+--- a/tests/testthat/test-03-engine.R
++++ b/tests/testthat/test-03-engine.R
+@@ -139,6 +139,48 @@ test_that("lag tables reject a theorem smoother from another prior", {
+                class = "aci_error_model_contract")
+ })
+ 
++test_that("T5: one-lag column matches brute-force truncated smoothing", {
++  m <- aci_dyad_model(); dt <- 5e-3
++  s <- simulate(m, seed = 9, T = 2, dt = dt)
++  filt <- suppressWarnings(aci_filter(m, s$obs))
++  smoo <- online_smoother(m, s$obs, filt)
++  lt <- lag_table(m, s$obs, mode = "one_lag", filter = filt, smoother = smoo)
++  N1 <- length(s$obs$t)
++  obs_tr <- observed_trajectory(s$obs$t[-N1], s$obs$x[-N1, , drop = FALSE])
++  filt_tr <- suppressWarnings(aci_filter(m, obs_tr))
++  smoo_tr <- online_smoother(m, obs_tr, filt_tr)
++  brute <- sapply(1:(N1 - 1), function(j)
++    unname(aci_metric_pair(smoo$mean[j, ], smoo$cov[, , j],
++                       smoo_tr$mean[j, ], smoo_tr$cov[, , j], decompose = FALSE)))
++  ol <- lt_onelag(lt)[1:(N1 - 1)]
++  keep <- brute > 1e-7          # compare where signal exists
++  expect_gt(sum(keep), 20)
++  relerr <- abs(ol[keep] - brute[keep]) / brute[keep]
++  expect_lt(stats::median(relerr), 0.05)
++  expect_gt(stats::cor(ol[keep], brute[keep]), 0.999)
++})
++
++
++## Reserve staging block
++## Origin: aci 0.0.30 (git tree 97f6b124) tests/testthat/test-03-engine.R:235-248
++## Category: fbcir
++## Note: One-lag propagation / operator-norm truncation block.
++
++test_that("one-lag propagation does not truncate on an unscaled operator norm", {
++  dt <- 0.01; ax <- (1 - 5e-14) / dt
++  m <- aci_model(
++    Lx = function(t, x) matrix(ax, 1, 1), fx = function(t, x) 0,
++    Ly = function(t, x) matrix(0, 1, 1), fy = function(t, x) 0,
++    Sx1 = function(t, x) matrix(1, 1, 1),
++    Sy2 = function(t, x) matrix(1, 1, 1), k = 1, l = 1)
++  ob <- observed_trajectory(dt * 0:3, matrix(c(0, 0, 0, 1e6), ncol = 1))
++  tab <- lag_table(m, ob, mode = "one_lag",
++                   init = list(mean = 0, cov = matrix(1 / ax, 1, 1)))
++  expect_true(all(is.finite(lt_onelag(tab))))
++  expect_gt(lt_onelag(tab)[2], 1)
++  expect_true(is.na(tab$meta$stop_index))
++})
++
+ test_that("T4: adaptive truncation engages and agrees with the full table", {
+   m <- aci_dyad_model(); s <- simulate(m, seed = 3, T = 3, dt = 5e-3)
+   filt <- suppressWarnings(aci_filter(m, s$obs)); smoo <- online_smoother(m, s$obs, filt)
+@@ -239,7 +281,7 @@ test_that("T1b: implicit Riccati step survives the diffuse-init stress case", {
+   f4 <- aci_filter(m, s$obs, init = ini, stepper = "implicit", nsub = 8)
+   expect_lt(max(abs(f4$mean - f2$mean)), 0.05)
+   # lag_table enforces its explicit single-step contract
+-  expect_warning(lag_table(m, s$obs, mode = "forward", filter = f2),
++  expect_warning(lag_table(m, s$obs, mode = "one_lag", filter = f2),
+                  class = "aci_warn_stepper")
+   expect_error(lag_table(m, s$obs, stepper = "implicit"),
+                class = "aci_error_stepper")
+diff --git a/tests/testthat/test-04-cir.R b/tests/testthat/test-04-cir.R
+index 0652957..5f135a5 100644
+--- a/tests/testthat/test-04-cir.R
++++ b/tests/testthat/test-04-cir.R
+@@ -23,6 +23,51 @@ test_that("C3: exact layer cake is the brute-force eps average", {
+   expect_lt(worst_lag, 1e-4)                    # measured 1.98e-05
+ })
+ 
++test_that("C3 (backward): exact layer-cake tracks brute-force eps quadrature", {
++  ## Standalone replay of aci 0.0.30's test-04-cir.R:4-24 draw order.
++  ## The forward half now lives in its own mainline block, which this must not
++  ## perturb, so the forward draw is repeated here unused and the mainline
++  ## block is left bit-for-bit alone.
++  set.seed(11); dt <- 0.01
++  for (i in 1:20) {
++    p <- abs(rnorm(60)) * exp(-seq(0, 3, length.out = 60)) ; p[60] <- 0
++    # Backward: the computable discrepancy grid ends at T-dt.  The
++    # layer-cake duration is measured backwards from that physical endpoint;
++    # there is no extra, unobserved cell at T.
++    P <- cumsum(abs(rnorm(60))) / 10; cc <- abs(P - P[1]); Mb <- max(cc)
++    epsb <- seq(0, Mb, length.out = 20001)[-1]
++    lag_end <- dt * (length(P) - 1)
++    tb <- sapply(epsb, function(e)
++      lag_end - dt * (max(which(cc <= e)) - 1))
++    ex_b <- unname(.bwd_lengths(P, dt, "exact")["tau"])
++    expect_equal(ex_b, mean(tb), tolerance = 0.06)  # measured max 1.72e-05
++    ## aci 0.0.30 measured 0.0187 here; the exact-objective change's sum
++    ## dropped the residual by three orders of magnitude.
++  }
++})
++
++test_that("backward exact CIR does not invent a terminal +M cell", {
++  dt <- 0.1
++  P <- c(0, 1, 0.2)
++
++  # The exact-objective change: the exact form is the layer-cake sum of the
++  # suffix minima mm = (0, 0.2, 0.2), i.e. 0.4, a range of 0.4*dt.  aci
++  # 0.0.30 read dt/3 because .calc_tau put composite Simpson between the
++  # suffix minima and the average; that change removed the quadrature, and
++  # a 2e6-node threshold average on this P is 0.0400000000 exactly.
++  # The ratio form follows the FBCIR code's active line, the plain Appendix G
++  # L1 sum of cc = (0, 1, 0.2), giving 1.2 and a range of 1.2*dt.
++  got <- unname(.bwd_lengths(P, dt, "exact")["tau"])
++  expect_equal(got, 0.4 * dt, tolerance = 1e-15)
++  expect_equal(got, dt * sum(rev(cummin(rev(abs(P - P[1]))))) / max(abs(P - P[1])),
++               tolerance = 0)
++  expect_equal(unname(.bwd_lengths(P, dt, "l1_linf")["tau"]),
++               1.2 * dt, tolerance = 1e-15)
++  # Retaining the terminal zero sentinel that lt_onelag() drops would send
++  # every suffix minimum to zero and collapse the range.
++  expect_false(isTRUE(all.equal(got, 0)))
++})
++
+ test_that("C4/C5: l1_linf bound directions and equality under monotonicity", {
+   set.seed(12); dt <- 0.02
+   for (i in 1:50) {
+@@ -30,6 +75,8 @@ test_that("C4/C5: l1_linf bound directions and equality under monotonicity", {
+     f_ex <- .fwd_lengths(p, dt, "exact")["tau"]; f_ap <- .fwd_lengths(p, dt, "l1_linf")["tau"]
+     expect_lte(f_ap, f_ex + 1e-12)
+     P <- cumsum(abs(rnorm(40)))
++    b_ex <- .bwd_lengths(P, dt, "exact")["tau"]; b_ap <- .bwd_lengths(P, dt, "l1_linf")["tau"]
++    expect_gte(b_ap, b_ex - 1e-12)
+   }
+   p_mono <- sort(abs(rnorm(40)), decreasing = TRUE); p_mono[40] <- 0
+   # Ledger entry C2b: under monotone decay the suffix maximum is the row
+@@ -43,15 +90,30 @@ test_that("C4/C5: l1_linf bound directions and equality under monotonicity", {
+   gap_simpson <- .fwd_lengths(p_mono, dt, "l1_linf")["tau"] -
+                  .fwd_lengths(p_mono, dt, "exact")["tau"]
+   expect_gt(abs(unname(gap_simpson)), 1e-12)
++  # Backward, the two forms use different quadratures (the ratio keeps the
++  # FBCIR code's plain L1 sum, the exact form Simpson), so under monotone
++  # decay they agree to the quadrature gap rather than exactly.
++  c_mono <- cumsum(abs(rnorm(40)))          # nondecreasing bias-corrected metric
++  b_ex <- unname(.bwd_lengths(c_mono, dt, "exact")["tau"])
++  b_ap <- unname(.bwd_lengths(c_mono, dt, "l1_linf")["tau"])
++  expect_lt(abs(b_ap - b_ex) / b_ex, 0.05)  # measured max 0.0318
+ })
+ test_that("C6-lite: dyad CIR pipeline runs and produces sane windows", {
+   m <- aci_dyad_model()
+   s <- simulate(m, seed = 21, T = 3, dt = 5e-3)
+-  a <- suppressWarnings(aci(m, s$obs, keep = "table"))
+-  f <- suppressWarnings(aci_range(a$table))
++  cp <- suppressWarnings(cir_pair(m, s$obs))
++  f <- cp$forward
+   expect_true(all(is.na(f$tau) | (f$tau >= 0 & f$tau <= max(f$t) + 1e-9)))
+   expect_true(f$bound %in% c("layer_cake_objective",
+                              "objective_on_truncated_table"))
++  b <- cp$backward
++  expect_true(is.na(b$tau) || (b$tau > 0 && b$tau <= max(cp$aci$t)))
++  expect_equal(unname(b$t), max(cp$aci$t))
++  expect_equal(unname(b$interval[, 2]), max(cp$aci$t) - b$dt)
++  expect_equal(b$meta$lagged_grid_end, max(cp$aci$t) - b$dt)
++  expect_identical(b$meta$endpoint_convention, "T_minus_dt")
++  expect_identical(b$bound,
++                   "layer_cake_on_O(dt)_T_minus_dt_grid")
+ })
+ 
+ test_that("masked_value = 'zero' reports the published zero convention", {
+@@ -66,6 +128,14 @@ test_that("masked_value = 'zero' reports the published zero convention", {
+   masked <- is.na(f_na$tau) & is.finite(f_na$M) & f_na$M > 1e-14
+   expect_gt(sum(masked), 10)
+   expect_true(all(f_z$tau[masked] == 0))
++  lt <- suppressWarnings(lag_table(m, s$obs, mode = "one_lag"))
++  b_z <- suppressWarnings(aci_range(lt, direction = "backward",
++                                    min_M = 1e6,
++                                    masked_value = "zero"))
++  expect_identical(unname(b_z$tau), 0)
++  b_na <- suppressWarnings(aci_range(lt, direction = "backward",
++                                     min_M = 1e6))
++  expect_true(is.na(b_na$tau))
+ })
+ 
+ test_that("quadrature options give both published ratio conventions", {
+@@ -85,4 +155,68 @@ test_that("quadrature options give both published ratio conventions", {
+                tolerance = 1e-12)
+   expect_equal(unname(f_simp$tau[j]), tab$dt * .simpson(p) / max(p),
+                tolerance = 1e-12)
++  lt <- suppressWarnings(lag_table(m, s$obs, mode = "one_lag"))
++  b_sum <- aci_range(lt, direction = "backward", method = "l1_linf")
++  b_simp <- aci_range(lt, direction = "backward", method = "l1_linf",
++                      quadrature = "simpson")
++  cc <- abs(lt_onelag(lt) - lt_onelag(lt)[1])
++  expect_equal(unname(b_sum$tau), lt$dt * sum(cc) / max(cc),
++               tolerance = 1e-12)
++  expect_equal(unname(b_simp$tau), lt$dt * .simpson(cc) / max(cc),
++               tolerance = 1e-12)
++  expect_identical(b_sum$meta$quadrature, "sum")
++})
++
++test_that("backward CIR excludes the terminal one-lag sentinel", {
++  m <- aci_dyad_model()
++  s <- simulate(m, seed = 9, T = 1, dt = 0.01)
++  lt <- suppressWarnings(lag_table(m, s$obs, mode = "one_lag"))
++  P <- lt_onelag(lt)
++  expect_length(P, length(lt$t) - 1L)
++  expect_equal(aci_range(lt, direction = "backward",
++                         method = "exact")$tau,
++               unname(.bwd_lengths(P, lt$dt, "exact")["tau"]))
++  expect_gt(aci_range(lt, direction = "backward",
++                      method = "exact")$tau, 0.1)
++  be <- aci_range(lt, direction = "backward", method = "exact")
++  ba <- aci_range(lt, direction = "backward", method = "l1_linf")
++  lag_end <- max(lt$t) - lt$dt
++  expect_equal(unname(be$t), max(lt$t))
++  expect_equal(unname(be$interval[, 2]), lag_end)
++  expect_equal(be$meta$reference_time, max(lt$t))
++  expect_equal(be$meta$lagged_grid_end, lag_end)
++  expect_identical(be$meta$endpoint_convention, "T_minus_dt")
++  expect_identical(be$bound,
++                   "layer_cake_on_O(dt)_T_minus_dt_grid")
++  expect_identical(ba$bound,
++                   "upper_ratio_on_O(dt)_T_minus_dt_grid")
++  sb <- aci_range(lt, direction = "backward", method = "exact",
++                  epsilon = c(0, 1e-3))$subjective
++  expect_length(sb, 2L)
++  expect_true(all(sb >= 0 & sb <= lag_end))
++  expect_equal(unname(aci_range(lt, direction = "backward",
++                                method = "exact",
++                                epsilon = 1e100)$subjective), 0)
++})
++
++test_that("backward validity gate reports the eq. 21 baseline comparison", {
++  m <- aci_dyad_model()
++  s <- simulate(m, seed = 4, T = 2, dt = 0.01)
++  init <- list(mean = 0, cov = diag(1, 1))
++  lt <- lag_table(m, as_obs(s), mode = "one_lag", init = init)
++  P <- lt_onelag(lt)
++  b <- aci_range(lt, direction = "backward")
++  # baseline is the raw t = 0 deficit P^0_T, terminal the raw value at T - dt;
++  # the gate compares them without touching the centred metric.
++  expect_identical(b$meta$baseline, unname(P[1]))
++  expect_identical(b$meta$terminal, unname(P[length(P)]))
++  expect_identical(b$meta$above_baseline, unname(P[length(P)] > P[1]))
++  b3 <- aci_range(m, direction = "backward", obs = as_obs(s),
++                  T = c(1, 1.5, 2), init = init)
++  ab <- vapply(b3$meta$per_reference, function(mm) mm$above_baseline,
++               logical(1))
++  expect_length(ab, 3L)
++  # aci's final three assertions here drove cir_table(), which is DROPPED
++  # (self-disclaimed provenance; reserve/extensions/code/cir_table.R). They are
++  # not part of the FBCIR restoration.
+ })
+diff --git a/tests/testthat/test-05-nontarget.R b/tests/testthat/test-05-nontarget.R
+index 3278847..872f891 100644
+--- a/tests/testthat/test-05-nontarget.R
++++ b/tests/testthat/test-05-nontarget.R
+@@ -34,7 +34,7 @@ test_that("prescribed-forcing paths retain stable source-model provenance", {
+   f <- suppressWarnings(aci_filter(m, s$obs, conditional = nt))
+   sm <- expect_no_error(aci_smoother(m, s$obs, filter = f, conditional = nt))
+   expect_s3_class(sm, "da_path_gaussian")
+-  expect_no_error(lag_table(m, s$obs, mode = "forward", filter = f,
++  expect_no_error(lag_table(m, s$obs, mode = "one_lag", filter = f,
+                             conditional = nt))
+   expect_s3_class(suppressWarnings(aci(m, s$obs, conditional = nt)),
+                   "aci_result")
+diff --git a/tests/testthat/test-18-compiled-lag.R b/tests/testthat/test-18-compiled-lag.R
+index 03df768..4ac2f4a 100644
+--- a/tests/testthat/test-18-compiled-lag.R
++++ b/tests/testthat/test-18-compiled-lag.R
+@@ -133,6 +133,7 @@ test_that("compiled scalar lag tables match all established storage modes", {
+   bundle <- .compile_cgns_complete(model, obs)
+ 
+   settings <- list(
++    one_lag = list(tol = 1e-7, window = 2L, max_lag = Inf),
+     forward = list(tol = 1e-7, window = 2L, max_lag = 6L),
+     full = list(tol = 1e-7, window = 2L, max_lag = Inf)
+   )
+@@ -160,7 +161,7 @@ test_that("compiled correlated matrix lag execution matches public assembly", {
+   )
+   expect_identical(compiled_smoother$meta$route, "thmD1")
+ 
+-  for (mode in c("forward", "full")) {
++  for (mode in c("one_lag", "forward", "full")) {
+     public <- lag_table(
+       ds$model, ds$obs, mode = mode, tol = 1e-8, window = 2L,
+       init = ds$init
+@@ -189,7 +190,7 @@ test_that("compiled Theorem-3 stepper and lag-table warning policies remain", {
+   )
+   expect_warning(
+     rebuilt <- .lag_table_compiled(
+-      bundle, mode = "forward", filter = implicit
++      bundle, mode = "one_lag", filter = implicit
+     ),
+     class = "aci_warn_stepper"
+   )
+@@ -200,7 +201,7 @@ test_that("compiled Theorem-3 stepper and lag-table warning policies remain", {
+   backward <- .cgns_smoother_compiled(bundle, explicit)
+   expect_warning(
+     recomputed <- .lag_table_compiled(
+-      bundle, mode = "forward", filter = explicit, smoother = backward
++      bundle, mode = "one_lag", filter = explicit, smoother = backward
+     ),
+     class = "aci_warn_stepper"
+   )
+diff --git a/tests/testthat/test-20-compiled-cir.R b/tests/testthat/test-20-compiled-cir.R
+index 6d230ac..2356085 100644
+--- a/tests/testthat/test-20-compiled-cir.R
++++ b/tests/testthat/test-20-compiled-cir.R
+@@ -140,3 +140,81 @@ test_that("streamed forward CIR preserves warnings and argument errors", {
+     .forward_cir_compiled(bundle, nonsense = TRUE), class = "aci_error_dims"
+   )
+ })
++
++
++test_that("backward CIR prefixes reuse one compiled coefficient path", {
++  calls <- 0L
++  model <- aci_model(
++    Lx = function(t, x) {
++      calls <<- calls + 1L
++      matrix(0.7 + 0.05 * x[1], 1, 1)
++    },
++    fx = function(t, x) -0.3 * x,
++    Ly = function(t, x) matrix(-0.8, 1, 1),
++    fy = function(t, x) 0.1 * sin(t),
++    Sx1 = function(t, x) matrix(0.5, 1, 1),
++    Sy2 = function(t, x) matrix(0.7, 1, 1),
++    k = 1L, l = 1L,
++    meta = list(ic_default = list(x0 = 0, y0 = 0.2))
++  )
++  tt <- seq(0, 0.3, by = 0.005)
++  obs <- observed_trajectory(tt, matrix(0.1 * sin(2 * tt), ncol = 1L))
++  init <- list(mean = 0.2, cov = matrix(0.4, 1, 1))
++  result <- aci(model, obs, init = init, keep = "paths")
++  calls <- 0L
++  refs <- c(0.15, 0.225, 0.3)
++  reused <- aci_range(result, direction = "backward", T = refs,
++                      method = "exact", min_M = 0)
++  expect_identical(calls, as.integer(length(tt)))
++
++  separate <- lapply(refs, function(Tv) {
++    keep <- tt <= Tv + 1e-12
++    table <- lag_table(
++      model,
++      observed_trajectory(tt[keep], obs$x[keep, , drop = FALSE]),
++      mode = "one_lag", init = init
++    )
++    aci_range(table, direction = "backward", method = "exact", min_M = 0)
++  })
++  expect_equal(reused$t, vapply(separate, `[[`, numeric(1L), "t"),
++               tolerance = 0)
++  expect_equal(reused$tau, vapply(separate, `[[`, numeric(1L), "tau"),
++               tolerance = 1e-12)
++  expect_equal(reused$M, vapply(separate, `[[`, numeric(1L), "M"),
++               tolerance = 1e-12)
++})
++
++
++test_that("backward CIR does not realise coefficients beyond requested prefixes", {
++  calls <- 0L
++  model <- aci_model(
++    Lx = function(t, x) {
++      calls <<- calls + 1L
++      if (t > 0.151 && t < 0.4) return(matrix(NaN, 1L, 1L))
++      matrix(0.6, 1L, 1L)
++    },
++    fx = function(t, x) -0.2 * x,
++    Ly = function(t, x) matrix(-0.7, 1L, 1L),
++    fy = function(t, x) 0,
++    Sx1 = function(t, x) matrix(0.5, 1L, 1L),
++    Sy2 = function(t, x) matrix(0.8, 1L, 1L),
++    k = 1L, l = 1L,
++    meta = list(ic_default = list(x0 = 0, y0 = 0))
++  )
++  tt <- seq(0, 0.3, by = 0.005)
++  obs <- observed_trajectory(tt, matrix(0.1 * sin(tt), ncol = 1L))
++  init <- list(mean = 0, cov = matrix(0.3, 1L, 1L))
++  calls <- 0L
++
++  got <- expect_no_error(aci_range(
++    model, direction = "backward", obs = obs, T = c(0.1, 0.15),
++    init = init, min_M = 0
++  ))
++  expect_equal(got$t, c(0.1, 0.15), tolerance = 0)
++  expect_identical(calls, 31L)
++  expect_error(
++    aci_range(model, direction = "backward", obs = obs, T = 0.2,
++              init = init, min_M = 0),
++    class = "aci_error_model_contract"
++  )
++})

@@ -1,0 +1,40 @@
+Package: acir
+Type: Package
+Title: Closed-Form Assimilative Causal Inference for Conditional
+    Gaussian Nonlinear Systems
+Version: 0.0.0.9000
+Authors@R: c(
+    person("Aidan", "Moller", role = c("aut", "cre"),
+           email = "aj.moller97@gmail.com",
+           comment = paste("Interim maintainer for the development branch;",
+                           "author roles, order and the maintainer field are",
+                           "under joint review")),
+    person("Max", "Moldovan", role = "aut",
+           comment = "Author; roles under joint review"),
+    person("Marios", "Andreou", role = "cph",
+           comment = paste("Author and copyright holder of the MIT-licensed",
+                           "reference MATLAB implementation 'ACI_code',",
+                           "against which this package is verified and from",
+                           "which parts of its numerical core derive; see",
+                           "inst/COPYRIGHTS")))
+Description: Causal inference as a Bayesian inverse problem via data
+    assimilation, restricted to the closed-form conditional-Gaussian
+    (CGNS) engine. Implements the assimilative causal inference (ACI)
+    metric, closed-form CGNS filtering and smoothing, the Theorem 3
+    lagged-divergence table with its online smoother, conditional ACI
+    masking, the forward causal influence range, and the benchmark models
+    of the reference MATLAB codebase. Based on Andreou, Chen & Bollt
+    (2026) <doi:10.1038/s41467-026-68568-0>, with the causal influence
+    range of Andreou & Chen (2026) <doi:10.48550/arXiv.2510.21889> and the
+    adaptive online smoother of Andreou, Chen & Li (2026)
+    <doi:10.1007/s00332-026-10271-x>.
+License: MIT + file LICENSE
+Depends: R (>= 4.0.0)
+Encoding: UTF-8
+Imports: stats, graphics, utils
+Suggests: testthat (>= 3.0.0), Matrix, knitr, rmarkdown
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+RoxygenNote: 7.3.3
+Roxygen: list(markdown = TRUE)
+NeedsCompilation: no
