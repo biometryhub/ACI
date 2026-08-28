@@ -47,7 +47,7 @@ index bedda37..6c8d851 100644
  importFrom(stats,rnorm)
  importFrom(stats,simulate)
 diff --git a/R/aci-assimilation.R b/R/aci-assimilation.R
-index 95c9813..207d302 100644
+index c065b4f..8f6ff77 100644
 --- a/R/aci-assimilation.R
 +++ b/R/aci-assimilation.R
 @@ -555,22 +555,6 @@ aci_online.cgns_model <- function(model, obs, lag, filter = NULL,
@@ -216,7 +216,7 @@ index 95c9813..207d302 100644
 +  yb + sqrt(delta2) * (members - yb)
 +}
 diff --git a/R/aci-core.R b/R/aci-core.R
-index 7ebd16f..06a81f6 100644
+index abe248c..06a81f6 100644
 --- a/R/aci-core.R
 +++ b/R/aci-core.R
 @@ -216,10 +216,10 @@ aci_metric <- function(p, q, decompose = TRUE) {
@@ -250,7 +250,7 @@ index 7ebd16f..06a81f6 100644
  #' @param regularize Covariance policy for this call; see [aci_filter()]. One
  #'   record covers the filter, the smoother and any table this call builds, and
  #'   is returned in `meta$regularization`.
-@@ -250,11 +258,12 @@ aci_metric <- function(p, q, decompose = TRUE) {
+@@ -250,21 +258,13 @@ aci_metric <- function(p, q, decompose = TRUE) {
  #' a
  #'
  #' @export
@@ -263,9 +263,19 @@ index 7ebd16f..06a81f6 100644
                  stepper = c("explicit", "implicit"), nsub = 1L,
 +                localization = NULL, inflation = 1, ic_sampler = NULL,
                  regularize = NULL, loglik = TRUE, ...) {
+-  ## R partial-matches `m =` to `model` before positional filling, so
+-  ## aci(mod, ob, m = 50) silently becomes model = 50, obs = mod. `m` is
+-  ## the ensemble size of the deferred ensemble engine, not an argument
+-  ## here; sys.call() still sees the literal name match.call() rewrites.
+-  if ("m" %in% names(sys.call()))
+-    aci_abort("aci_error_not_implemented", paste(
+-      "aci() has no argument m in this release; the ensemble engine and",
+-      "its ensemble size m are out of scope. R would partial-match m to",
+-      "model, silently shifting the other arguments."))
    dots <- list(...)
    stepper <- match.arg(stepper); keep <- match.arg(keep)
-@@ -266,9 +275,7 @@ aci <- function(model, obs, engine = c("auto", "cgns"),
+   policy <- .aci_regularize(regularize)
+@@ -275,9 +275,7 @@ aci <- function(model, obs, engine = c("auto", "cgns"),
    if (!inherits(model, "stochastic_model") || obs$k != model$k)
      aci_abort("aci_error_model_contract",
                "model must be a stochastic_model matching the observation dimension.")
@@ -276,7 +286,7 @@ index 7ebd16f..06a81f6 100644
    if (!is.null(table)) {
      if (length(dots))
        aci_abort("aci_error_dims", "Unused arguments were supplied with a reused lag table.")
-@@ -314,18 +321,40 @@ aci <- function(model, obs, engine = c("auto", "cgns"),
+@@ -323,18 +321,40 @@ aci <- function(model, obs, engine = c("auto", "cgns"),
      )
      smoo <- .cgns_smoother_compiled(bundle, filt, validate = FALSE,
                                      regularize = rec)
@@ -325,7 +335,7 @@ index 7ebd16f..06a81f6 100644
    structure(list(t = klp$t, aci = klp$total,
                   signal = if (decompose) klp$signal else NULL,
                   dispersion = if (decompose) klp$dispersion else NULL,
-@@ -335,7 +364,9 @@ aci <- function(model, obs, engine = c("auto", "cgns"),
+@@ -344,7 +364,9 @@ aci <- function(model, obs, engine = c("auto", "cgns"),
                                  conditional = conditional,
                                  init = actual_init),
                   meta = list(engine = engine, conditional = conditional,
@@ -336,7 +346,7 @@ index 7ebd16f..06a81f6 100644
                               table_reference = if (!is.null(tab))
                                 tab$meta$reference_smoother else NULL,
                               regularization = .aci_reg_freeze(rec))),
-@@ -959,6 +990,10 @@ aci_range.lag_table <- function(x, direction = c("forward", "backward"),
+@@ -968,6 +990,10 @@ aci_range.lag_table <- function(x, direction = c("forward", "backward"),
  aci_range.aci_result <- function(x, direction = c("forward", "backward"),
                                   ...) {
    .aci_range_direction(direction)
@@ -1865,7 +1875,7 @@ index 0000000..bfb6b71
 +  enkbs(filter$model %||% model, filter$path, filter$noise, localization = localization)
 +}
 diff --git a/R/aci-model-library.R b/R/aci-model-library.R
-index 574e722..ade535c 100644
+index 28809a1..6ee95f1 100644
 --- a/R/aci-model-library.R
 +++ b/R/aci-model-library.R
 @@ -70,10 +70,13 @@
@@ -1946,8 +1956,8 @@ index 574e722..ade535c 100644
    m
  }
  
-@@ -732,3 +767,106 @@ aci_predprey_model <- function(hidden = c("prey", "predator"),
-   m$meta$provenance <- "andreou2026aci SI.4.2; ACI_code noisy_predator_prey_model.m"
+@@ -738,3 +773,106 @@ aci_predprey_model <- function(hidden = c("prey", "predator"),
+   m$meta$matlab_simulator_parity <- TRUE
    m
  }
 +
@@ -2172,6 +2182,22 @@ index 0000000..1789fca
 +    .simps_u(re) * dt / max(re)
 +  }, numeric(1))
 +}
+diff --git a/tests/testthat/test-03-engine.R b/tests/testthat/test-03-engine.R
+index fc6e878..9b84488 100644
+--- a/tests/testthat/test-03-engine.R
++++ b/tests/testthat/test-03-engine.R
+@@ -96,11 +96,6 @@ test_that("retention alone never changes the headline backward-ODE ACI", {
+   expect_error(aci(m, s$obs, typo = TRUE), class = "aci_error_dims")
+   expect_error(aci(m, s$obs, table = at$table, typo = TRUE),
+                class = "aci_error_dims")
+-  # `m =` would partial-match `model` and silently shift every argument;
+-  # the guard names the deferred ensemble argument instead (the EnKBS
+-  # family restores it as a real argument).
+-  expect_error(aci(m, s$obs, m = 50), class = "aci_error_not_implemented")
+-  expect_error(aci(m, s$obs, m = 50), regexp = "partial-match")
+   expect_error(aci_range(at$table, typo = TRUE), class = "aci_error_dims")
+ })
+ 
 diff --git a/tests/testthat/test-06-ensemble.R b/tests/testthat/test-06-ensemble.R
 new file mode 100644
 index 0000000..e87521a

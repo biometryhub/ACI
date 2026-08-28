@@ -522,6 +522,9 @@
   L[N1] <- 0L
   list(
     diag = diagv, rows = rows, L = L, tailbnd = tailb,
+    ## Always NULL on the mainline: the reserved fbcir one-lag mode is the
+    ## field's producer (its lt_onelag() accessor reads it), so the slot
+    ## stays as the family's staging point. See dev/reserve/fbcir/.
     onelag = NULL, stop_index = NA_integer_
   )
 }

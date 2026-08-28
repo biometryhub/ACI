@@ -1,4 +1,4 @@
-# reserve/fbcir-paper — FBCIR-paper-backed, no MATLAB
+# reserve/fbcir-paper - FBCIR-paper-backed, no MATLAB
 
 **Currently empty.** No block excised from `aci` 0.0.30 for acir 0.1.0 is
 FBCIR-paper-backed *without* corresponding `FBCIR_code-main/` MATLAB. The one

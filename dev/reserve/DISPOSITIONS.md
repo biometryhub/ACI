@@ -1,4 +1,4 @@
-# DISPOSITIONS — the acir 0.1.0 audit ledger
+# DISPOSITIONS - the acir 0.1.0 audit ledger
 
 One line per item: `item | origin (file:lines) | category | action | why | evidence ref`.
 
@@ -24,7 +24,7 @@ closed several of their rows, and each such row says so inline.
 
 ---
 
-## 1. Mainline — R sources
+## 1. Mainline - R sources
 
 | item | origin | category | action | why | evidence |
 |---|---|---|---|---|---|
@@ -42,7 +42,7 @@ closed several of their rows, and each such row says so inline.
 | `R/plots.R` (73) | `aci/R/formula_interface.R:613-674` | ACI_code | mainline | three engine `plot` methods were stranded in an excluded file; moved verbatim rather than lost | SEP §6.2, cut 7 |
 | `R/acir-package.R` (47) | `aci/R/aci-package.R` (54) | ACI_code | mainline | layer map rewritten, imports narrowed; comment-only | SEP §7 cut 9 |
 
-## 2. Mainline — package metadata, docs, tests, assets
+## 2. Mainline - package metadata, docs, tests, assets
 
 | item | origin | category | action | why | evidence |
 |---|---|---|---|---|---|
@@ -56,7 +56,7 @@ closed several of their rows, and each such row says so inline.
 | `benchmarks/` (5 entries) | `aci/benchmarks/` | ACI_code | mainline (dev asset, `.Rbuildignore`d) | `scalar-dyad.R` benchmarks the `model_dyad` scalar path; copied unadjusted, so it still calls `aci::` and will not run against `acir` unretargeted | SCO C, MIG, VER §RESIDUALS 8 |
 | vignettes | `aci/vignettes/` (2) | ACI_code / X | **not migrated** | vignette-1 is built on the excluded `aci_fit()` front-end; vignette-2 is mixed and needs a rewrite. `VignetteBuilder` omitted, `knitr`/`rmarkdown` dropped from Suggests | SCO C, PLAN 3.6 |
 
-## 3. Reserved — `reserve/fbcir/` (FBCIR_code, `andreou2026cir`; release 0.2.0 or 0.3.0)
+## 3. Reserved - `reserve/fbcir/` (FBCIR_code, `andreou2026cir`; release 0.2.0 or 0.3.0)
 
 | item | origin | category | action | why | evidence |
 |---|---|---|---|---|---|
@@ -77,7 +77,7 @@ closed several of their rows, and each such row says so inline.
 | `FBCIR-MULTISCALE.md`, `generate_fbcir_multiscale_oracles.m` | `tests/testthat/fixtures/oracles/` | fbcir | reserved-to-fbcir | referenced by no test and no R file; the generator needs MATLAB and has never been run | SCO B2 |
 | `fbcir.patch` | generated | fbcir | reserved-to-fbcir | applies cleanly to `main`; installs; passes. Regenerated since: the shipped patch is 1031 lines at **pass 6397 / fail 0 / error 0**, logged in `reserve/fbcir/NOTES.md` | `reserve/fbcir/NOTES.md` |
 
-## 4. Reserved — `reserve/enkbs/` (EnKBS_code, `jiang2026enkbs`; release 0.2.0 or 0.3.0)
+## 4. Reserved - `reserve/enkbs/` (EnKBS_code, `jiang2026enkbs`; release 0.2.0 or 0.3.0)
 
 | item | origin | category | action | why | evidence |
 |---|---|---|---|---|---|
@@ -97,7 +97,7 @@ closed several of their rows, and each such row says so inline.
 | `test-11-model-parity.R:21-155` | mixed blocks | enkbs (cross-family) | reserved-to-enkbs | same; tipping-triad (F), pathways/topographic (P), L84 (E/F), L96 (E) | SCO B1(c) |
 | `enkbs.patch` | generated | enkbs | reserved-to-enkbs | applies cleanly to `main`; installs; passes; two test blocks left commented with their cross-category dependency named. Regenerated since: the shipped patch is 2610 lines at **pass 6483 / fail 0 / error 0**, logged in `reserve/enkbs/NOTES.md` | `reserve/enkbs/NOTES.md` |
 
-## 5. Reserved — `reserve/aci-paper/` (ACI-adjacent papers, no ACI_code MATLAB)
+## 5. Reserved - `reserve/aci-paper/` (ACI-adjacent papers, no ACI_code MATLAB)
 
 | item | origin | category | action | why | evidence |
 |---|---|---|---|---|---|
@@ -106,7 +106,7 @@ closed several of their rows, and each such row says so inline.
 | `test-03-engine.R:353-378` | block | aci-paper | reserved-to-aci-paper | tests the contraction certificate | SCO B1(c) |
 | `test-02-models.R:79-87` cfy22 arm, `test-11-model-parity.R:223-226` | blocks | aci-paper | reserved-to-aci-paper | cfy22 construction and initial conditions | SCO B1(c) |
 
-## 6. Reserved — `reserve/paper-extremes/` (`moser2026extremes`, no MATLAB)
+## 6. Reserved - `reserve/paper-extremes/` (`moser2026extremes`, no MATLAB)
 
 | item | origin | category | action | why | evidence |
 |---|---|---|---|---|---|
@@ -116,7 +116,7 @@ closed several of their rows, and each such row says so inline.
 | `model_dyad(variant = "p4")` | `benchmark_models.R:94,145,157` | paper-extremes | reserved-to-enkbs (pointer) | inseparable arm; carrier body filed once under enkbs | SCO A5 |
 | `test-07-extremes.R` | whole file | paper-extremes | reserved-to-paper-extremes | family test surface | SCO B1(b) |
 
-## 7. Reserved / dropped — `reserve/extensions/` (package-only, no paper, no MATLAB)
+## 7. Reserved / dropped - `reserve/extensions/` (package-only, no paper, no MATLAB)
 
 | item | origin | category | action | why | evidence |
 |---|---|---|---|---|---|
@@ -125,8 +125,8 @@ closed several of their rows, and each such row says so inline.
 | `R/validation_diagnostics.R` (763) | whole file | extensions | reserved-to-extensions | validation suite; package-only infrastructure | SCO B1(c) |
 | `test-09-interface.R`, `test-12-extensions.R` | whole files | extensions | reserved-to-extensions | their test surface | SCO B1(b),(c) |
 | `model_dyad(observe = "y")` | `benchmark_models.R:127-135` | extensions | reserved-to-enkbs (pointer) | `aci` labels it "package extension … not a supplied paper/MATLAB inference benchmark" (`:148-150`); inseparable arm | SCO A5 |
-| `kl_increment` | `causal_metrics.R:112-131` | extensions | **dropped (DEAD)** | zero callers in `R/`, `tests/` or `vignettes/` at 0.0.30 — only its own definition and its `.Rd`. Text kept in `extensions/code/` for the audit trail only | SEP §5(c), obs. 1; PLAN C.2 |
-| `cir_table` | `causal_metrics.R:1041-1162` | extensions | **dropped** | self-disclaimed in the object it returns (`:1154-1157`): "outside the supplied papers and MATLAB reference code" — the package's own evidence against a fidelity-scoped 0.1.0 | SEP §5(c), obs. 5 |
+| `kl_increment` | `causal_metrics.R:112-131` | extensions | **dropped (DEAD)** | zero callers in `R/`, `tests/` or `vignettes/` at 0.0.30 - only its own definition and its `.Rd`. Text kept in `extensions/code/` for the audit trail only | SEP §5(c), obs. 1; PLAN C.2 |
+| `cir_table` | `causal_metrics.R:1041-1162` | extensions | **dropped** | self-disclaimed in the object it returns (`:1154-1157`): "outside the supplied papers and MATLAB reference code" - the package's own evidence against a fidelity-scoped 0.1.0 | SEP §5(c), obs. 5 |
 | `empirical_kl` | `causal_metrics.R:250-287` | extensions | **dropped (stub)** | its `estimator = "knn"` is an explicit not-implemented stub (`:270-271`, "v0.2 stub (SPEC-02)"); no in-package consumer; ensemble-flavoured condition class | SEP §5(c), obs. 4 |
 | `truncation_profile` | `assimilation.R:585-610` | extensions | **dropped (no callers)** | zero callers in `aci/R/` and zero in `aci/tests/`; can return with adaptive-lag work | SEP §5(c), obs. 2 |
 | `projected_kl` | `causal_metrics.R:210-247` | extensions | **dropped** | only in-package consumer is the excluded extremes family (`extremes.R:498,503,518,581`); effectively an extremes export sitting in an engine file. Filed here with its test, filed by origin like everything else; **it is a hard dependency of `paper-extremes/code/extremes.R`** and must return with that family | SEP §5(c), SCO B1(c) |
@@ -143,10 +143,10 @@ with `aci` 0.0.30.
 |---|---|---|---|---|---|
 | `.calc_tau`'s `direction` switch | `causal_metrics.R:509-515` | ACI_code | mainline (dead arm kept) | two dead lines; SEP marks them harmless and touching them could only add risk | SEP §3.2 |
 | `new_cir_result`'s `bound` ternary | `causal_metrics.R:613-615` | ACI_code | mainline (dead arm kept) | same | SEP §3.3 |
-| `lt_row`'s "mode = 'one_lag'" error string | `acir/R/assimilation.R:518` | ACI_code | mainline (stale string kept) | branch now unreachable; verbatim by construction, editorial cleanup for a later pass | VER §RESIDUALS 4 |
-| `lag_table$onelag` field, always `NULL` | `assimilation.R` | ACI_code | mainline (dead field kept) | identical to `aci`'s behaviour for `forward`/`full`, so faithful | VER §RESIDUALS 5 |
+| `lt_row`'s "mode = 'one_lag'" error string | `acir/R/assimilation.R:518` | ACI_code | mainline (fixed, session 16) | parenthetical dropped, guard kept: "Table has no stored rows." is accurate in both mainline and family contexts | VER §RESIDUALS 4 |
+| `lag_table$onelag` field, always `NULL` | `assimilation.R` | ACI_code | mainline (kept, by finding) | session 16 established it is the fbcir re-entry point (the family's one-lag mode produces it, `lt_onelag()` reads it); a removal broke the applied family patch and was reverted, the field now carries a comment naming the staging role | VER §RESIDUALS 5 |
 | `aci_references` six-key `\describe` list | `api_documentation.R` | ACI_code | mainline (kept verbatim) | its keys are still used in retained source comments and error strings (`jiang2026enkbs` at `model_classes.R:138`, `chen2022enso` in `benchmark_models.R`); re-scoping is an editorial call, not an enumerated cut. **Flagged for author decision** | MIG deviation 10 |
-| `aci(mod, ob, m = 50)` message quality | `causal_metrics.R` | ACI_code | mainline (not fixed) | positional `m` now partial-matches `model`; fixing it means adding an argument, i.e. scope creep. Cosmetic, ensemble-only argument | VER §RESIDUALS 3 |
+| `aci(mod, ob, m = 50)` message quality | `causal_metrics.R` | ACI_code | mainline (fixed, session 16) | staged-absence guard on the literal name `m` via `sys.call()`, `aci_error_not_implemented`, no argument added; the EnKBS family removes the guard when it restores `m` | VER §RESIDUALS 3 |
 | `meta$source_model` closure environments | all constructors | ACI_code | mainline (structural) | closure bodies identical, `environment()` differs `namespace:aci` vs `namespace:acir`; unavoidable, non-numerical | VER §3 supplementary |
 
 ## 9. Decision defaults in force (PLAN Revision 3, section E)

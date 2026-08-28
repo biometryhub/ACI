@@ -1,4 +1,4 @@
-# reserve/enkbs-paper — EnKBS-paper-backed, no MATLAB
+# reserve/enkbs-paper - EnKBS-paper-backed, no MATLAB
 
 **Currently empty.** Every EnKBS-family block excised for acir 0.1.0 has
 `EnKBS-main/` MATLAB behind it and is filed in `reserve/enkbs/`. The one

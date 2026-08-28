@@ -256,6 +256,15 @@ aci <- function(model, obs, engine = c("auto", "cgns"),
                 init = NULL,
                 stepper = c("explicit", "implicit"), nsub = 1L,
                 regularize = NULL, loglik = TRUE, ...) {
+  ## R partial-matches `m =` to `model` before positional filling, so
+  ## aci(mod, ob, m = 50) silently becomes model = 50, obs = mod. `m` is
+  ## the ensemble size of the deferred ensemble engine, not an argument
+  ## here; sys.call() still sees the literal name match.call() rewrites.
+  if ("m" %in% names(sys.call()))
+    aci_abort("aci_error_not_implemented", paste(
+      "aci() has no argument m in this release; the ensemble engine and",
+      "its ensemble size m are out of scope. R would partial-match m to",
+      "model, silently shifting the other arguments."))
   dots <- list(...)
   stepper <- match.arg(stepper); keep <- match.arg(keep)
   policy <- .aci_regularize(regularize)

@@ -1,4 +1,4 @@
-# reserve/enkbs — verification status and regeneration rule
+# reserve/enkbs - verification status and regeneration rule
 
 Family: `EnKBS-main/`, paper `jiang2026enkbs`. Everything here was excised
 from `aci` 0.0.30 (git tree `97f6b124`) when acir 0.1.0 was cut.
@@ -7,7 +7,8 @@ from `aci` 0.0.30 (git tree `97f6b124`) when acir 0.1.0 was cut.
 
 | regenerated | against `main` | branch tip | patch |
 |---|---|---|---|
-| 2026-08-28, current, post-file-and-argument rename | `c7b8720` | `9698d39` | 2610 lines |
+| 2026-08-28, session 16, current | session-16 update | `0268fe2` | 2636 lines |
+| 2026-08-28, post-file-and-argument rename | `c7b8720` | `9698d39` | 2610 lines |
 | 2026-08-28, post-surface-rename | `3db97dd` | `0b8da79` | 2610 lines |
 | 2026-08-28, pre-rename | `bded686` | `b67532e` | 2620 lines |
 | at the 0.1.0 extraction | `8fba4bc` | `6d1b5a7` | 2625 lines |
@@ -31,6 +32,13 @@ fails on context lines, which invites forcing, while a file rename fails on the
 header and leaves nothing to force. Branch tips are recorded so the branches
 are recreatable; the branches themselves are deleted after verification, and
 the patch reconstructs them exactly.
+
+**Two session-16 mainline changes killed the c7b8720 patch** (both land in
+this branch's single session-16 update commit). Measured with
+`git apply --check` against the session-16 tree before regenerating: the
+predator-prey metadata change moved the `aci-model-library.R` context, and
+the staged-absence guard moved the top of `aci()` in `aci-core.R`. The regeneration also adds adaptation E (below):
+the family deletes that guard, whose whole purpose is this family's absence.
 
 ## What `enkbs.patch` restores
 
@@ -63,7 +71,7 @@ deleting an assertion.
    `aci_error_not_implemented` on every result, ensemble or not, so restoring
    the line on this branch alone would assert nothing about the ensemble
    engine while appearing to pass.
-2. `test-06-ensemble.R`'s last two blocks — `nil_causality_check` and
+2. `test-06-ensemble.R`'s last two blocks - `nil_causality_check` and
    `nil_surrogate_test`. These are `validation_diagnostics.R`, i.e.
    package-only **extensions**, not EnKBS science; restoring them inside an
    EnKBS patch would cross the filing categories. Commented out with the
@@ -89,9 +97,9 @@ as a load error.
 `nontarget(`→`aci_conditional(` 2, `gaussian_kl_path`→`aci_metric` 1,
 `gaussian_kl`→`aci_metric_pair` 1,
 `cgns_from_affine`→`aci_model_from_affine` 1. The rules' `(?<![\w.])` guard
-means the compiled internals that kept their names —
+means the compiled internals that kept their names -
 `.gaussian_kl_path_compiled`, `.forward_cir_compiled`,
-`.da_filter_authenticated` — are never touched, and the quoted class label
+`.da_filter_authenticated` - are never touched, and the quoted class label
 `"cgns_model"` survives every occurrence.
 
 **2. The file-name map**, applied to the patch's target paths and to any
@@ -131,7 +139,7 @@ each one is marked at its point of change during re-application.
   `R/aci-ensemble.R` and `R/aci-discovery.R`. **This is a judgement call, not
   a mechanical map**: the mainline file rename covered only files that already
   existed, and these two do not. It is safe for the reason the mainline rename
-  recorded — `DESCRIPTION` has no `Collate` field, no source carries
+  recorded - `DESCRIPTION` has no `Collate` field, no source carries
   `@include`, and the package defines no S4 class or load-time cross-file
   dependency, so `R/` load order does not matter. The file **contents** are
   untouched by this choice.
@@ -162,7 +170,7 @@ Three adaptations from earlier regenerations are kept as they were:
 
 1. **The reserve is read from outside the package tree.**
 2. **The ensemble arm is spliced into the current `aci()`, not swapped in.**
-   Seven targeted edits — the roxygen model/engine line, the five ensemble
+   Seven targeted edits - the roxygen model/engine line, the five ensemble
    `@param` blocks, the signature, the `engine = "auto"` resolution, the
    ensemble arm plus the engine-conditional metric path, the
    engine-conditional lag table and recorded init, and `meta$m` with the
@@ -177,28 +185,46 @@ Three adaptations from earlier regenerations are kept as they were:
 
 **`aci_dyad_model` was checked, not assumed.** The reserve copy
 (`code/model_dyad_p3_p4_and_observe_y.R`) is a strict superset of the current
-mainline body — it already carries the locked coefficient environment,
-`.attach_cgns_realizer` and `source_status` — so the wholesale body swap loses
+mainline body - it already carries the locked coefficient environment,
+`.attach_cgns_realizer` and `source_status` - so the wholesale body swap loses
 nothing. Note that this makes the file's own "Verbatim excision ... not
 modified" header inaccurate: it carries post-0.0.30 material. Re-application
 guards the swap with a four-symbol check that aborts rather than writing if a
 future reserve copy falls behind the mainline.
 
+**S16 ADAPTATION E.** The session-16 mainline guards
+`aci()` against a literal `m =` in the call: on the mainline, `m`
+partial-matches `model` and silently shifts every argument, so the guard
+raises `aci_error_not_implemented` naming this family's deferred
+ensemble-size argument. This family restores `m` as a real argument, so
+re-application deletes the guard and its two `test-03` liveness assertions -
+staged-absence scaffolding of exactly the same class as the out-of-scope
+engine error the family replaces.
+
 ## Verification status
 
-- **Applies:** `git apply --check reserve/enkbs/enkbs.patch` on a clean `main`
-  (`c7b8720`) — clean.
+- **Applies:** `git apply --check --directory=acir dev/reserve/enkbs/enkbs.patch`
+  from the ACI-project root, against the session-16 update -
+  clean.
 - **Installs:** `R CMD INSTALL` into a separate preview library:
   `* DONE (acir)`, no warnings.
-- **Tests:** `testthat::test_dir()` on branch `preview/enkbs` —
-  **pass = 6483, fail = 0, error = 0, warning = 0, skip = 1** (the same
-  `ACI_ORACLE_PARITY_ROOT` skip). Mainline `main` is pass = 6236, so the patch
-  reinstates **247 assertions**. Run in isolation, `test-06-ensemble.R`,
-  `test-08-discovery.R` and `test-14-golden-enkbs.R` with `helper-golden-p3.R`
-  give **247 / 0 / 0 / 0** — the whole delta, G3 and G4 included. Both figures
-  are identical to the previous regeneration's, so the file and argument
-  renames cost the family nothing.
-- **Evidence grade — mixed, and this is the important line.**
+- **Tests (session 16; mainline suite is 6410 / 0 / 0 / 1):** run in
+  isolation, `test-06-ensemble.R`, `test-08-discovery.R` and
+  `test-14-golden-enkbs.R` with `helper-golden-p3.R` give **247 / 0 / 0 / 0**,
+  the whole family delta, G3 and G4 included - identical to every previous
+  regeneration, so the session-16 mainline changes cost the family nothing.
+  The full suite on branch `preview/enkbs` reads **6648 pass, 3 fail, 1
+  error, 1 skip** (the same `ACI_ORACLE_PARITY_ROOT` skip). All four deltas
+  are mainline evidence gates shipped after the previous regeneration,
+  asserting the mainline state this patch legitimately changes:
+  `test-30-evidence-register.R:96` and `test-31-gate-liveness.R:80/:82`
+  (register coverage - the patch adds exports `gaspari_cohn`,
+  `constrained_mle`, `stochastic_model`, `ensemble_lag_table`, `as_gaussian`
+  with no register rows yet) and `test-31-gate-liveness.R:191` (the mainline's
+  non-CGNS refusal, which the ensemble engine exists to lift). Integrating
+  the family closes all four by adding the register rows and updating those
+  gate tests; they are recorded here, not worked around.
+- **Evidence grade - mixed, and this is the important line.**
   - `test-14-golden-enkbs.R` (G3/G4) is a genuine **golden grade against the
     published EnKBS dyad experiment**: `helper-golden-p3.R` is a faithful R
     port of `EnKBS-main/dyad/utov.m`, and G3/G4 grade EnKBF, EnKBS and the
@@ -214,7 +240,7 @@ future reserve copy falls behind the mainline.
 
 ## Stacking with fbcir.patch
 
-They do not stack — re-measured on `c7b8720`, in both orders. Each applies
+They do not stack - re-measured on the session-16 update, in both orders. Each applies
 cleanly to a clean `main`; neither applies on top of the other:
 
 | order | plain `git apply --check` refuses on | `--3way --check` conflicts on |
@@ -236,7 +262,7 @@ rule this has settled into:
 
 **Regenerate both patches after the last commit that touches the package
 surface, immediately before any push. `git apply --check` against the current
-`main` is the only test of a patch's validity — a patch that was clean last
+`main` is the only test of a patch's validity - a patch that was clean last
 week is evidence of nothing.**
 
 Regeneration is maintainer-side work; the patch in this directory is the
@@ -288,7 +314,7 @@ whole-body swap, guarded but not anchored, so diff the reserve copy against
 the mainline body before trusting it. **A rename is a third failure mode**,
 invisible to both: an anchor can still match while the body it inserts calls a
 name the mainline no longer exports. **And a file rename is a fourth**, which
-is louder than all of them — the patch does not apply at all, because its
+is louder than all of them - the patch does not apply at all, because its
 headers name files that are gone. The counted maps above exist so that the
 third class shows up as a number and the fourth as a mapped path, not as a
 load error or a dead patch.

@@ -96,6 +96,11 @@ test_that("retention alone never changes the headline backward-ODE ACI", {
   expect_error(aci(m, s$obs, typo = TRUE), class = "aci_error_dims")
   expect_error(aci(m, s$obs, table = at$table, typo = TRUE),
                class = "aci_error_dims")
+  # `m =` would partial-match `model` and silently shift every argument;
+  # the guard names the deferred ensemble argument instead (the EnKBS
+  # family restores it as a real argument).
+  expect_error(aci(m, s$obs, m = 50), class = "aci_error_not_implemented")
+  expect_error(aci(m, s$obs, m = 50), regexp = "partial-match")
   expect_error(aci_range(at$table, typo = TRUE), class = "aci_error_dims")
 })
 

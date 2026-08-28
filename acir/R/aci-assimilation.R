@@ -805,7 +805,7 @@ lt_row <- function(x, j, pad = c("zero", "na")) {
   if (!inherits(x, "lag_table"))
     aci_abort("aci_error_dims", "x must be a lag_table.")
   pad <- match.arg(pad)
-  if (is.null(x$rows)) aci_abort("aci_error_dims", "Table has no stored rows (mode = 'one_lag').")
+  if (is.null(x$rows)) aci_abort("aci_error_dims", "Table has no stored rows.")
   if (length(j) != 1L || !is.numeric(j) || !is.finite(j) ||
       j != as.integer(j) || j < 1L || j > length(x$t))
     aci_abort("aci_error_dims", "j must be one valid integer row index.")

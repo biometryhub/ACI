@@ -9,6 +9,16 @@ test_that("benchmark dyad default initial condition matches the MATLAB source", 
                class = "aci_error_model_contract")
 })
 
+test_that("predator-prey metadata records its source grade and scheme parity", {
+  for (hid in c("prey", "predator")) {
+    m <- aci_predprey_model(hidden = hid)
+    expect_equal(m$meta$source_status, "paper + MATLAB checked")
+    expect_true(m$meta$matlab_simulator_parity)
+    expect_match(m$meta$simulation_convention, "Euler-Maruyama")
+    expect_match(m$meta$simulation_convention, "no pathwise parity")
+  }
+})
+
 test_that("ENSO aci_code fixed-state coefficients match the MATLAB equations", {
   t <- 0.8
   state <- c(u = 0.2, hW = -0.1, TC = 0.3, TE = -0.2, tau = 0.4, I = 1.7)

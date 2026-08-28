@@ -730,5 +730,11 @@ aci_predprey_model <- function(hidden = c("prey", "predator"),
     list(observed = "predator", hidden = "prey") else
     list(observed = "prey", hidden = "predator")
   m$meta$provenance <- "andreou2026aci SI.4.2; ACI_code noisy_predator_prey_model.m"
+  m$meta$source_status <- "paper + MATLAB checked"
+  m$meta$simulation_convention <- paste(
+    "simulate() uses Euler-Maruyama, as noisy_predator_prey_model.m does;",
+    "scheme agreement only, the RNG streams differ, and no pathwise parity",
+    "is claimed.")
+  m$meta$matlab_simulator_parity <- TRUE
   m
 }

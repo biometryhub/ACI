@@ -1,4 +1,4 @@
-# reserve/fbcir — verification status and regeneration rule
+# reserve/fbcir - verification status and regeneration rule
 
 Family: `FBCIR_code-main/`, paper `andreou2026cir`. Everything here was
 excised from `aci` 0.0.30 (git tree `97f6b124`) when acir 0.1.0 was cut.
@@ -162,7 +162,7 @@ each one is marked at its point of change during re-application.
    `"backward_cir over >20 reference times ..."` and now says
    `"A backward range over >20 reference times ..."`. The internal recursive
    call `backward_cir(tb, ...)` becomes a direct
-   `.aci_range_backward_table(tb, ...)` — the family's own S3 dispatch is not
+   `.aci_range_backward_table(tb, ...)` - the family's own S3 dispatch is not
    preserved as an internal generic, because with exactly two reducers and a
    known argument class it bought nothing and would have needed its own
    registration. The reducers' `@param` documentation is condensed into
@@ -173,13 +173,13 @@ each one is marked at its point of change during re-application.
    `@describeIn` method. Its body is the reserve's. One behaviour is new:
    `aci_range(model, direction = "forward", ...)` raises
    `aci_error_not_implemented` naming the lag-table and result routes, where
-   aci 0.0.30 gave R's "no applicable method" — there was no
+   aci 0.0.30 gave R's "no applicable method" - there was no
    `forward_cir.cgns_model` there to dispatch to. **`cir_pair()`** keeps its
    name and body; only its two range calls move to the `aci_range` spelling,
    and the `structure()` call is re-wrapped over three lines to stay inside 80
    columns.
 6. **Every `backward_cir(...)` call site in the reserve test blocks** becomes
-   an `aci_range(..., direction = "backward")` call site — 12 in
+   an `aci_range(..., direction = "backward")` call site - 12 in
    `tests/test-04-backward-cir.R`, 4 in `tests/test-20-backward-cir.R`. They
    are written out in full, with the continuation lines realigned, rather than
    regex-substituted, so the re-wrapping is visible at the point of change.
@@ -214,20 +214,44 @@ replaying aci 0.0.30's seed-11 draw order; and the terminal +M cell
 expectation stays at `0.4 * dt` with the closed-form assertion at
 `tolerance = 0`.
 
+## Session 16: verified without regeneration
+
+The session-16 mainline changes (this branch's single update commit) left
+every fbcir hunk
+applying cleanly, so the patch bytes are unchanged since the `c7b8720`
+regeneration. One of those commits is this family's own story: a residual
+sweep briefly removed the always-NULL `lag_table$onelag` field, the patch
+still applied cleanly, and its one-lag mode then died at run time - the field
+is this family's re-entry point (its one-lag mode produces it, `lt_onelag()`
+reads it), and the constructor line carrying it is mainline context the patch
+never re-adds. The update restored the field with a comment naming the
+staging role. Install+test is the only real verification of a patch;
+apply-check alone proved nothing here.
+
 ## Verification status
 
-- **Applies:** `git apply --check reserve/fbcir/fbcir.patch` on a clean `main`
-  (`c7b8720`) — clean.
+- **Applies:** `git apply --check --directory=acir dev/reserve/fbcir/fbcir.patch`
+  from the ACI-project root, against the session-16 update -
+  clean.
 - **Installs:** `R CMD INSTALL` into a separate preview library:
   `* DONE (acir)`, no warnings.
-- **Tests:** `testthat::test_dir()` on branch `preview/fbcir` —
-  **pass = 6397, fail = 0, error = 0, warning = 0, skip = 1**. The skip is the
-  optional external MATLAB oracle tree gated on `ACI_ORACLE_PARITY_ROOT`.
-  Mainline `main` is pass = 6236, so the patch reinstates **161 assertions**,
-  in `test-03`, `test-04`, `test-05`, `test-18` and `test-20`. Those five
-  files run in isolation give **537 / 0 / 0 / 0**. Both figures are identical
-  to the previous regeneration's, so the file and argument renames cost the
-  family nothing.
+- **Tests (session 16; mainline suite is 6410 / 0 / 0 / 1):** the five family
+  files (`test-03`, `test-04`, `test-05`, `test-18`, `test-20`) run in
+  isolation give **539 / 0 / 0 / 0** - the 537 family assertions of every
+  previous regeneration plus two session-16 mainline additions that live in
+  `test-03`. The full suite on branch `preview/fbcir` reads **6562 pass,
+  3 fail, 1 error, 1 skip** (the optional `ACI_ORACLE_PARITY_ROOT` skip).
+  All four deltas are mainline evidence gates shipped after the last
+  regeneration, asserting the mainline state this patch legitimately
+  changes: `test-30-evidence-register.R:96` and
+  `test-31-gate-liveness.R:80/:82` (register coverage - the patch adds
+  exports `cir_pair` and `lt_onelag` with no register rows yet) and
+  `test-31-gate-liveness.R:209` (the staged-absence refusal of
+  `aci_range(direction = "backward")`, which this family exists to remove;
+  that error aborts its test block, so a handful of the block's later
+  assertions do not run). Integrating the family closes all four by adding
+  the register rows and updating the two gate tests; recorded here, not
+  worked around.
 - **Evidence grade of what is restored: behavioural and analytic only.** The
   backward-CIR tests are identity checks (`.bwd_lengths` against a brute-force
   layer-cake grid, the terminal-sentinel convention, the two quadrature
@@ -245,7 +269,7 @@ expectation stays at `0.4 * dt` with the closed-form assertion at
 ## Stacking with enkbs.patch
 
 `fbcir.patch` and `enkbs.patch` each apply cleanly to a clean `main`, but
-**they do not stack** — re-measured on `c7b8720`, in both orders:
+**they do not stack** - re-measured on the session-16 update, in both orders:
 
 | order | plain `git apply --check` refuses on | `--3way --check` conflicts on |
 |---|---|---|
@@ -273,7 +297,7 @@ rule this has settled into:
 
 **Regenerate both patches after the last commit that touches the package
 surface, immediately before any push. `git apply --check` against the current
-`main` is the only test of a patch's validity — a patch that was clean last
+`main` is the only test of a patch's validity - a patch that was clean last
 week is evidence of nothing.**
 
 Regeneration is maintainer-side work; the patch in this directory is the
@@ -325,7 +349,7 @@ tree those copies were no-ops, and on any later tree they silently revert
 mainline work. Three such places were found and converted to in-place edits.
 **A rename is a third failure mode**, invisible to both: an anchor can still
 match while the body it inserts calls a name the mainline no longer exports.
-**And a file rename is a fourth**, which is louder than all of them — the
+**And a file rename is a fourth**, which is louder than all of them - the
 patch does not apply at all, because its headers name files that are gone.
 The counted maps above exist so that the third class shows up as a number and
 the fourth as a mapped path, not as a load error or a dead patch.

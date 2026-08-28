@@ -42,6 +42,8 @@ aci_dyad_model()$meta$source_status
 aci_enso_model(hidden = "tau")$meta$source_partition
 aci_enso_model(hidden = "tau")$meta$matlab_simulator_parity
 aci_predprey_model(hidden = "prey")$meta$provenance
+aci_predprey_model(hidden = "prey")$meta$source_status
+aci_predprey_model(hidden = "prey")$meta$matlab_simulator_parity
 ```
 
 `matlab_simulator_parity = FALSE` on the ENSO family is a deliberate, recorded
@@ -84,11 +86,14 @@ different metrics, on two different hidden states, along two different paths;
 reading one against the other would be reading a direction off an accident of
 scaling. Compare each against its own decoupled behaviour instead.
 
-Note also what the metadata does **not** carry here: `aci_predprey_model()`
-records `provenance` but no `source_status` and no `matlab_simulator_parity`
-field, so the correspondence for this model is asserted at the level of the
-source file only, and neither the coefficients nor the simulator carry a
-recorded grade. Read it as the least-checked of the three constructors.
+Note what the metadata carries here: `aci_predprey_model()` records
+`source_status = "paper + MATLAB checked"` (its coefficients are graded
+against the authors' source in the oracle suite), and
+`matlab_simulator_parity = TRUE` records that `simulate()` and
+`noisy_predator_prey_model.m` use the same Euler-Maruyama scheme. The
+`simulation_convention` field states the limit of that claim: scheme
+agreement only, since the RNG streams differ, and no pathwise parity is
+claimed.
 
 
 ## 2. The one partition that is an approximation, and says so

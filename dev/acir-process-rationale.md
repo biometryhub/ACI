@@ -1936,22 +1936,28 @@ migrated, reserved or dropped.
 
 ### 7.3 The patch mechanism, and what it does and does not deliver
 
-`fbcir.patch` (1031 lines) and `enkbs.patch` (2610 lines) were regenerated
-against the renamed tree at HEAD `3db97dd`, and both apply cleanly to a clean
-mainline, install and pass. In isolation the FBCIR family
-tests give 537 pass / 0 fail and the EnKBS family 247 / 0, the golden dyad
-grading included; on their preview branches the full suite reads
-6397 / 0 / 0 / 1 and 6483 / 0 / 0 / 1, which is +161 and +247 assertions over
-the mainline's 6236. Non-stacking was re-verified on this tree rather than
-carried over. The backward direction is no longer a verb of its own: it
-re-enters as `aci_range(direction = "backward")`.
+`fbcir.patch` (1031 lines, regenerated against `c7b8720`) and `enkbs.patch`
+(2636 lines, regenerated against the session-16 update tree) both apply
+cleanly to a clean mainline (`git apply --check --directory=acir` from the
+ACI-project root, verified at that update), install, and pass their family
+isolation suites: FBCIR 539 pass / 0 fail (537 family assertions plus two
+session-16 mainline additions living in the same files) and EnKBS 247 / 0,
+the golden dyad grading included. On their preview branches the full suite
+reads 6562 / 3 / 1 / 1 and 6648 / 3 / 1 / 1 against the mainline's 6410;
+every delta is a mainline evidence gate shipped after the previous
+regeneration (register-coverage rows for the exports a family adds, and the
+staged-absence refusals a family exists to remove), named test by test in the
+family NOTES and closed at integration time by register rows and gate-test
+updates. Non-stacking was re-verified on this tree rather than carried over.
+The backward direction is no longer a verb of its own: it re-enters as
+`aci_range(direction = "backward")`.
 
 Three caveats are on the record rather than discovered later:
 
-1. **The patches do not stack.** Each applies cleanly on its own; both edit the
-   same four files and overlapping tests, and applying the second after the
-   first is refused, plain and three-way. A manual merge is required when both
-   families return.
+1. **The patches do not stack.** Each applies cleanly on its own; both edit
+   `NAMESPACE` and `R/aci-core.R`, and applying the second after the first is
+   refused on those two files, plain and three-way. A manual merge is required
+   when both families return.
 2. **Patches rot as the mainline evolves.** Each release regenerates them. That
    is a stated release-checklist step, and it is the practical form of the
    architectural-fit guardrail: either keep the engine surface they touch

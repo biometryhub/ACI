@@ -30,6 +30,12 @@
 #
 # Both manifests are parsed by one reader, tests/testthat/helper-oracle-
 # manifest.R; test-19 asserts that reader sees every entry of both.
+#
+# The same applies to every `location:` value and every inline test file
+# name below: they are aciR paths, preserved as written. `test-cir.R`,
+# `test-identities.R` and `test-online-smoother.R` do not exist here;
+# inst/evidence/register.csv records where each graded relation actually
+# runs in acir.
 # =========================================================================
 #
 # Provenance of the independent-oracle fixtures shipped with aciR.

@@ -9,10 +9,18 @@ tests/testthat/fixtures/oracles/oracle-manifest.yml), whose MIT licence notice
 is reproduced in full below. The composite Simpson quadrature used by acir is
 an independent R implementation of a documented rule: ACI_code vendors simps.m
 by Damien Garcia under a BSD 2-clause licence, that file is executed only in
-the reference MATLAB environment when the comparison fixtures are generated and
-was never ported into this package, so no simps.m notice is required here.
+the reference MATLAB environment when the comparison fixtures are generated,
+and it was never ported into this package.
 
 ACI_code is not redistributed with this package.
+
+The composite Simpson quadrature convention, including the unequal-spacing
+rule and the closing of a leftover interval by the quadratic through the final
+three points, follows simps.m by Damien Garcia, Copyright (c) 2009, which
+ACI_code distributes under a BSD 2-clause licence. No code from that file is
+included in or redistributed with this package, so the BSD conditions on
+redistribution in source or binary form are not engaged. The acknowledgement
+is a courtesy.
 
 
 ACI_code

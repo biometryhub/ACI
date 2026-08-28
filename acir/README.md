@@ -15,8 +15,9 @@ of that review.
 
 ## Installation
 
-From a source checkout of this repository:
+From a source checkout of this repository (the package lives in the
+`acir/` subdirectory):
 
 ```sh
-R CMD INSTALL .
+R CMD INSTALL acir
 ```
