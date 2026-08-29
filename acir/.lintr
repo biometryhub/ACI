@@ -1,0 +1,48 @@
+linters: linters_with_defaults(
+    line_length_linter(80L),
+    object_name_linter(
+      styles = "snake_case",
+      regexes = c(
+        # The numerical core is written in the notation of the governing
+        # equations of the method paper, and the correspondence is the point:
+        # a reader diffing R/aci-core.R against the reference implementation
+        # must see the same symbols. Admitted deliberately and narrowly. The
+        # drift coefficients, the noise Grammians, the smoother's per-step
+        # terms, the filter and backward-sweep state, and the dyad parameters.
+        # Widening this rule needs a reason; see CONTRIBUTING.md.
+        # The online smoother adds a second set of paper symbols: the auxiliary
+        # matrices E and F, the drift operators G, and the per-step offsets
+        # b, H, K and P, all as Algorithm 1 of the online-smoother paper writes
+        # them (arXiv 2411.05870). Same reason as above, a reader diffing
+        # R/aci-online-smoother.R against that algorithm must see its symbols.
+        equation_notation = paste0(
+          "^(L_[xy]|f_[xy]|S_[xy]oS_[xy]|[AB]_j|mu[0T]?|R[0T]?",
+          "|[dF]_[xy]|sigma_[xy]|gamma",
+          "|G_[xy]|[EFHKPb]_j|R_[fs](_inv)?|c_[fs])$"
+        ),
+        # The ENSO model's symbols are the physical ones of the climate
+        # literature the paper draws on, and a reader checking this file
+        # against Supplementary Information section 4.3 must see them: the two
+        # sea-surface temperature anomalies, the Walker circulation, the
+        # western-Pacific thermocline, and the parameters derived from them.
+        # Same standard as the two rules above, narrow, enumerated, and here
+        # because the correspondence to the published equations is the point.
+        enso_notation = paste0(
+          "^(T_[CE]|h_W|I|C_u|b_0|d_tau|r_[CE]|zeta_[CE]|gamma_[CE]",
+          "|delta_[uh]|alpha_[12]|sigma_[uhCE]|beta_[uhCE])$"
+        ),
+        # The analytic fixed points the identity tests grade against, written
+        # as the equations write them: R*, RT*, mu*, muT*.
+        stationary_points = "^(R|RT|mu|muT)_(star|numerator|denominator)$",
+        # S3 methods carry the generic's name, which is not snake_case for the
+        # dotted base-R generics.
+        s3_methods = "^(as\\.data\\.frame|print|summary|plot)\\.(aci|aci_model|summary\\.aci)$",
+        # Base R owns these names: .Random.seed, and the argument names the
+        # as.data.frame generic mandates for its methods.
+        base_r_names = "^(\\.Random\\.seed|row\\.names)$"
+      )
+    )
+  )
+exclusions: list(
+    "tests/testthat.R" = list(object_name_linter = Inf)
+  )

@@ -23,7 +23,7 @@ jobs:
       contents: write
     defaults:
       run:
-        working-directory: aciR
+        working-directory: acir
 
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +36,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          working-directory: aciR
+          working-directory: acir
           extra-packages: any::pkgdown, local::.
           needs: website
 
@@ -53,4 +53,4 @@ jobs:
           # Repo-root relative: the defaults.run block above applies only to
           # `run:` steps, not to an action's inputs, and pkgdown builds into
           # the package subdirectory.
-          folder: aciR/docs
+          folder: acir/docs

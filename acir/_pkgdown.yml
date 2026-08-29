@@ -1,0 +1,39 @@
+# Built and deployed to the gh-pages branch by .github/workflows/pkgdown.yaml.
+url: https://biometryhub.github.io/ACI/
+
+template:
+  bootstrap: 5
+
+reference:
+- title: Assimilation and the causal measure
+  contents:
+  - aci
+  - aci_filter
+  - aci_smoother
+  - aci_metric
+  - aci_metric_pair
+  - aci_online
+- title: Influence range and conditioning
+  contents:
+  - aci_range
+  - aci_conditional
+  - aci_conditional_reduce
+  - lag_table
+  - lt_diag
+  - lt_row
+  - lt_tail_bound
+- title: Models and simulation
+  contents:
+  - aci_model
+  - aci_model_from_affine
+  - aci_linear_model
+  - aci_dyad_model
+  - aci_predprey_model
+  - aci_enso_model
+  - aci_simulate
+  - as_obs
+  - observed_trajectory
+- title: Numerical policies
+  contents:
+  - safe_chol
+  - spd_floor
