@@ -73,7 +73,11 @@ extract_function <- function(record, reference_dir, out_dir) {
   # an arbitrary dataset. The reference's filter reads the true latent path
   # `y` only at y(1), as its initial mean. Asserting that is what lets the
   # dataset contract pass a one-element stand-in without assuming anything.
-  consumed <- .split_list(record[["ConsumedOnly"]])
+  consumed <- if ("ConsumedOnly" %in% names(record)) {
+    .split_list(record[["ConsumedOnly"]])
+  } else {
+    character(0)
+  }
   # Comments mention the variables they describe ("% ... the latent variable
   # y."), so the check runs on code only. This drops anything after a `%`,
   # which would also truncate a `%` inside a string literal; none of the
@@ -114,6 +118,19 @@ extract_function <- function(record, reference_dir, out_dir) {
 
   note <- if (is.na(record[["Note"]])) "" else gsub("[\r\n]+", " ",
                                                     record[["Note"]])
+  # Provenance for the header: the reference each record is hoisted from. The
+  # default is ACI_code; FBCIR_code and EnKBS records name their own work and
+  # copyright holder in `Provenance` as `<work> | <holder>`.
+  provenance <- list(
+    work = "the reference implementation of Andreou, Chen and Bollt",
+    holder = "Copyright (c) 2025 Marios Andreou",
+    dir = basename(reference_dir)
+  )
+  if ("Provenance" %in% names(record) && !is.na(record[["Provenance"]])) {
+    parts <- trimws(strsplit(record[["Provenance"]], "|", fixed = TRUE)[[1L]])
+    provenance$work <- parts[[1L]]
+    provenance$holder <- parts[[2L]]
+  }
   header <- c(
     signature,
     sprintf("%%%s  Extracted from %s.", toupper(name), script),
@@ -123,9 +140,9 @@ extract_function <- function(record, reference_dir, out_dir) {
     sprintf("%%   Source: %s lines %s.", script, spec),
     "%",
     "%   The block between the VERBATIM markers below is reproduced byte for",
-    "%   byte from the reference implementation of Andreou, Chen and Bollt,",
-    "%   Copyright (c) 2025 Marios Andreou, under the MIT Licence; see",
-    "%   matlab_reference/LICENSE. Nothing in that block was retyped, and",
+    sprintf("%%   byte from %s,", provenance$work),
+    sprintf("%%   %s, under the MIT Licence; see", provenance$holder),
+    sprintf("%%   %s/LICENSE. Nothing in that block was retyped, and", provenance$dir),
     "%   tools/extract.R re-checks it against the source on every run.",
     "%",
     "%   GENERATED FILE -- edit manifest/extracts.dcf, not this.",

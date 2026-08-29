@@ -47,7 +47,10 @@ run_matlab <- function(code, label = "step", quiet = TRUE) {
   search_path <- c(
     file.path("tools", "oracle", "parity", "matlab"),
     file.path("tools", "oracle", "parity", "matlab", "extracted"),
-    "matlab_reference"
+    "matlab_reference",
+    "matlab_reference_fbcir",
+    "matlab_reference_enkbs",
+    file.path("matlab_reference_enkbs", "model discovery")
   )
   search_path <- search_path[dir.exists(search_path)]
 
