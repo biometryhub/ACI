@@ -45,8 +45,12 @@ test_that("byte-pinning fails on one flipped byte of a fixture copy", {
 
   expect_identical(file.size(tampered), file.size(src))
   expect_false(identical(unname(tools::md5sum(tampered)), pinned))
-  expect_false(identical(unname(tools::sha256sum(tampered)),
-                         unname(tools::sha256sum(src))))
+  sha256 <- tryCatch(get("sha256sum", envir = asNamespace("tools")),
+                     error = function(e) NULL)
+  if (is.function(sha256))
+    expect_false(identical(unname(sha256(tampered)), unname(sha256(src))))
+  else
+    skip("tools::sha256sum() is not available in this R; md5 tamper check only")
 })
 
 
@@ -87,9 +91,13 @@ test_that("register coverage fails on a dropped row, a moved hash and a renamed 
   row <- reg[reg$state == "checked", , drop = FALSE][1L, ]
   fixture <- .gl_oracle_file(basename(row$fixture_path))
   expect_true(file.exists(fixture))
-  expect_identical(unname(tools::sha256sum(fixture)), row$sha256)
-  moved <- sub("^.", if (startsWith(row$sha256, "a")) "b" else "a", row$sha256)
-  expect_false(identical(unname(tools::sha256sum(fixture)), moved))
+  sha256 <- tryCatch(get("sha256sum", envir = asNamespace("tools")),
+                     error = function(e) NULL)
+  if (is.function(sha256)) {
+    expect_identical(unname(sha256(fixture)), row$sha256)
+    moved <- sub("^.", if (startsWith(row$sha256, "a")) "b" else "a", row$sha256)
+    expect_false(identical(unname(sha256(fixture)), moved))
+  }
   expect_false(file.exists(.gl_oracle_file("no_such_reference.csv")))
 
   # (c) the column set, induced through a file so the reader is exercised and
@@ -103,6 +111,8 @@ test_that("register coverage fails on a dropped row, a moved hash and a renamed 
   back <- utils::read.csv(renamed, stringsAsFactors = FALSE,
                           colClasses = "character")
   expect_false(identical(names(back), .gl_register_columns))
+  if (!is.function(sha256))
+    skip("tools::sha256sum() is not available in this R; hash gates not exercised")
 })
 
 

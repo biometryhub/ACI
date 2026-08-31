@@ -10,3 +10,6 @@
 ^benchmarks($|/)
 ^tools($|/)
 ^\.gitattributes$
+^\.lintr$
+^_pkgdown\.yml$
+^\.Rproj\.user$

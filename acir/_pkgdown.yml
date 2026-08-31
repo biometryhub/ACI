@@ -1,0 +1,64 @@
+# Built and deployed to the gh-pages branch by .github/workflows/pkgdown.yaml.
+url: https://biometryhub.github.io/ACI/
+
+template:
+  bootstrap: 5
+
+reference:
+- title: Assimilation and the causal measure
+  contents:
+  - aci
+  - aci_filter
+  - aci_smoother
+  - aci_metric
+  - aci_metric_pair
+  - aci_online
+- title: Influence range and conditioning
+  contents:
+  - aci_range
+  - aci_conditional
+  - aci_conditional_reduce
+  - lag_table
+  - lt_diag
+  - lt_row
+  - lt_tail_bound
+- title: Models and simulation
+  contents:
+  - aci_model
+  - aci_model_from_affine
+  - aci_linear_model
+  - aci_dyad_model
+  - aci_predprey_model
+  - aci_enso_model
+  - aci_simulate
+  - as_obs
+  - observed_trajectory
+- title: Numerical policies
+  contents:
+  - safe_chol
+  - spd_floor
+- title: Methods
+  desc: Print, plot, coercion and simulation methods for the package's classes.
+  contents:
+  - print.aci_result
+  - print.cir_result
+  - print.da_path_gaussian
+  - print.lag_table
+  - print.obs_traj
+  - print.aci_conditional_spec
+  - print.stochastic_model
+  - plot.aci_result
+  - plot.cir_result
+  - plot.da_path_gaussian
+  - as.data.frame.aci_result
+  - as.data.frame.da_path_gaussian
+  - as.data.frame.lag_table
+  - as.data.frame.obs_traj
+  - simulate.stochastic_model
+- title: Topics
+  desc: The model contract, the assimilation surface, the causal measures, and the references.
+  contents:
+  - model_contracts
+  - assimilation_api
+  - causal_metrics
+  - aci_references

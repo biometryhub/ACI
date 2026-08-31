@@ -426,7 +426,11 @@
   ## `aci-kernels-matrix.R` guards per slice instead, because there a restart
   ## would be a restart of the recursion.
   precision <- tryCatch(fill(fast_full, fast_part), error = function(e) NULL)
-  if (is.null(precision)) precision <- fill(safe_full, safe_part)
+  ## The refill also runs when the fast pair "succeeded" through a LAPACK
+  ## that completes on non-finite input without signalling: a poisoned fill
+  ## is a failed fill, and the guarded pair owns the classed errors.
+  if (is.null(precision) || !all(is.finite(precision)))
+    precision <- fill(safe_full, safe_part)
   dim(precision) <- c(k, k, N)
   precision
 }

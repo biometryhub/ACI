@@ -45,13 +45,19 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          working-directory: aciR
+          working-directory: acir
           extra-packages: any::rcmdcheck
           needs: check
 
+      # The compiled-scalar parity test against the external MATLAB fixtures
+      # is gated on this variable; the harness and its datasets are in the tree.
+      - name: Point the parity test at the in-repo harness
+        run: echo "ACI_ORACLE_PARITY_ROOT=${{ github.workspace }}/tools/oracle/parity" >> "$GITHUB_ENV"
+        shell: bash
+
       - uses: r-lib/actions/check-r-package@v2
         with:
-          working-directory: aciR
+          working-directory: acir
           upload-snapshots: true
           build_args: 'c("--no-manual","--compact-vignettes=gs+qpdf")'
           error-on: '"warning"'

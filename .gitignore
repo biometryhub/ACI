@@ -7,7 +7,7 @@ matlab_reference/
 .RData
 .Rproj.user/
 # pkgdown site: built by .github/workflows/pkgdown.yaml, deployed to gh-pages
-aciR/docs/
+acir/docs/
 # working notes (charter: never enter shared history)
 aciR_uplift_proposals_*.md
 
@@ -22,3 +22,6 @@ tools/walkthrough/walkthrough_files/
 
 # tooling scratch (carries absolute local paths): never in history or a tarball
 _visual_inspection/
+# external references beside matlab_reference/ (re-clonable: github.com/marandmath/FBCIR_code, github.com/jiangzh67/EnKBS)
+matlab_reference_fbcir/
+matlab_reference_enkbs/

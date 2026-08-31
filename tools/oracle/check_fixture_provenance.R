@@ -2,12 +2,12 @@
 #
 # The MATLAB oracle harnesses in this directory write their fixtures with bare
 # filenames, so the files land wherever the script was run from. The copies the
-# package actually ships live in `aciR/inst/extdata/`. Two directories therefore
+# package actually ships live in `acir/tests/testthat/fixtures/oracles/`. Two directories therefore
 # hold what is meant to be one set of bytes, and nothing reads the copies here,
 # which is precisely the arrangement in which they can disagree for months
 # without anyone noticing.
 #
-# `aciR/tests/testthat/test-oracle-manifest.R` pins the shipped copies against
+# `acir/tests/testthat/test-19-compiled-oracles.R` pins the shipped copies against
 # the hashes recorded in the manifest, so a change to `inst/extdata/` is caught.
 # What that test cannot see is this directory: `tools/` is excluded from the
 # build, so under `R CMD check` the path does not exist. A testthat test
@@ -26,7 +26,7 @@
 
 check_fixture_provenance <- function(
     oracle_dir = file.path("tools", "oracle"),
-    shipped_dir = file.path("aciR", "inst", "extdata")) {
+    shipped_dir = file.path("acir", "tests", "testthat", "fixtures", "oracles")) {
   for (d in c(oracle_dir, shipped_dir)) {
     if (!dir.exists(d)) {
       stop("directory not found: ", d,
@@ -74,11 +74,11 @@ report_fixture_provenance <- function(res) {
   cat(sprintf("Written but never shipped    : %d\n", length(res$orphaned)))
 
   if (length(res$differing) > 0L) {
-    cat("\nThese differ between tools/oracle/ and aciR/inst/extdata/:\n")
+    cat("\nThese differ between tools/oracle/ and acir/tests/testthat/fixtures/oracles/:\n")
     cat(paste0("  ", res$differing, collapse = "\n"), "\n")
     cat("\nThe shipped copy is the authority. If the harness output is the\n",
         "correct one, copy it across and refresh the hashes in\n",
-        "aciR/inst/extdata/oracle-manifest.yml.\n", sep = "")
+        "acir/tests/testthat/fixtures/oracles/oracle-manifest.yml.\n", sep = "")
   }
   if (length(res$orphaned) > 0L) {
     cat("\nWritten by a harness but not shipped:\n")

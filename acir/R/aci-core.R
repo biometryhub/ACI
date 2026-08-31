@@ -93,7 +93,10 @@ aci_metric_pair <- function(mu_p, R_p, mu_q, R_q, decompose = TRUE) {
   tR <- t.default(R)
   if (max(abs(R - tR)) > 1e-12 * max(1, max(abs(R))))
     aci_abort("aci_error_spd", sprintf("Matrix (%s) must be symmetric.", where))
-  ch <- tryCatch(chol.default((R + tR) / 2), error = function(e) NULL)
+  ## finiteness screened explicitly; LAPACK may complete on non-finite input
+  ## (see .cov_guard)
+  ch <- if (all(is.finite(R)))
+    tryCatch(chol.default((R + tR) / 2), error = function(e) NULL) else NULL
   if (is.null(ch))
     aci_abort("aci_error_spd",
               sprintf("Matrix (%s) must be positive definite.", where))
