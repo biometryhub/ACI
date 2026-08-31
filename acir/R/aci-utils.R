@@ -165,7 +165,10 @@ spd_floor <- function(R, eps = 1e-12) {
 #' @noRd
 .sym_floor <- function(R) {
   S <- (R + t.default(R)) / 2
-  if (is.null(tryCatch(chol.default(S), error = function(e) NULL)))
+  ## Finiteness is screened explicitly: some LAPACK builds complete dpotrf on
+  ## non-finite input without signalling (see .cov_guard).
+  if (any(!is.finite(S)) ||
+      is.null(tryCatch(chol.default(S), error = function(e) NULL)))
     spd_floor(S) else S
 }
 
@@ -379,7 +382,8 @@ spd_floor <- function(R, eps = 1e-12) {
 #'
 #' Replaces `.sym_floor()` at the recursion call sites. The non-firing path is
 #' `.sym_floor()`'s own arithmetic plus two argument promises; everything
-#' policy-related happens only after `chol.default()` has already failed.
+#' policy-related happens only after the finiteness screen or
+#' `chol.default()` has refused.
 #'
 #' @param R Square numeric matrix, freshly formed by the caller.
 #' @param rec Recorder from `.aci_reg_new()`.
@@ -389,7 +393,12 @@ spd_floor <- function(R, eps = 1e-12) {
 #' @noRd
 .cov_guard <- function(R, rec, site) {
   S <- (R + t.default(R)) / 2
-  if (!is.null(tryCatch(chol.default(S), error = function(e) NULL))) return(S)
+  ## Finiteness is screened explicitly rather than delegated to
+  ## chol.default(): newer LAPACK builds (the R 4.6 CI toolchain) complete
+  ## dpotrf on non-finite input without signalling, which would return the
+  ## poisoned matrix through the fast path.
+  if (all(is.finite(S)) &&
+      !is.null(tryCatch(chol.default(S), error = function(e) NULL))) return(S)
   .cov_guard_event(S, rec, site)
   spd_floor(S)
 }
@@ -461,7 +470,10 @@ spd_floor <- function(R, eps = 1e-12) {
 #' @noRd
 .cov_guard_factor <- function(R, rec, site, where) {
   S <- sym(as.matrix(R))
-  ch <- tryCatch(chol.default(S), error = function(e) NULL)
+  ## finiteness screened explicitly; LAPACK may complete on non-finite input
+  ## (see .cov_guard)
+  ch <- if (all(is.finite(S)))
+    tryCatch(chol.default(S), error = function(e) NULL) else NULL
   if (!is.null(ch)) return(ch)
   .cov_guard_event(S, rec, site)
   safe_chol(R, where)

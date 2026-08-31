@@ -385,8 +385,12 @@
     A0 <- Lyj - Cgi %*% Lxj
     B <- sym(gyyj - Cgi %*% tgyx)
     Rf <- f_cov[, , j]; dim(Rf) <- d_ll
-    chf <- tryCatch(chol.default((Rf + t.default(Rf)) / 2),
-                    error = function(e) NULL)
+    ## finiteness screened explicitly; LAPACK may complete on non-finite
+    ## input (see .cov_guard), and a poisoned factor must fall through to the
+    ## guarded route below
+    chf <- if (all(is.finite(Rf)))
+      tryCatch(chol.default((Rf + t.default(Rf)) / 2),
+               error = function(e) NULL) else NULL
     Rfi <- if (is.null(chf))
       chol_solve(Rf, Il, "Rf", rec, "smoother_filter_cov") else chol2inv(chf)
     H <- A0 + B %*% Rfi
