@@ -224,7 +224,7 @@ spd_floor <- function(R, eps = 1e-12) {
 #'
 #' @param regularize `NULL`, a policy string, or a recorder.
 #' @param tgrid Numeric time grid used when a recorder must be created.
-#' @returns An environment from [.aci_reg_new()].
+#' @returns An environment from `.aci_reg_new()`.
 #' @noRd
 .aci_reg_for <- function(regularize, tgrid) {
   if (is.environment(regularize)) return(regularize)
@@ -252,7 +252,7 @@ spd_floor <- function(R, eps = 1e-12) {
 #' Always returns a list, never `NULL`, so a downstream consumer never has to
 #' test for absence.
 #'
-#' @param rec A recorder from [.aci_reg_new()].
+#' @param rec A recorder from `.aci_reg_new()`.
 #' @returns A list with `policy`, `fired`, `n_events`, `eps` and `sites`.
 #' @noRd
 .aci_reg_freeze <- function(rec) {
@@ -382,7 +382,7 @@ spd_floor <- function(R, eps = 1e-12) {
 #' policy-related happens only after `chol.default()` has already failed.
 #'
 #' @param R Square numeric matrix, freshly formed by the caller.
-#' @param rec Recorder from [.aci_reg_new()].
+#' @param rec Recorder from `.aci_reg_new()`.
 #' @param site Short site id.
 #' @returns The symmetric part of `R`, or its eigenvalue-floored projection
 #'   under `regularize = "floor"`.
@@ -457,7 +457,7 @@ spd_floor <- function(R, eps = 1e-12) {
 #' @param rec Recorder.
 #' @param site Short site id.
 #' @param where 1-length character naming the system in error messages.
-#' @returns The upper-triangular Cholesky factor used by [chol_solve()].
+#' @returns The upper-triangular Cholesky factor used by `chol_solve()`.
 #' @noRd
 .cov_guard_factor <- function(R, rec, site, where) {
   S <- sym(as.matrix(R))

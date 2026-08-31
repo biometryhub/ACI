@@ -9,16 +9,16 @@
 Causal inference as a Bayesian inverse problem via data assimilation, restricted to the closed-form conditional-Gaussian (CGNS) engine. Implements the assimilative causal inference (ACI) metric, closed-form CGNS filtering and smoothing, the Theorem 3 lagged-divergence table with its online smoother, conditional ACI masking, the forward causal influence range, and the benchmark models of the reference MATLAB codebase. Based on Andreou, Chen & Bollt (2026) \doi{10.1038/s41467-026-68568-0}, with the causal influence range of Andreou & Chen (2026) \doi{10.48550/arXiv.2510.21889} and the adaptive online smoother of Andreou, Chen & Li (2026) \doi{10.1007/s00332-026-10271-x}.
 }
 \author{
-\strong{Maintainer}: Aidan Moller \email{aj.moller97@gmail.com}
+\strong{Maintainer}: Aidan Moller \email{aj.moller97@gmail.com} (Interim maintainer for the development branch; author roles, order and the maintainer field are under joint review)
 
 Authors:
 \itemize{
-  \item Max Moldovan (Contributions carried over from the 'aciR' package)
+  \item Max Moldovan (Author; roles under joint review)
 }
 
 Other contributors:
 \itemize{
-  \item Marios Andreou (Author and copyright holder of the MIT-licensed reference MATLAB implementation 'ACI_code', from which this package's numerical core is translated) [copyright holder]
+  \item Marios Andreou (Author and copyright holder of the MIT-licensed reference MATLAB implementation 'ACI_code', against which this package is verified and from which parts of its numerical core derive; see inst/COPYRIGHTS) [copyright holder]
 }
 
 }
