@@ -69,9 +69,13 @@
 #' summed logarithms, never as a product of thousands of factors below one.
 #' Unlike the parent, the logarithms are summed from the anchor outward in
 #' blocks of `block` cells (`.cir_blocked_cumsum()`), so no cell is ever the
-#' difference of two record-length cumulative sums: differencing them errs by
-#' 1.7e-12 at 20,000 steps and 2.8e-11 at 100,000 on contracting factors,
-#' against a 1e-12 gate, where the blocked form stays below 3e-13. The mean
+#' difference of two record-length cumulative sums. Differencing them errs by
+#' at least the rounding of that sum, `eps * |sum(log E)|`, on any platform
+#' (6e-13 at 100,000 steps of contracting factors on x86, whose `cumsum`
+#' accumulates in extended precision), and by 1.7e-12 at 20,000 steps and
+#' 2.8e-11 at 100,000 where it accumulates in double (arm64), against a 1e-12
+#' gate; the blocked form stays below 3e-13 on the far cells and 2e-15 on the
+#' cells near the anchor. The mean
 #' and variance sums run in the same order as the cell-by-cell recursion they
 #' replace, and the relative entropy of each cell is evaluated in the
 #' operations of `.kl_fast()` for a scalar state (Cholesky factor `sqrt`,

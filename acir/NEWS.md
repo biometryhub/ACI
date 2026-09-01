@@ -14,8 +14,10 @@
   `R/aci-online-smoother.R`; tag `parents-final`), with one change of
   summation: the logarithms of the update factors are summed from the anchor
   outward in blocks of 512 cells rather than differenced from a record-length
-  cumulative sum, which on contracting factors errs by 1.7e-12 at 20,000
-  steps and 2.8e-11 at 100,000 (the blocked form stays below 3e-13). The
+  cumulative sum, which errs by at least the rounding of that sum on any
+  platform (6e-13 at 100,000 steps of contracting factors on x86) and by
+  1.7e-12 at 20,000 steps and 2.8e-11 at 100,000 where `cumsum` accumulates
+  in double (arm64); the blocked form stays below 3e-13. The
   relative entropy of each cell is evaluated in the operations of
   `.kl_fast()`, so a cell is bit-identical to the recursion's given the same
   posterior. The matrix path (`l > 1`) is unchanged.

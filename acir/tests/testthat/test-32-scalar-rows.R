@@ -233,6 +233,12 @@ test_that("differenced cumulative logarithms cancel, blocked ones do not", {
   truth <- d_seq[ks - j + 1L]
   err_naive <- max(abs(d_naive - truth) / truth)
   err_blocked <- max(abs(d_blocked - truth) / truth)
-  expect_gt(err_naive, .scalar_rows_gate)
-  expect_lt(err_blocked, .scalar_rows_gate / 10)
+  ## The differenced form errs by at least the rounding of the
+  ## record-length sum itself, eps * |sum log E| (1.1e-12 on this record),
+  ## on every platform; where cumsum accumulates in double rather than in
+  ## extended precision (arm64) the accumulation adds to it (2.9e-12 here,
+  ## 6e-13 on x86). The blocked form measures 2e-15.
+  expect_gt(err_naive, 1e-13)
+  expect_lt(err_blocked, 1e-14)
+  expect_lt(err_blocked, err_naive / 10)
 })
