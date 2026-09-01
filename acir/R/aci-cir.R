@@ -25,7 +25,17 @@
   one_R <- vector("list", N)
   s_n <- r_n <- e_n <- numeric(N)
 
-  for (n in seq.int(from, N)) {
+  sc <- if (l == 1L) .forward_primitives_scalar(bundle, filter, from) else NULL
+  if (!is.null(sc)) {
+    E <- sc$E
+    dmu <- sc$dmu
+    dR <- sc$dR
+    one_mu <- sc$one_mu
+    one_R <- sc$one_R
+    s_n <- sc$s_n
+    r_n <- sc$r_n
+    e_n <- sc$e_n
+  } else for (n in seq.int(from, N)) {
     rec$j <- n
     co <- .compiled_co(bundle, n)
     aux <- .thmD1_aux_compiled(
