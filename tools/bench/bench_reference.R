@@ -116,10 +116,21 @@ if (!is.null(base)) {
       warn(sprintf("%s: +%.0f%% against the baseline (ratio %.1f vs %.1f, %s)", tab$stage[i], 100 * drift, tab$ratio[i], b$ratio[j], b$machine[j]))
   }
 }
+# The Section 8 budgets are seconds on the machine the baseline was recorded
+# on. With a baseline in hand they are applied as ratios to that machine's
+# calibration, so a slower runner is judged on the code, not on its clock;
+# without one they are applied as the seconds they were written as.
+base_cal <- if (!is.null(base)) b$calibration[1] else NA_real_
 for (i in seq_len(nrow(tab))) {
   bud <- tab$budget[i]
-  if (is.finite(bud) && tab$seconds[i] > 1.25 * bud)
+  if (!is.finite(bud)) next
+  if (is.finite(base_cal)) {
+    if (tab$ratio[i] > 1.25 * bud / base_cal)
+      warn(sprintf("%s: ratio %.2f against a Section 8 budget of %.2f s on the baseline machine (ratio %.2f, +25%% allowance); %.3f s here",
+                   tab$stage[i], tab$ratio[i], bud, bud / base_cal, tab$seconds[i]))
+  } else if (tab$seconds[i] > 1.25 * bud) {
     warn(sprintf("%s: %.3f s against a Section 8 budget of %.2f s (+25%% allowance)", tab$stage[i], tab$seconds[i], bud))
+  }
 }
 cat(sprintf("\ncalibration loop %.3f s on %s, R %s, acir %s, %s\n", calibration, tab$machine[1], tab$r[1], tab$acir[1], tab$commit[1]))
 print(tab[, c("stage", "seconds", "reps", "ratio", "budget")], row.names = FALSE, right = FALSE, digits = 4)
