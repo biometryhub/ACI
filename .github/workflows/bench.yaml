@@ -1,0 +1,43 @@
+# Performance tracking (PR-4 of the performance series): times the Section 8
+# stages of the core-engine specification on the reference records and
+# compares them with the committed baseline, relative to an R-loop
+# calibration so the runner's speed divides out. Warnings only until PR-10,
+# when --gate turns drift into a failure.
+on:
+  push:
+    branches: [acir-package, main]
+  pull_request:
+  workflow_dispatch:
+
+name: bench
+
+permissions: read-all
+
+jobs:
+  bench:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          working-directory: acir
+          extra-packages: any::pkgload
+
+      - name: Time the Section 8 stages
+        run: |
+          Rscript tools/bench/bench_reference.R \
+            --baseline tools/bench/baseline.csv \
+            --out bench_${{ github.sha }}.csv
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bench-${{ github.sha }}
+          path: bench_${{ github.sha }}.csv
