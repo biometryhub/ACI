@@ -21,3 +21,26 @@ From a source checkout of this repository (the package lives in the
 ```sh
 R CMD INSTALL acir
 ```
+
+or directly from GitHub:
+
+```r
+# install.packages("remotes")
+remotes::install_github("biometryhub/ACI", subdir = "acir")
+```
+
+## A first run
+
+```r
+library(acir)
+model <- aci_dyad_model()
+sim <- aci_simulate(model, T = 5, dt = 0.005, seed = 1)
+fit <- aci(model, sim)
+fit
+plot(fit)
+```
+
+## Licence
+
+MIT; see `LICENSE` and `inst/COPYRIGHTS` for the notices of the reference
+implementations the package is verified against.
