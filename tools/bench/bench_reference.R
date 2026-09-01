@@ -81,7 +81,7 @@ record("online smoother, lag 25", median_time(function() acir::aci_online(librar
 res <- acir::aci(library_model, ob, init = init)
 anchors <- seq.int(round(as.numeric(meta$CIRStart) / dt) + 1L, round(as.numeric(meta$CIREnd) / dt) + 1L)
 record("influence range, reporting anchors",
-       median_time(function() suppressWarnings(acir::aci_range(res, method = "l1_linf", quadrature = "simpson", anchors = anchors)), 1L), 1L)
+       median_time(function() suppressWarnings(acir::aci_range(res, method = "l1_linf", quadrature = "simpson", anchors = anchors)), 3L), 3L)
 
 # -- a climate record of the reference's size, simulated by the package --------
 enso <- acir::aci_enso_model(hidden = c("u", "hW", "tau"))

@@ -97,12 +97,13 @@
                                        rec = rec)
 
   sch <- vector("list", na)
-  lam <- diagv <- numeric(na)
+  lam <- diagv <- Rs <- numeric(na)
   for (i in seq_len(na)) {
     j <- anchors[i]
     rec$j <- j
     cs <- .cov_guard_chol(smoother$cov[, , j], rec, "metric_reference")
     sch[[i]] <- cs$ch
+    Rs[i] <- cs$R[1L]
     lam[i] <- min(eigen(cs$R, symmetric = TRUE, only.values = TRUE)$values)
     diagv[i] <- .kl_fast(
       smoother$mean[j, ], cs$ch,
@@ -117,6 +118,8 @@
   subjective <- if (is.null(epsilon)) NULL else
     matrix(0, nrow = na, ncol = length(epsilon))
   structurally_truncated <- FALSE
+  ## A scalar hidden state forms each row as one vector expression.
+  sp <- if (l == 1L) .cir_scalar_primitives(prim$E, prim$dmu, prim$dR)
 
   for (i in seq_len(na)) {
     j <- anchors[i]
@@ -125,7 +128,16 @@
     lag_kept <- 0L
     row_tail <- 0
 
-    if (j <= N) {
+    if (j <= N && l == 1L) {
+      r1 <- .cir_scalar_row(
+        j, sp, prim$T2, prim$Ub, N, filter$mean[j, 1L], filter$cov[1L, 1L, j],
+        smoother$mean[j, 1L], Rs[i], diagv[i], lam[i], tol, window, max_lag,
+        rec
+      )
+      row <- r1$row
+      lag_kept <- r1$lag_kept
+      row_tail <- r1$tail
+    } else if (j <= N) {
       mu <- as.numeric(prim$one_mu[j, ])
       R <- matrix(prim$one_R[[j]], l, l)
       D <- diag(l)

@@ -434,13 +434,37 @@
     if (!is.finite(T2[n]) || T2[n] > 1e12) T2[n] <- Inf
     if (!is.finite(Ub[n]) || Ub[n] > 1e12) Ub[n] <- Inf
   }
-  lam_j <- rep(NA_real_, N1)
+  lam_j <- Rs_j <- rep(NA_real_, N1)
   sch <- vector("list", N1)
   if (!is.null(smoo)) for (j in seq_len(N1)) {
     rec$j <- j
     cs <- .cov_guard_chol(smoo$cov[, , j], rec, "metric_reference")
     sch[[j]] <- cs$ch
+    Rs_j[j] <- cs$R[1L]
     lam_j[j] <- min(eigen(cs$R, symmetric = TRUE, only.values = TRUE)$values)
+  }
+
+  if (l == 1L && !is.null(smoo)) {
+    ## A scalar hidden state forms each anchor's row as one vector expression
+    ## (`.cir_scalar_row()`) instead of advancing every active anchor one cell
+    ## per step; the retained cells, freeze index and tail estimate are the
+    ## ones the recursion below records.
+    sp <- .cir_scalar_primitives(Ehist, DMU, DRl)
+    for (j in seq_len(N)) {
+      rec$j <- j
+      r1 <- .cir_scalar_row(
+        j, sp, T2, Ub, N, MUf[j, 1L], CVf[1L, 1L, j], smoo$mean[j, 1L],
+        Rs_j[j], diagv[j], lam_j[j], tol, window, max_lag, rec
+      )
+      rows[[j]] <- r1$row
+      L[j] <- r1$lag_kept
+      tailb[j] <- r1$tail
+    }
+    L[N1] <- 0L
+    return(list(
+      diag = diagv, rows = rows, L = L, tailbnd = tailb,
+      onelag = NULL, stop_index = NA_integer_
+    ))
   }
 
   for (n in seq_len(N)) {
