@@ -1,0 +1,10 @@
+fun,quantity,same,maxabs,info
+ref_backward_cir_tipping,back_subjective_CIR,1,0,numeric[513 20001]
+ref_backward_cir_tipping,back_approx_objective_CIR,1,0,numeric[1 20001]
+ref_backward_cir_tipping,back_defn_objective_CIR,1,0,numeric[1 20001]
+ref_backward_cir_tipping,back_max_RE_metric,1,0,numeric[1 20001]
+ref_backward_cir_tipping,back_RE_metric_mask,1,NaN,logical vs logical
+ref_backward_cir_tipping,adaptive_approx_objective_backward_CIR_n,1,0,numeric[1 1]
+ref_backward_cir_tipping,lag_bound,1,0,numeric[1 1]
+ref_backward_cir_tipping,back_plot_len,1,0,numeric[1 1]
+ref_backward_cir_tipping,back_lag_steps,1,0,numeric[1 1]
