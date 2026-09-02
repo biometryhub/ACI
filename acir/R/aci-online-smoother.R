@@ -73,7 +73,14 @@
   CV <- array(NA_real_, c(l, l, N1))
   MU[N1, ] <- filt$mean[N1, ]
   CV[, , N1] <- filt$cov[, , N1]
-  for (j in (N1 - 1L):1L) {
+  ## A scalar hidden state takes the auxiliaries as vectors and runs the
+  ## backward recursion on them; the per-interval route below is kept for
+  ## the case where the covariance policy has something to record.
+  sc <- if (l == 1L) .smoother_thmD1_scalar_moments(bundle, filt) else NULL
+  if (!is.null(sc)) {
+    MU[, 1L] <- sc$mu
+    CV[1L, 1L, ] <- sc$cv
+  } else for (j in (N1 - 1L):1L) {
     rec$j <- j
     co <- .compiled_co(bundle, j)
     aux <- .thmD1_aux_compiled(bundle, j, filt$cov[, , j], co = co, rec = rec)
@@ -128,7 +135,12 @@
   E <- array(NA_real_, c(l, l, N))
   dmu <- matrix(NA_real_, N, l)
   dR <- array(NA_real_, c(l, l, N))
-  for (n in seq_len(N)) {
+  sc <- if (l == 1L) .forward_primitives_scalar(bundle, filt) else NULL
+  if (!is.null(sc)) {
+    E[1L, 1L, ] <- sc$E_v
+    dmu[, 1L] <- sc$dmu[, 1L]
+    dR[1L, 1L, ] <- sc$dR_v
+  } else for (n in seq_len(N)) {
     rec$j <- n
     co <- .compiled_co(bundle, n)
     aux <- .thmD1_aux_compiled(bundle, n, CVf[, , n], co = co, rec = rec)
@@ -409,7 +421,17 @@
   OLmu <- matrix(NA_real_, N, l)
   OLR <- vector("list", N)
   s_n <- r_n <- e_n <- numeric(N)
-  for (n in seq_len(N)) {
+  sc <- if (l == 1L) .forward_primitives_scalar(bundle, filt) else NULL
+  if (!is.null(sc)) {
+    Ehist <- sc$E
+    OLmu <- sc$one_mu
+    OLR <- sc$one_R
+    DMU <- sc$dmu
+    DRl <- sc$dR
+    s_n <- sc$s_n
+    r_n <- sc$r_n
+    e_n <- sc$e_n
+  } else for (n in seq_len(N)) {
     rec$j <- n
     co <- .compiled_co(bundle, n)
     aux <- .thmD1_aux_compiled(bundle, n, CVf[, , n], co = co, rec = rec)

@@ -2,6 +2,19 @@
 
 ## Performance
 
+* For a scalar hidden state the Theorem 3 auxiliaries (the update factor,
+  the gain row and the one-lag increments of every interval) are formed as
+  vector expressions over the record (`.online_aux_scalar()`,
+  `R/aci-online-scalar.R`) instead of one interval at a time, and feed the
+  Theorem 3 smoother, the forward primitives of the range, the online window
+  route and the lag table. On the dyad record the smoother falls from 0.17 s
+  to 0.004 s and the primitives from 0.15 s to 0.02 s, within one rounding
+  of the per-interval kernels (bit-identical where the BLAS's triangular
+  solve divides); the covariance policy is reached by the per-interval route
+  whenever a variance needs it. Ported from aciR 0.2.3 (`.aci_online_aux()`
+  in `R/aci-online-smoother.R`, tag `parents-final`). The matrix path is
+  unchanged.
+
 * The forward influence range and the lag table form each anchor's row of
   divergences as one vector expression when the hidden state is scalar
   (`.cir_scalar_row()`, `R/aci-cir-rows.R`), instead of advancing every
