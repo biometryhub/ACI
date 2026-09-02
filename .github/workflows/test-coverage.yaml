@@ -11,7 +11,7 @@
 # noise-cross-covariance terms before 0.1.0.
 on:
   push:
-    branches: [main, master]
+    branches: [acir-package, main, master]
   pull_request:
   workflow_dispatch:
 
