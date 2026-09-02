@@ -1,0 +1,338 @@
+---
+title: "Reproducing the reference MATLAB codebase"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+    mathjax: "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"
+    pandoc_args: ["--include-in-header=mathjax-config.html"]
+vignette: >
+  %\VignetteIndexEntry{Reproducing the reference MATLAB codebase}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(fig.width = 7, fig.height = 3.6, collapse = TRUE,
+                      comment = "#>")
+library(acir)
+```
+
+*Assimilative causal inference (ACI) in R* (`vignette("vignette-1-intro")`)
+runs the engine and *The closed-form ACI engine*
+(`vignette("vignette-2-advanced")`) documents its arguments. This one is about
+the codebase underneath both: the reference MATLAB implementation `ACI_code`,
+which models and which numbers this package reproduces from it, where it
+deliberately departs, and how far each correspondence has actually been
+checked.
+
+Two claims are kept apart throughout. **Coefficient and inference agreement**
+says that given the same driving path, the package's realised model
+coefficients, filter, smoother and metric match the script's. **Pathwise
+simulator agreement** says that `simulate()` generates the same trajectories
+the script does. Only the first is claimed here, and only where a constructor
+says so.
+
+
+## 1. What is claimed, model by model
+
+Three constructors carry the reference codebase's models. Each records its
+provenance and how far the correspondence has been checked:
+
+```{r provenance}
+aci_dyad_model()$meta$provenance
+aci_dyad_model()$meta$source_status
+aci_enso_model(hidden = "tau")$meta$source_partition
+aci_enso_model(hidden = "tau")$meta$matlab_simulator_parity
+aci_predprey_model(hidden = "prey")$meta$provenance
+aci_predprey_model(hidden = "prey")$meta$source_status
+aci_predprey_model(hidden = "prey")$meta$matlab_simulator_parity
+```
+
+`matlab_simulator_parity = FALSE` on the ENSO family is a deliberate, recorded
+limitation rather than an omission: `simulate()` is Euler-Maruyama throughout,
+while the MATLAB ENSO scripts mix Euler updates for the interannual variables
+with Milstein-style updates for $I$ and $\tau$.
+
+### The predator-prey partitions
+
+The stochastic Lotka-Volterra example of the supplementary material is
+supplied as two constructors rather than one, because the MATLAB file contains
+sequential direction-specific blocks: one run treats the prey as hidden, a
+later one treats the predator as hidden, and they are separate causal
+questions on the same system. The package keeps them separate, and the metric
+answers each on its own model:
+
+```{r predator-prey}
+mp_prey <- aci_predprey_model(hidden = "prey")
+mp_pred <- aci_predprey_model(hidden = "predator")
+c(prey_hidden = mp_prey$meta$vars$hidden,
+  prey_observed = mp_prey$meta$vars$observed,
+  predator_hidden = mp_pred$meta$vars$hidden,
+  predator_observed = mp_pred$meta$vars$observed)
+
+sp_prey <- simulate(mp_prey, seed = 11, t_end = 20, dt = 0.01, burn_in = 5)
+sp_pred <- simulate(mp_pred, seed = 11, t_end = 20, dt = 0.01, burn_in = 5)
+a_prey  <- aci(mp_prey, as_obs(sp_prey),
+               init = list(mean = mp_prey$meta$ic_default$y0,
+                           cov = matrix(1, 1, 1)))
+a_pred  <- aci(mp_pred, as_obs(sp_pred),
+               init = list(mean = mp_pred$meta$ic_default$y0,
+                           cov = matrix(1, 1, 1)))
+c(peak_prey_hidden = max(a_prey$aci), peak_predator_hidden = max(a_pred$aci))
+```
+
+The two numbers are not comparable to each other. They are peaks of two
+different metrics, on two different hidden states, along two different paths.
+Reading one against the other would be reading a direction off an accident of
+scaling. Compare each against its own decoupled behaviour instead.
+
+Note what the metadata carries here: `aci_predprey_model()` records
+`source_status = "paper + MATLAB checked"` (its coefficients are graded
+against the authors' source in the oracle suite), and
+`matlab_simulator_parity = TRUE` records that `simulate()` and
+`noisy_predator_prey_model.m` use the same Euler-Maruyama scheme. The
+`simulation_convention` field states the limit of that claim: scheme
+agreement only, since the RNG streams differ, and no pathwise parity is
+claimed.
+
+
+## 2. The one partition that is an approximation, and says so
+
+`aci_enso_model()` covers the five hidden partitions of the reference codebase.
+Four of them split the six-state drift exactly. The fifth, $T_C$ hidden,
+cannot: the damping $c_1(t, T_C)\,T_C$ is cubic in $T_C$, so the system is
+not conditionally Gaussian with $T_C$ withheld, and the reference script
+restores conditional linearity by freezing $c_1$ at the climatology
+$T_C = 0$. The constructor requires that substitution to be named, and the
+model it returns assimilates only $(T_E, I)$, with $u$, $h_W$ and $\tau$
+supplied as prescribed forcings looked up by index on their own grid:
+
+```{r tc-partition}
+mj   <- aci_enso_model(hidden = c("u", "hW", "tau"))
+sj   <- simulate(mj, seed = 21, t_end = 4, dt = 5e-3, burn_in = 1)
+path <- data.frame(t = sj$obs$t, u = sj$hidden[, 1], hW = sj$hidden[, 2],
+                   tau = sj$hidden[, 3])
+
+mtc <- aci_enso_model(hidden = "TC", approximation = "zeroth_order_c1",
+                      prescribed = path)
+mtc
+c(observed = paste(mtc$meta$vars$observed, collapse = ", "),
+  prescribed = paste(mtc$meta$vars$prescribed, collapse = ", "),
+  approximation = mtc$meta$approximation)
+```
+
+What the filter and smoother return are the moments of that *approximating*
+model, not of the six-state system, so the model refuses to generate a path
+of its own and names the constructor that can:
+
+```{r tc-simulate, error = TRUE}
+simulate(mtc, seed = 1, t_end = 1, dt = 5e-3)
+```
+
+
+## 3. `matlab_defect_compat`, and the defect it names
+
+`matlab_defect_compat = TRUE` reproduces one further departure: the script's
+assimilation forcing omits a thermocline term its own simulator drift
+carries. The omission moves the means and leaves both covariance sequences
+untouched, because the term enters only the mean equations:
+
+```{r tc-defect}
+obc    <- observed_trajectory(sj$obs$t,
+                              cbind(TE = sj$obs$x[, "TE"], I = sj$obs$x[, "I"]))
+init_c <- list(mean = sj$obs$x[1, "TC"], cov = matrix(0.1, 1, 1))
+mtd    <- aci_enso_model(hidden = "TC", approximation = "zeroth_order_c1",
+                         prescribed = path, matlab_defect_compat = TRUE)
+
+f_inc  <- aci_filter(mtc, obc, init = init_c)   # term included
+f_omit <- aci_filter(mtd, obc, init = init_c)   # script verbatim
+a_inc  <- aci(mtc, obc, init = init_c)
+a_omit <- aci(mtd, obc, init = init_c)
+
+identical(f_inc$cov, f_omit$cov)        # an identity, not a tolerance
+c(filter_mean_gap  = max(abs(f_inc$mean - f_omit$mean)),
+  aci_gap          = max(abs(a_inc$aci - a_omit$aci)),
+  integrated_ratio = sum(a_omit$aci) / sum(a_inc$aci))
+```
+
+The default is the corrected term, not the script. That is a deliberate
+choice and it is the one place in the package where the default is *not* the
+reference behaviour: the term is available, its omission is inconsistent with
+the same script's own simulator, and the sibling scripts carry it. Anyone
+grading against published `T_C` output should set `matlab_defect_compat =
+TRUE` and say so.
+
+
+## 4. The first-slice convention in the conditional scripts
+
+The reference conditional scripts fill the first slice of the
+observation-precision array with the **full** Gram inverse and mask only the
+later slices. That is a convention, not a kernel failure, and `first_step`
+names both sides of it. `"uniform"` masks every slice and is the default, and
+`"matlab"` reproduces the asymmetry:
+
+```{r first-step}
+me     <- aci_enso_model(hidden = "hW")
+se     <- simulate(me, seed = 12, t_end = 4, dt = 5e-3, burn_in = 1)
+obe    <- as_obs(se)
+init_e <- list(mean = me$meta$ic_default$y0, cov = matrix(0.1, 1, 1))
+
+by_target <- aci_conditional(target = "TC", method = "mask")
+by_matlab <- aci_conditional(target = "TC", method = "mask",
+                             first_step = "matlab")
+
+f_u  <- aci_filter(me, obe, init = init_e, conditional = by_target)
+f_m  <- aci_filter(me, obe, init = init_e, conditional = by_matlab)
+a_tc <- aci(me, obe, init = init_e, conditional = by_target)
+a_m  <- aci(me, obe, init = init_e, conditional = by_matlab)
+
+c(step2_filter_mean_gap = abs(f_u$mean[2] - f_m$mean[2]),
+  step2_relative        = abs(f_u$mean[2] - f_m$mean[2]) / abs(f_u$mean[2]),
+  last_step_gap         = abs(f_u$mean[nrow(f_u$mean)] -
+                              f_m$mean[nrow(f_m$mean)]),
+  peak_aci_gap          = max(a_tc$aci) - max(a_m$aci),
+  integrated_relative   = sum(a_m$aci) / sum(a_tc$aci) - 1)
+```
+
+One slice out of `r length(obe$t)` moves the run by that much, and the
+difference decays through the record rather than vanishing: it is still
+above round-off at the last step. `"matlab"` applies to
+`method = "mask"` only, which is where a masked precision path exists,
+and it is exactly inert wherever the mask itself is.
+
+
+## 5. The $\tau$ partition: two estimands, not two implementations
+
+The $\tau$-hidden reference script prescribes $u$ and $h_W$ as known
+series and runs a three-channel observed process, stating that this
+"will yield the same results" as the five-channel form. On our path it
+does not. Both prescribed channels have non-zero $L_x$ rows, so they
+carry genuine $\tau$ information, and prescribing them reproduces their
+effect on the drift but not their innovations.
+
+That is why the estimand is a constructor argument here rather than a
+caller's option. `observations = "reduced"` is the script's estimand and the
+default for this partition, carried as a specification the assimilation runs
+whenever the caller supplies none, and `"full"` is the five-channel
+construction:
+
+```{r tau-estimands}
+mt_red  <- aci_enso_model(hidden = "tau")
+mt_full <- aci_enso_model(hidden = "tau", observations = "full")
+c(default = mt_red$meta$observations, alternative = mt_full$meta$observations)
+mt_red$meta$estimand_nontarget
+
+st     <- simulate(mt_full, seed = 3, t_end = 8, dt = 5e-3, burn_in = 1)
+obt    <- as_obs(st)
+init_t <- list(mean = mt_red$meta$ic_default$y0, cov = matrix(0.1, 1, 1))
+
+a_reduced <- aci(mt_red,  obt, init = init_t)
+a_full    <- aci(mt_full, obt, init = init_t)
+
+Lx_tau <- sapply(seq_along(obt$t),
+                 function(j) abs(drop(mt_full$Lx(obt$t[j], obt$x[j, ]))))
+setNames(round(apply(Lx_tau, 1, max), 5), mt_full$meta$vars$observed)
+
+c(peak_full        = max(a_full$aci),
+  peak_reduced     = max(a_reduced$aci),
+  max_abs_diff     = max(abs(a_full$aci - a_reduced$aci)),
+  mean_ratio       = mean(a_reduced$aci) / mean(a_full$aci),
+  pearson          = cor(a_full$aci, a_reduced$aci))
+```
+
+Observations are supplied on all five channels either way. What changes is
+which of them are assimilated and which are read as known forcing.
+
+The independent measurement on the shared comparison record, kept in the
+development record (section 7), found the same shape at
+larger amplitude: time-resolved ACI differing by up to 0.776, which is
+3.1 times its own mean level, with Pearson correlation 0.905, while the
+*time-averaged* ACI agreed to within 0.5%. The shortcut roughly preserves
+the average level while materially distorting the time-resolved curve,
+and the time-resolved curve is what the method reports.
+
+The two forms are therefore **different estimands**, and any fidelity
+claim has to say which observation set it reproduces. `meta$observations`
+records which one a model carries, and the development record has the
+measurements behind the choice of default.
+
+
+## 6. Reading the conventions off a result
+
+Reproducing a published number means matching every convention that number
+was computed under, and the package's position is that those conventions
+belong on the result object rather than in a reader's memory. The fields to
+check, and where each is explained:
+
+```{r conventions-checklist}
+m    <- aci_dyad_model()
+sim  <- simulate(m, seed = 7, t_end = 4, dt = 0.01, burn_in = 1)
+ob   <- as_obs(sim)
+init <- list(mean = 0, cov = matrix(1, 1, 1))
+a    <- aci(m, ob, init = init)
+fc   <- aci_range(a, anchors = seq(1L, length(ob$t), by = 20L))
+
+c(smoother_scheme = a$meta$smoother_scheme,
+  regularization  = a$meta$regularization$policy,
+  cir_method      = fc$method,
+  cir_bound       = fc$bound,
+  cir_quadrature  = fc$meta$quadrature,
+  cir_convention  = fc$meta$convention)
+```
+
+* `smoother_scheme` distinguishes the continuous backward equation from the
+  discrete Theorem 3 posterior. They differ at first order in $\Delta t$ and
+  the difference is not small. *The closed-form ACI engine*, section 5,
+  measures it.
+* `regularization` is `"none"` on a strict run and `"floor"` where the caller
+  opted into projecting covariances back into the positive-definite cone. On a
+  `"floor"` run the same list records how many times it fired and where.
+* `method` and `bound` distinguish the definitional objective from the
+  reference script's efficient ratio, and say whether the table behind the
+  number was truncated. The two functionals are not interchangeable, and the
+  word "objective" names the ratio in the predecessor R implementation.
+* `quadrature` covers the `"matlab_eps_grid"` compatibility mode and the
+  `"simpson"` / `"sum"` split between the ACI and FBCIR reference scripts.
+* `convention` distinguishes the reference script's index-count read-out of
+  the subjective range from the paper's lag time, which differ by exactly one
+  grid step.
+
+The arguments behind the CIR-side fields are documented in *The closed-form
+ACI engine*, section 3, with the size of each change measured there. What this section adds is only the instruction to read them
+off the object before comparing anything against a figure.
+
+
+## 7. What the evidence is, and what it is not
+
+Fidelity claims in this package are graded by the kind of evidence behind
+them, and the kinds are not interchangeable.
+
+* An **authors-source fixture** is numerical output produced by the reference
+  MATLAB itself. It is the strongest evidence available and the package has
+  it only where the source distribution shipped it.
+* A **source-derived harness** drives the package with inputs read out of the
+  reference scripts and compares against quantities the scripts define. It
+  tests the translation, not the original execution.
+* An **independent transcription** re-implements a script's numerics from the
+  source text in R, separately from the package, and compares the two. The
+  $T_C$ partition's fixtures are of this kind: their oracle is the script
+  `make-tc-fixtures.R` under the repository's `tools/fixtures/`, and no
+  MATLAB was executed to make them. Stronger than package-to-package agreement, weaker than an
+  authors-source fixture.
+* **Analytic identities** are checks that must hold by construction, such as
+  the two covariance sequences of section 3 being bit-identical because the
+  omitted term enters only the mean equations. These are asserted as
+  identities rather than as tolerances.
+* **Package-to-package agreement** between two R implementations sharing a
+  fixture set is shared evidence, not a second oracle. It is useful for
+  locating a disagreement and it establishes nothing about MATLAB fidelity on
+  its own.
+* **Behavioural tests** fix the package's own contracts, such as which inputs
+  are refused. They say nothing about the reference at all.
+
+The measurements cited above by name are in the repository's development
+record, `dev/acir-process-rationale.md`, which records each adopted change
+with the measurement and the accuracy gate behind it. Numbers computed in
+this vignette are computed on its own short records and are not those
+measurements.

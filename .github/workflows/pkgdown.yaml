@@ -1,7 +1,7 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
 on:
   push:
-    branches: [main, master]
+    branches: [acir-package, main, master]
   pull_request:
   release:
     types: [published]
@@ -23,7 +23,7 @@ jobs:
       contents: write
     defaults:
       run:
-        working-directory: aciR
+        working-directory: acir
 
     steps:
       - uses: actions/checkout@v4
@@ -36,7 +36,7 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          working-directory: aciR
+          working-directory: acir
           extra-packages: any::pkgdown, local::.
           needs: website
 
@@ -45,7 +45,7 @@ jobs:
         shell: Rscript {0}
 
       - name: Deploy to GitHub pages 🚀
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: JamesIves/github-pages-deploy-action@v4.5.0
         with:
           clean: false
@@ -53,4 +53,4 @@ jobs:
           # Repo-root relative: the defaults.run block above applies only to
           # `run:` steps, not to an action's inputs, and pkgdown builds into
           # the package subdirectory.
-          folder: aciR/docs
+          folder: acir/docs

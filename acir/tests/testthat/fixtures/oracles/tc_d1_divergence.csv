@@ -1,0 +1,17 @@
+"case","quantity","n","identical","max_abs","rmsd"
+"A whole record","filter_mean",4001,FALSE,0.0609020372922104,0.0304576628736053
+"A whole record","filter_cov",4001,TRUE,0,0
+"A whole record","smoother_mean",4001,FALSE,0.0549623713618178,0.0219453423235219
+"A whole record","smoother_cov",4001,TRUE,0,0
+"A whole record","aci_signal",4001,FALSE,0.620249643493559,0.152246550762007
+"A whole record","aci_dispersion",4001,TRUE,0,0
+"A whole record","aci_total",4001,FALSE,0.620249643493559,0.152246550762007
+"B 14-year window","filter_mean",16801,FALSE,0.105225129147153,0.0506604270507804
+"B 14-year window","filter_cov",16801,TRUE,0,0
+"B 14-year window","smoother_mean",16801,FALSE,0.0759259327708716,0.0335749027881773
+"B 14-year window","smoother_cov",16801,TRUE,0,0
+"B 14-year window","aci_signal",16801,FALSE,2.77518942227106,0.404750871670684
+"B 14-year window","aci_dispersion",16801,TRUE,0,0
+"B 14-year window","aci_total",16801,FALSE,2.77518942227106,0.404750871670684
+"A whole record","aci_total_integrated",4001,FALSE,2.06001516393823,2.60195031042164
+"B 14-year window","aci_total_integrated",16801,FALSE,13.603753881917,27.5161978886959

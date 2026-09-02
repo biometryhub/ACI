@@ -1,0 +1,4 @@
+
+# Development records live outside the package tree (acir-build/dev/); backstop against re-creation:
+adoption-ledger.md
+reserve/

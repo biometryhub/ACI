@@ -1,0 +1,2636 @@
+diff --git a/NAMESPACE b/NAMESPACE
+index bedda37..6c8d851 100644
+--- a/NAMESPACE
++++ b/NAMESPACE
+@@ -21,8 +21,11 @@ S3method(plot,da_path_gaussian)
+ S3method(print,aci_conditional_spec)
+ S3method(print,aci_result)
+ S3method(print,cir_result)
++S3method(print,da_path_ensemble)
+ S3method(print,da_path_gaussian)
++S3method(print,function_library)
+ S3method(print,lag_table)
++S3method(print,learned_model)
+ S3method(print,obs_traj)
+ S3method(print,stochastic_model)
+ S3method(simulate,stochastic_model)
+@@ -43,14 +46,31 @@ export(aci_predprey_model)
+ export(aci_range)
+ export(aci_simulate)
+ export(aci_smoother)
++export(apply_inflation)
++export(as_gaussian)
+ export(as_obs)
++export(causation_entropy)
++export(cgns_library)
++export(constrained_mle)
++export(enkbf)
++export(enkbs)
++export(ensemble_lag_table)
++export(eval_library)
++export(gaspari_cohn)
+ export(lag_table)
++export(learn_model)
++export(localization_spec)
+ export(lt_diag)
+ export(lt_row)
+ export(lt_tail_bound)
++export(model_from_learned)
++export(model_l96)
+ export(observed_trajectory)
+ export(safe_chol)
++export(sample_paths)
+ export(spd_floor)
++export(stochastic_model)
++export(threshold_structure)
+ importFrom(graphics,plot)
+ importFrom(stats,rnorm)
+ importFrom(stats,simulate)
+diff --git a/R/aci-assimilation.R b/R/aci-assimilation.R
+index c065b4f..8f6ff77 100644
+--- a/R/aci-assimilation.R
++++ b/R/aci-assimilation.R
+@@ -555,22 +555,6 @@ aci_online.cgns_model <- function(model, obs, lag, filter = NULL,
+ }
+ 
+ 
+-#' @describeIn aci_filter Classed not-implemented condition for a general
+-#'   (non-CGNS) stochastic model.
+-#' @export
+-aci_filter.stochastic_model <- function(model, obs, ...)
+-  aci_abort("aci_error_not_implemented",
+-            "Only cgns_model is supported in this release; the ensemble engine is out of scope.")
+-
+-
+-#' @describeIn aci_smoother Classed not-implemented condition for a general
+-#'   (non-CGNS) stochastic model.
+-#' @export
+-aci_smoother.stochastic_model <- function(model, obs, ...)
+-  aci_abort("aci_error_not_implemented",
+-            "Only cgns_model is supported in this release; the ensemble engine is out of scope.")
+-
+-
+ #' @describeIn aci_online Classed not-implemented condition for a general
+ #'   (non-CGNS) stochastic model.
+ #' @export
+@@ -693,7 +677,10 @@ lag_table <- function(model, obs, mode = c("forward", "full"),
+   mode <- match.arg(mode)
+   if (!inherits(model, "cgns_model"))
+     aci_abort("aci_error_not_implemented",
+-              "lag_table() requires a cgns_model.")
++              paste(
++                "lag_table() is the closed-form CGNS route; use",
++                "ensemble_lag_table() or aci(..., engine = 'ensemble',",
++                "keep = 'table') for the andreou2026cir/jiang2026enkbs forward ensemble route."))
+   obs <- as_obs(obs)
+   if (obs$k != model$k)
+     aci_abort("aci_error_dims", "Observation dimension does not match the CGNS model.")
+@@ -1204,3 +1191,129 @@ aci_conditional_reduce <- function(model, obs, spec) {
+        ginv = function(gxx) masked_ginv(gxx, ix$A),
+        likelihood_idx = ix$A, tag = spec)
+ }
++
++
++################################################################################
++# Gaspari-Cohn localization and inflation
++################################################################################
++
++#' Gaspari-Cohn localization weight
++#'
++#' Evaluates the compactly supported fifth-order piecewise-rational correlation
++#' function used to taper ensemble covariances with distance.
++#'
++#' @param r Numeric vector of non-negative distances, scaled by the
++#'   localization radius.
++#' @returns Numeric vector of weights in the unit interval, zero at scaled
++#'   distances beyond two.
++#'
++#' @references
++#' Gaspari, G. and Cohn, S. E. (1999). Construction of correlation functions
++#' in two and three dimensions. *Quarterly Journal of the Royal Meteorological
++#' Society* **125**, 723-757. \doi{10.1002/qj.49712555417}
++#'
++#' @seealso [localization_spec()]
++#'
++#' @examples
++#' gaspari_cohn(seq(0, 2.5, by = 0.5))
++#'
++#' @export
++gaspari_cohn <- function(r) {
++  if (!is.numeric(r) || any(!is.finite(r)))
++    aci_abort("aci_error_dims", "r must contain finite numeric distances.")
++  attrs <- attributes(r)
++  r <- abs(r); out <- numeric(length(r))
++  i1 <- r < 1; i2 <- r >= 1 & r < 2
++  z <- r[i1]
++  out[i1] <- 1 - (5/3) * z^2 + (5/8) * z^3 + (1/2) * z^4 - (1/4) * z^5
++  z <- r[i2]
++  out[i2] <- 4 - 5 * z + (5/3) * z^2 + (5/8) * z^3 - (1/2) * z^4 +
++             (1/12) * z^5 - 2 / (3 * z)
++  out <- pmax(out, 0)
++  attributes(out) <- attrs
++  out
++}
++
++
++#' Localization specification for the ensemble engine
++#'
++#' Builds the taper matrix applied to ensemble cross-covariances, from state
++#' and observation coordinates and a localization radius.
++#'
++#' @param coords Numeric vector or matrix of hidden-state coordinates.
++#' @param radius Positive 1-length numeric localization radius.
++#' @param coords_obs Optional coordinates of the observed channels; `NULL`
++#'   reuses `coords`.
++#' @param distance Either `"euclidean"` or `"cyclic"`.
++#' @param period Positive 1-length numeric domain period, required when
++#'   `distance` is `"cyclic"`.
++#' @returns A list carrying the taper matrix and the settings used to build it.
++#'
++#' @seealso [gaspari_cohn()], [enkbf()]
++#'
++#' @examples
++#' localization_spec(coords = 1:5, radius = 2)
++#'
++#' @export
++localization_spec <- function(coords, radius, coords_obs = NULL,
++                              distance = c("euclidean", "cyclic"), period = NULL) {
++  distance <- match.arg(distance)
++  if (length(radius) != 1L || !is.finite(radius) || radius <= 0)
++    aci_abort("aci_error_dims", "radius must be a finite positive scalar.")
++  if (distance == "cyclic" && is.null(period))
++    aci_abort("aci_error_dims", "cyclic distance needs `period`.")
++  co <- as.matrix(coords); cobs <- if (is.null(coords_obs)) co else as.matrix(coords_obs)
++  if (!nrow(co) || !ncol(co) || ncol(cobs) != ncol(co) ||
++      any(!is.finite(c(co, cobs))))
++    aci_abort("aci_error_dims", "coords and coords_obs must be finite matrices with matching columns.")
++  if (distance == "cyclic" &&
++      (length(period) != 1L || !is.finite(period) || period <= 0))
++    aci_abort("aci_error_dims", "period must be a finite positive scalar.")
++  if (distance == "cyclic" && ncol(co) != 1L)
++    aci_abort("aci_error_dims", "cyclic distance currently requires one-dimensional coordinates.")
++  dfun <- function(a, b) {
++    d <- outer(seq_len(nrow(a)), seq_len(nrow(b)),
++               Vectorize(function(i, j) sqrt(sum((a[i, ] - b[j, ])^2))))
++    if (distance == "cyclic") {
++      d <- outer(a[, 1], b[, 1], function(x, y) {
++        dd <- abs((x - y) %% period)
++        pmin(dd, period - dd)
++      })
++    }
++    d
++  }
++  structure(list(radius = radius,
++                 C2 = gaspari_cohn(dfun(co, co) / radius),        # l x l (hidden-hidden)
++                 C1 = gaspari_cohn(dfun(co, cobs) / radius)),     # l x k (hidden-obs)
++            class = "localization_spec")
++}
++
++
++#' Apply multiplicative inflation to ensemble members
++#'
++#' Scales the anomalies of an ensemble about its mean. The inflation parameter
++#' is named for the variance factor, while the anomalies are multiplied by its
++#' square root.
++#'
++#' @param members Numeric matrix of ensemble members.
++#' @param delta2 Positive 1-length numeric variance inflation factor.
++#' @returns A matrix of the same dimension as `members`, with inflated
++#'   anomalies about the unchanged ensemble mean.
++#'
++#' @seealso [enkbf()]
++#'
++#' @examples
++#' apply_inflation(matrix(rnorm(20), nrow = 2), delta2 = 1.1)
++#'
++#' @export
++apply_inflation <- function(members, delta2) {
++  members <- as.matrix(members)
++  if (ncol(members) < 2L || any(!is.finite(members)))
++    aci_abort("aci_error_dims", "members must be a finite matrix with at least two columns.")
++  if (length(delta2) != 1L || !is.finite(delta2) || delta2 < 1)
++    aci_abort("aci_error_model_contract", "inflation delta^2 must be a finite scalar >= 1.")
++  if (delta2 == 1) return(members)
++  yb <- rowMeans(members)
++  # jiang2026enkbs eq. 15 anomaly rescaling
++  yb + sqrt(delta2) * (members - yb)
++}
+diff --git a/R/aci-core.R b/R/aci-core.R
+index abe248c..06a81f6 100644
+--- a/R/aci-core.R
++++ b/R/aci-core.R
+@@ -216,10 +216,10 @@ aci_metric <- function(p, q, decompose = TRUE) {
+ #' `aci(table = ...)` instead use the complete online Theorem 3 smoother;
+ #' their finite-grid diagonal can therefore differ from headline ACI.
+ #'
+-#' @param model A `cgns_model` object.
++#' @param model A `cgns_model` or `stochastic_model` object.
+ #' @param obs An observed trajectory, or anything [as_obs()] accepts.
+-#' @param engine One of `"auto"` or `"cgns"`; `"auto"` selects the closed-form
+-#'   engine for a conditional-Gaussian model.
++#' @param engine One of `"auto"`, `"cgns"` or `"ensemble"`; `"auto"` selects the
++#'   closed-form engine for a conditional-Gaussian model.
+ #' @param conditional Optional `aci_conditional_spec`; see [aci_conditional()].
+ #' @param table Optional precomputed `lag_table`, whose online diagonal is used
+ #'   in place of the headline smoother.
+@@ -227,8 +227,16 @@ aci_metric <- function(p, q, decompose = TRUE) {
+ #'   are retained on the result. It does not select a smoother.
+ #' @param decompose `TRUE` to retain the signal and dispersion parts.
+ #' @param init Optional list with the initial hidden `mean` and `cov`.
++#' @param m Ensemble size, used by the ensemble engine only.
++#' @param seed Optional non-negative whole number seeding the ensemble.
+ #' @param stepper Either `"explicit"` or `"implicit"`.
+ #' @param nsub Positive whole number of sub-steps taken per observation.
++#' @param localization Optional localization specification; see
++#'   [localization_spec()].
++#' @param inflation Positive multiplicative variance inflation factor.
++#' @param ic_sampler Optional function of the ensemble size drawing the
++#'   initial members, or a list with the initial `mean` and `cov`; `NULL`
++#'   uses the model's default.
+ #' @param regularize Covariance policy for this call; see [aci_filter()]. One
+ #'   record covers the filter, the smoother and any table this call builds, and
+ #'   is returned in `meta$regularization`.
+@@ -250,21 +258,13 @@ aci_metric <- function(p, q, decompose = TRUE) {
+ #' a
+ #'
+ #' @export
+-aci <- function(model, obs, engine = c("auto", "cgns"),
++aci <- function(model, obs, engine = c("auto", "cgns", "ensemble"),
+                 conditional = NULL, table = NULL,
+                 keep = c("paths", "table", "none"), decompose = TRUE,
+-                init = NULL,
++                init = NULL, m = 100, seed = NULL,
+                 stepper = c("explicit", "implicit"), nsub = 1L,
++                localization = NULL, inflation = 1, ic_sampler = NULL,
+                 regularize = NULL, loglik = TRUE, ...) {
+-  ## R partial-matches `m =` to `model` before positional filling, so
+-  ## aci(mod, ob, m = 50) silently becomes model = 50, obs = mod. `m` is
+-  ## the ensemble size of the deferred ensemble engine, not an argument
+-  ## here; sys.call() still sees the literal name match.call() rewrites.
+-  if ("m" %in% names(sys.call()))
+-    aci_abort("aci_error_not_implemented", paste(
+-      "aci() has no argument m in this release; the ensemble engine and",
+-      "its ensemble size m are out of scope. R would partial-match m to",
+-      "model, silently shifting the other arguments."))
+   dots <- list(...)
+   stepper <- match.arg(stepper); keep <- match.arg(keep)
+   policy <- .aci_regularize(regularize)
+@@ -275,9 +275,7 @@ aci <- function(model, obs, engine = c("auto", "cgns"),
+   if (!inherits(model, "stochastic_model") || obs$k != model$k)
+     aci_abort("aci_error_model_contract",
+               "model must be a stochastic_model matching the observation dimension.")
+-  if (engine == "auto") engine <- if (inherits(model, "cgns_model")) "cgns" else
+-    aci_abort("aci_error_model_contract",
+-              "Only cgns_model is supported in this release; the ensemble engine is out of scope.")
++  if (engine == "auto") engine <- if (inherits(model, "cgns_model")) "cgns" else "ensemble"
+   if (!is.null(table)) {
+     if (length(dots))
+       aci_abort("aci_error_dims", "Unused arguments were supplied with a reused lag table.")
+@@ -323,18 +321,40 @@ aci <- function(model, obs, engine = c("auto", "cgns"),
+     )
+     smoo <- .cgns_smoother_compiled(bundle, filt, validate = FALSE,
+                                     regularize = rec)
++  } else {
++    if (!is.numeric(m) || length(m) != 1L || !is.finite(m) ||
++        m != floor(m) || m < 2L)
++      aci_abort("aci_error_ensemble_rank", "m must be an integer of at least 2.")
++    if (m <= model$l)
++      aci_abort("aci_error_ensemble_rank", paste(
++        "Full-dimensional Gaussian ACI from ensemble moments requires m > l;",
++        "localized EnKBF/EnKBS state estimation may use m <= l, but its raw",
++        "sample covariance is singular and needs a separately specified",
++        "projection or covariance regularizer for KL."))
++    fr <- enkbf(model, obs, m = m, seed = seed, conditional = conditional,
++                localization = localization, inflation = inflation,
++                ic_sampler = ic_sampler, ...)
++    sm <- enkbs(fr$model, fr$path, fr$noise, localization = localization)
++    filt <- as_gaussian(fr$path); smoo <- as_gaussian(sm)
++    aci_warn("aci_warn_ensemble_kl", sprintf(
++      "ACI from ensemble moments (m = %d): jiang2026enkbs s3.2 finds m ~ 50 faithful; m = 10 preserves timing/sign but distorts magnitudes.", m))
+   }
+-  klp <- .gaussian_kl_path_compiled(
+-    bundle, smoo, filt, decompose = decompose, validate = FALSE
+-  )
++  klp <- if (engine == "cgns")
++    .gaussian_kl_path_compiled(
++      bundle, smoo, filt, decompose = decompose, validate = FALSE
++    ) else aci_metric(smoo, filt, decompose = decompose)
+   tab <- NULL
+   if (keep == "table") {
+-    tab <- .lag_table_compiled(
+-      bundle, mode = "forward", filter = filt, init = filt$meta$init,
+-      validate = FALSE, regularize = rec
+-    )
++    tab <- if (engine == "cgns")
++      .lag_table_compiled(
++        bundle, mode = "forward", filter = filt, init = filt$meta$init,
++        validate = FALSE, regularize = rec
++      ) else
++      .ensemble_lag_table_from_run(model, obs, fr, sm,
++                                   conditional = conditional,
++                                   localization = localization)
+   }
+-  actual_init <- filt$meta$init
++  actual_init <- if (engine == "cgns") filt$meta$init else init
+   structure(list(t = klp$t, aci = klp$total,
+                  signal = if (decompose) klp$signal else NULL,
+                  dispersion = if (decompose) klp$dispersion else NULL,
+@@ -344,7 +364,9 @@ aci <- function(model, obs, engine = c("auto", "cgns"),
+                                 conditional = conditional,
+                                 init = actual_init),
+                  meta = list(engine = engine, conditional = conditional,
+-                             smoother_scheme = smoo$meta$scheme %||% "unspecified",
++                             m = if (engine == "ensemble") m else NULL,
++                             smoother_scheme = smoo$meta$scheme %||%
++                               if (engine == "ensemble") "enkbs" else "unspecified",
+                              table_reference = if (!is.null(tab))
+                                tab$meta$reference_smoother else NULL,
+                              regularization = .aci_reg_freeze(rec))),
+@@ -968,6 +990,10 @@ aci_range.lag_table <- function(x, direction = c("forward", "backward"),
+ aci_range.aci_result <- function(x, direction = c("forward", "backward"),
+                                  ...) {
+   .aci_range_direction(direction)
++  if (is.null(x$table) && identical(x$meta$engine, "ensemble"))
++    aci_abort("aci_error_not_implemented", paste(
++      "The forward ensemble CIR needs the lagged EnKBS family; recompute",
++      "aci(..., engine = 'ensemble', keep = 'table')."))
+   if (!is.null(x$table)) return(aci_range(x$table, ...))
+   bundle <- .compile_cgns_run(
+     x$handles$model, x$handles$obs, x$handles$conditional
+diff --git a/R/aci-discovery.R b/R/aci-discovery.R
+new file mode 100644
+index 0000000..8aaeb95
+--- /dev/null
++++ b/R/aci-discovery.R
+@@ -0,0 +1,759 @@
++################################################################################
++## discovery.R - model discovery: entropy, sampling, constrained fits
++## ########################################################################## ##
++##
++## Contents:
++##   * polynomial CGNS dictionaries:
++##       - cgns_library, print.function_library, eval_library
++##
++##   * causation entropy and structure thresholding:
++##       - causation_entropy, threshold_structure
++##
++##   * exact FFBS posterior sampling for CGNS:
++##       - sample_paths
++##
++##   * constrained MLE, cross-equation energy constraints, learn_model:
++##       - constrained_mle, model_from_learned, learn_model, print.learned_model,
++##         .refit_energy_joint
++##
++################################################################################
++
++
++################################################################################
++# polynomial CGNS dictionaries
++################################################################################
++
++#' Polynomial dictionary over the full state z = (x, y) with CGNS tags.
++#'
++#' @param k Number of observed variables.
++#' @param l Number of hidden variables.
++#' @param degree Maximum polynomial degree.
++#' @param intercept Whether to include the constant term.
++#'
++#' @examples
++#' cgns_library(k = 1, l = 1, degree = 2)
++#'
++#' @export
++cgns_library <- function(k, l, degree = 2, intercept = TRUE) {
++  dims <- .state_dims(k, l); k <- dims[["k"]]; l <- dims[["l"]]
++  if (length(intercept) != 1L || is.na(intercept) || !is.logical(intercept))
++    aci_abort("aci_error_dims", "intercept must be TRUE or FALSE.")
++  n <- k + l
++  if (!is.numeric(degree) || length(degree) != 1L || !is.finite(degree) || degree < 0 ||
++      degree != as.integer(degree))
++    aci_abort("aci_error_dims", "degree must be a non-negative integer.")
++  degree <- as.integer(degree)
++  nm_z <- c(paste0("x", seq_len(k)), if (l) paste0("y", seq_len(l)))
++  terms <- list(); names_ <- character(); ydeg <- integer()
++  if (intercept) { terms[["1"]] <- function(Z, t) rep(1, nrow(Z))
++    names_ <- "1"; ydeg <- 0L }
++  exponent_vectors <- function(nvar, total) {
++    rec <- function(pos, left, prefix) {
++      if (pos == nvar) return(list(c(prefix, left)))
++      unlist(lapply(left:0, function(a) rec(pos + 1L, left - a,
++                                            c(prefix, a))), recursive = FALSE)
++    }
++    rec(1L, total, integer())
++  }
++  if (degree > 0L) for (d in seq_len(degree)) for (e in exponent_vectors(n, d)) {
++    pieces <- vapply(which(e > 0L), function(i) {
++      if (e[i] == 1L) nm_z[i] else paste0(nm_z[i], "^", e[i])
++    }, character(1))
++    nm <- paste(pieces, collapse = "*")
++    f <- local({ ee <- e; function(Z, t) {
++      ans <- rep(1, nrow(Z))
++      for (ii in which(ee > 0L)) ans <- ans * Z[, ii]^ee[ii]
++      ans
++    }})
++    terms[[nm]] <- f; names_ <- c(names_, nm)
++    ydeg <- c(ydeg, if (l > 0L) sum(e[(k + 1L):n]) else 0L)
++  }
++  if (!length(terms))
++    aci_abort("aci_error_dims", "The requested function library contains no terms.")
++  structure(list(funs = terms, names = names_, y_degree = ydeg, k = k, l = l),
++            class = "function_library")
++}
++
++
++#' Print a function library
++#'
++#' @param x A `function_library` object.
++#' @param ... Ignored, for consistency with the generic.
++#' @returns `x`, invisibly; called for the printed output.
++#' @export
++print.function_library <- function(x, ...) {
++  cat(sprintf("<function_library> %d terms over k=%d observed + l=%d hidden\n",
++              length(x$funs), x$k, x$l)); invisible(x)
++}
++
++
++#' Evaluate a function library
++#'
++#' Evaluates every candidate term of a library at the supplied states and
++#' times.
++#'
++#' @param lib A `function_library` object; see [cgns_library()].
++#' @param Z Numeric matrix of states, one row per time.
++#' @param t Numeric vector of times, one per row of `Z`.
++#' @returns A numeric matrix with one column per library term.
++#'
++#' @seealso [cgns_library()], [learn_model()]
++#'
++#' @examples
++#' lib <- cgns_library(k = 1, l = 1, degree = 2)
++#' head(eval_library(lib, Z = rbind(c(0.5, 0.2), c(0.6, 0.1)), t = c(0, 0.1)))
++#'
++#' @export
++eval_library <- function(lib, Z, t) {
++  if (!inherits(lib, "function_library"))
++    aci_abort("aci_error_dims", "lib must be a function_library.")
++  Z <- as.matrix(Z)
++  if (!is.numeric(Z) || ncol(Z) != lib$k + lib$l || !nrow(Z) ||
++      any(!is.finite(Z)))
++    aci_abort("aci_error_dims", "Z must be a finite matrix with k + l columns.")
++  if (length(t) != 1L && length(t) != nrow(Z))
++    aci_abort("aci_error_dims", "t must be scalar or have one value per row of Z.")
++  if (!is.numeric(t) || any(!is.finite(t)))
++    aci_abort("aci_error_dims", "t must contain finite numeric values.")
++  M <- vapply(lib$funs, function(f) {
++    ans <- f(Z, t)
++    if (!is.numeric(ans) || length(ans) != nrow(Z) || any(!is.finite(ans)))
++      aci_abort("aci_error_model_contract",
++                "Every library function must return one finite numeric value per row.")
++    ans
++  }, numeric(nrow(Z)))
++  # vapply() returns a bare vector when Z has a single row, which colnames()
++  # cannot take; the reshape keeps the result a matrix for every record length.
++  M <- matrix(M, nrow = nrow(Z))
++  colnames(M) <- lib$names
++  M
++}
++
++
++################################################################################
++# causation entropy and structure thresholding
++################################################################################
++
++#' Gaussian causation entropy
++#'
++#' CE of each candidate column into `target`, conditioned on the remaining
++#' candidates (jiang2026enkbs's Gaussian CE): 0.5 log( RSS(rest) / RSS(rest +
++#' candidate) ).
++#'
++#' Convention: the target here is the increment, following the derivative
++#' formulation of the framework jiang2026enkbs cites. The published EnKBS
++#' discovery script instead conditions on the next state via covariance
++#' log-determinants, which inflates each equation's own state term and yields
++#' different absolute CE values, so thresholds do not transfer between the two
++#' conventions.
++#' @param Theta Numeric design matrix.
++#' @param target Numeric response vector.
++#' @param candidates Candidate column names in `Theta`.
++#'
++#' @references
++#' Jiang, Z., Andreou, M., Reich, S. and Chen, N. (2026). A continuous-time
++#' ensemble Kalman-Bucy smoother for causal inference and model discovery.
++#' arXiv:2604.25157. \doi{10.48550/arXiv.2604.25157}
++#'
++#' Sun, J. and Bollt, E. M. (2014). Causation entropy identifies indirect
++#' influences, dominance of neighbors and anticipatory couplings. *Physica D*
++#' **267**, 49-57. \doi{10.1016/j.physd.2013.07.001}
++#'
++#' Elinger, J. and Rogers, J. (2021). Causation entropy method for covariate
++#' selection in dynamic models. *2021 American Control Conference (ACC)*,
++#' 2842-2847. \doi{10.23919/ACC50511.2021.9483371}
++#' @examples
++#' set.seed(1)
++#' Th <- cbind(a = rnorm(50), b = rnorm(50))
++#' causation_entropy(Th, target = Th[, "a"] * 2 + rnorm(50, sd = 0.1))
++#'
++#' @export
++causation_entropy <- function(Theta, target, candidates = colnames(Theta)) {
++  Theta <- as.matrix(Theta); target <- as.numeric(target)
++  if (!is.numeric(Theta) || !nrow(Theta) || nrow(Theta) != length(target) ||
++      any(!is.finite(c(Theta, target))) || is.null(colnames(Theta)) ||
++      anyDuplicated(colnames(Theta)) || !is.character(candidates) ||
++      !length(candidates) || anyNA(candidates) || anyDuplicated(candidates) ||
++      any(!candidates %in% colnames(Theta)))
++    aci_abort("aci_error_dims", paste(
++      "Theta must be a finite, uniquely named design matrix aligned with",
++      "target, and candidates must name its columns."))
++  # No implicit intercept: the dictionary's own constant term (if any) is a
++  # first-class candidate, so conditioning sets are exactly `cols`.
++  fitR <- function(cols) {
++    if (!length(cols)) return(sum(target^2))
++    q <- qr(Theta[, cols, drop = FALSE]); sum(qr.resid(q, target)^2)
++  }
++  # `candidates` defines both the tested set and its conditioning set.  Public
++  # callers may pass a wider design matrix containing nuisance columns; those
++  # must not silently change the requested candidate-only CE calculation.
++  all_ <- candidates
++  vapply(candidates, function(cn) {
++    rest <- setdiff(all_, cn)
++    r0 <- fitR(rest); r1 <- fitR(all_)
++    max(0.5 * log(max(r0, 1e-300) / max(r1, 1e-300)), 0)
++  }, numeric(1))
++}
++
++
++#' Apply structure threshold to causation entropies
++#'
++#' Selects the candidate terms whose causation entropy exceeds a threshold,
++#' retaining at least a minimum number of them.
++#'
++#' @param ce Named numeric vector of causation entropies.
++#' @param threshold Either `"auto"` or a numeric threshold. `"auto"` is a
++#'   relative floor, `1e-2` of the largest CE; the jiang2026enkbs experiments
++#'   use an absolute threshold instead (`1e-3` in the paper), which can be
++#'   reproduced by passing that number directly.
++#' @param value Optional numeric threshold used when `threshold` is `"auto"`
++#'   and an explicit value is preferred.
++#' @param keep_min Minimum number of terms retained.
++#' @returns Character vector of the retained term names.
++#'
++#' @references
++#' Jiang, Z., Andreou, M., Reich, S. and Chen, N. (2026). A continuous-time
++#' ensemble Kalman-Bucy smoother for causal inference and model discovery.
++#' arXiv:2604.25157. \doi{10.48550/arXiv.2604.25157}
++#'
++#' @seealso [causation_entropy()], [eval_library()]
++#'
++#' @examples
++#' threshold_structure(c(a = 0.9, b = 0.001))
++#'
++#' @export
++threshold_structure <- function(ce, threshold = "auto",
++                                value = NULL, keep_min = 1) {
++  if (!is.numeric(ce) || is.null(names(ce)) || anyNA(names(ce)) ||
++      any(!nzchar(names(ce))) || anyDuplicated(names(ce)) || !length(ce) ||
++      any(!is.finite(ce)) || any(ce < 0) ||
++      !is.numeric(keep_min) || length(keep_min) != 1L ||
++      !is.finite(keep_min) || keep_min < 0 || keep_min != as.integer(keep_min) ||
++      keep_min > length(ce))
++    aci_abort("aci_error_dims",
++              "ce must be a finite non-negative named vector and keep_min a valid integer.")
++  if (is.numeric(threshold)) {
++    if (length(threshold) != 1L || !is.finite(threshold) || threshold < 0)
++      aci_abort("aci_error_dims", "A numeric threshold must be one finite non-negative value.")
++    mode <- "value"; value <- threshold
++  } else {
++    if (!is.character(threshold) || length(threshold) != 1L ||
++        is.na(threshold) || !threshold %in% c("auto", "gap", "value"))
++      aci_abort("aci_error_dims", "threshold must be 'auto', 'gap', 'value', or a non-negative number.")
++    mode <- threshold
++  }
++  if (mode == "auto") {
++    thr <- 1e-2 * max(ce)                  # robust relative floor (default)
++  } else if (mode == "gap") {
++    srt <- sort(ce[ce > max(ce) * 1e-8], decreasing = TRUE)
++    if (length(srt) > 1L) {
++      gap <- which.max(-diff(log(srt)))
++      thr <- sqrt(srt[gap] * srt[gap + 1L])
++    } else {
++      thr <- if (length(srt)) srt / 2 else 0
++    }
++  } else {
++    if (!is.numeric(value) || length(value) != 1L || !is.finite(value) || value < 0)
++      aci_abort("aci_error_dims", "value must be supplied as one finite non-negative threshold.")
++    thr <- value
++  }
++  kept <- names(ce)[ce > thr]
++  if (length(kept) < keep_min) kept <- names(sort(ce, decreasing = TRUE))[seq_len(keep_min)]
++  structure(kept, threshold = thr, ce = ce)
++}
++
++
++################################################################################
++# Euler-consistent FFBS posterior sampling for CGNS
++################################################################################
++
++#' Sample hidden trajectories conditioned on an observed path
++#'
++#' Method `"ffbs"` uses the one-step Euler CGNS transition conditional on each
++#' observed increment. Method `"enkbs"` returns EnKBS smoother members for a
++#' compatible stochastic model.
++#'
++#' The FFBS pass conditions on a filter it computes itself when `filter` is not
++#' supplied. The transition below is the single-step Euler CGNS transition, so
++#' FFBS requires the matching explicit, one-step filter. It does not silently mix
++#' this transition with an implicit or sub-stepped filter.
++#'
++#' @param model Model used for assimilation.
++#' @param obs Observed trajectory.
++#' @param n_samples Number of hidden paths.
++#' @param method FFBS or EnKBS sampler.
++#' @param seed Reproducibility seed.
++#' @param filter Optional compatible precomputed filter.
++#' @param conditional Optional conditional ACI masking specification.
++#' @param init Optional Gaussian initial distribution. For FFBS this is passed
++#'   to the closed-form filter; for EnKBS it initializes the ensemble sampler.
++#' @param stepper Filter covariance stepper used by FFBS.
++#' @param nsub Number of filter substeps.
++#' @param ... Additional filter or ensemble arguments.
++#'
++#' @examples
++#' m <- aci_dyad_model()
++#' sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
++#' ob <- as_obs(sim)
++#' sample_paths(m, ob, n_samples = 3, seed = 1)
++#'
++#' @export
++sample_paths <- function(model, obs, n_samples = 20,
++                         method = c("ffbs", "enkbs"), seed = NULL,
++                         filter = NULL, conditional = NULL,
++                         init = NULL, stepper = c("explicit", "implicit"),
++                         nsub = 1L, ...) {
++  method <- match.arg(method); stepper <- match.arg(stepper)
++  dots <- list(...)
++  obs <- as_obs(obs)
++  if (!is.numeric(n_samples) || length(n_samples) != 1L ||
++      !is.finite(n_samples) || n_samples < 1L ||
++      n_samples != as.integer(n_samples))
++    aci_abort("aci_error_dims", "n_samples must be a positive integer.")
++  n_samples <- as.integer(n_samples)
++  if (!is.null(seed) && (!is.numeric(seed) || length(seed) != 1L ||
++      !is.finite(seed) || seed < 0 || seed > .Machine$integer.max ||
++      seed != floor(seed)))
++    aci_abort("aci_error_dims", "seed must be NULL or one non-negative integer.")
++  if (!is.numeric(nsub) || length(nsub) != 1L || !is.finite(nsub) ||
++      nsub < 1L || nsub != floor(nsub))
++    aci_abort("aci_error_dims", "nsub must be a positive integer.")
++  nsub <- as.integer(nsub)
++  if (!is.null(seed)) set.seed(seed)
++  if (method == "enkbs") {
++    sm <- if (is.null(filter)) {
++      if (!is.null(init) && "ic_sampler" %in% names(dots))
++        aci_abort("aci_error_dims",
++                  "Supply only one of init and ic_sampler for ensemble path sampling.")
++      args <- c(list(model = model, obs = obs, m = n_samples, seed = seed,
++                     conditional = conditional), dots)
++      if (!is.null(init)) args$ic_sampler <- init
++      fr <- do.call(enkbf, args)
++      enkbs(model, fr$path, fr$noise)
++    } else {
++      if (!is.null(init))
++        aci_abort("aci_error_dims",
++                  "init cannot be combined with a supplied ensemble filter.")
++      do.call(aci_smoother.stochastic_model,
++              c(list(model = model, obs = obs, filter = filter,
++                     conditional = conditional), dots))
++    }
++    return(sm$members)
++  }
++  if (!inherits(model, "cgns_model"))
++    aci_abort("aci_error_model_contract", "method='ffbs' requires a cgns_model.")
++  if (length(dots))
++    aci_abort("aci_error_dims", "Unused arguments were supplied to FFBS path sampling.")
++  source_model <- model
++  bundle <- .compile_cgns_run(model, obs, conditional)
++  m <- bundle$model; ob <- bundle$obs
++  if (stepper != "explicit" || nsub != 1L)
++    aci_abort("aci_error_stepper",
++              "FFBS requires stepper = 'explicit' and nsub = 1 to match its Euler transition.")
++  if (!is.null(filter) &&
++      (!identical(filter$meta$stepper %||% "explicit", "explicit") ||
++       (filter$meta$nsub %||% 1L) != 1L))
++    aci_abort("aci_error_stepper", "The supplied FFBS filter is not explicit single-step.")
++  if (!is.null(filter))
++    .validate_gaussian_path(filter, ob, m$l, "filter", bundle$conditional, model = m,
++                            source_model = source_model)
++  if (!is.null(filter) && !is.null(init) &&
++      !.same_gaussian_init(init, filter$meta$init, m$l))
++    aci_abort("aci_error_dims", "init conflicts with the prior stored on the supplied filter.")
++  filt <- filter %||% .cgns_filter_compiled(
++    bundle, init = init, stepper = stepper, nsub = nsub, validate = FALSE
++  )
++  N1 <- length(ob$t); N <- N1 - 1L; dt <- ob$dt; l <- m$l
++  Y <- array(NA_real_, c(l, N1, n_samples))
++  chN <- safe_chol(filt$cov[, , N1])
++  Y[, N1, ] <- filt$mean[N1, ] + t(chN) %*% matrix(stats::rnorm(l * n_samples), l)
++  for (j in N:1) {
++    co <- .compiled_co(bundle, j)
++    Gi <- .compiled_ginv(bundle, j)
++    A  <- diag(l) + (co$Ly - co$gyx %*% Gi %*% co$Lx) * dt
++    cc <- co$fy * dt + drop(co$gyx %*% Gi %*%
++            (ob$x[j + 1, ] - ob$x[j, ] - co$fx * dt))
++    Qc <- sym(co$gyy - co$gyx %*% Gi %*% t(co$gyx)) * dt
++    Rf <- filt$cov[, , j]; muf <- filt$mean[j, ]
++    Rfi <- chol_solve(Rf, diag(l), "Rf")
++    Qci <- chol_solve(spd_floor(Qc), diag(l), "Qc")
++    Sig <- chol_solve(sym(Rfi + t(A) %*% Qci %*% A), diag(l), "FFBS")
++    ch  <- safe_chol(spd_floor(Sig))
++    base <- drop(Rfi %*% muf)
++    Ynext <- matrix(Y[, j + 1, ], l)
++    Mn <- Sig %*% (base + t(A) %*% Qci %*% (Ynext - cc))
++    Y[, j, ] <- Mn + t(ch) %*% matrix(stats::rnorm(l * n_samples), l)
++  }
++  Y
++}
++
++
++################################################################################
++# constrained MLE, cross-equation energy constraints, learn_model
++################################################################################
++
++#' constrained least squares
++#'
++#' Minimize ||dZ - Theta xi||^2 (+ ridge) subject to A xi = b (KKT system).
++#'
++#' @param Theta Numeric design matrix.
++#' @param dZ Increment-rate response.
++#' @param constraints Optional list containing equality matrix `A` and vector `b`.
++#' @param ridge Non-negative ridge penalty.
++#'
++#' @examples
++#' set.seed(1)
++#' Th <- cbind(a = rnorm(50), b = rnorm(50))
++#' constrained_mle(Th, dZ = Th[, "a"] * 2 + rnorm(50, sd = 0.1))
++#'
++#' @export
++constrained_mle <- function(Theta, dZ, constraints = NULL, ridge = 0) {
++  Theta <- as.matrix(Theta); dZ <- as.numeric(dZ)
++  if (!is.numeric(Theta) || nrow(Theta) < 2L || ncol(Theta) < 1L ||
++      nrow(Theta) != length(dZ) || any(!is.finite(c(Theta, dZ))) ||
++      is.null(colnames(Theta)) || any(!nzchar(colnames(Theta))) ||
++      anyDuplicated(colnames(Theta)))
++    aci_abort("aci_error_dims",
++              "Theta must be a finite, uniquely named design matrix with at least two rows and aligned dZ.")
++  if (!is.numeric(ridge) || length(ridge) != 1L || !is.finite(ridge) || ridge < 0)
++    aci_abort("aci_error_dims", "ridge must be one finite non-negative number.")
++  p <- ncol(Theta)
++  G <- crossprod(Theta) + diag(ridge, p)
++  h <- crossprod(Theta, dZ)
++  if (is.null(constraints)) {
++    xi <- drop(chol_solve(spd_floor(G), h, "normal equations"))
++  } else {
++    if (!is.list(constraints) || is.null(constraints$A) || is.null(constraints$b))
++      aci_abort("aci_error_dims", "constraints must be a list containing A and b.")
++    A <- as.matrix(constraints$A); b <- as.numeric(constraints$b)
++    if (!is.numeric(A) || nrow(A) < 1L || ncol(A) != p ||
++        length(b) != nrow(A) || any(!is.finite(c(A, b))))
++      aci_abort("aci_error_dims", "Constraint A and b dimensions or values are invalid.")
++    q <- nrow(A)
++    K <- rbind(cbind(G, t(A)), cbind(A, matrix(0, q, q)))
++    sol <- tryCatch(solve(K, c(h, b)), error = function(e)
++      aci_abort("aci_error_model_contract",
++                sprintf("Constrained normal equations are singular: %s", conditionMessage(e))))
++    xi <- sol[seq_len(p)]
++  }
++  names(xi) <- colnames(Theta)
++  res <- dZ - drop(Theta %*% xi)
++  structure(list(coef = xi, rss = sum(res^2), n = length(dZ),
++                 sigma2_dt = stats::var(res)), class = "cmle_fit")
++}
++
++
++#' Rebuild cgns_model from learned polynomial coefficients
++#'
++#' All kept terms must have hidden-degree <= 1, and noise is carried over from the template.
++#'
++#' @param coefs_x Learned observed equation coefficients.
++#' @param coefs_y Learned hidden equation coefficients.
++#' @param library Function library specification.
++#' @param template Model supplying dimensions and diffusion coefficients.
++#'
++#' @examples
++#' m <- aci_dyad_model()
++#' sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
++#' ob <- as_obs(sim)
++#' lib <- cgns_library(k = 1, l = 1, degree = 2)
++#' lm1 <- learn_model(m, ob, lib, n_samples = 3, seed = 1)
++#' lm1$model
++#'
++#' @export
++model_from_learned <- function(coefs_x, coefs_y, library, template) {
++  if (!inherits(library, "function_library"))
++    aci_abort("aci_error_model_contract", "library must be a function_library.")
++  if (!is.list(template) || is.null(template$k) || is.null(template$l))
++    aci_abort("aci_error_model_contract", "template must provide k, l, and diffusion functions.")
++  dims <- .state_dims(template$k, template$l)
++  k <- dims[["k"]]; l <- dims[["l"]]
++  if (library$k != k || library$l != l)
++    aci_abort("aci_error_model_contract", "library dimensions do not match the template.")
++  if (!is.function(template$Sx1) || !is.function(template$Sy2) ||
++      (!is.null(template$Sx2) && !is.function(template$Sx2)) ||
++      (!is.null(template$Sy1) && !is.function(template$Sy1)))
++    aci_abort("aci_error_model_contract", "template diffusion entries must be functions.")
++  if (!is.null(template$meta) && !is.list(template$meta))
++    aci_abort("aci_error_model_contract", "template meta must be a list when supplied.")
++  validate_coefs <- function(xs, rows, label) {
++    if (!is.list(xs) || length(xs) != rows)
++      aci_abort("aci_error_model_contract",
++                sprintf("%s must be a list with one coefficient vector per equation.", label))
++    lapply(xs, function(cf) {
++      if (!is.numeric(cf) || any(!is.finite(cf)) ||
++          (length(cf) && (is.null(names(cf)) || any(!nzchar(names(cf))) ||
++                          anyDuplicated(names(cf)) ||
++                          any(!names(cf) %in% library$names))))
++        aci_abort("aci_error_model_contract",
++                  sprintf("%s contains invalid or unknown named coefficients.", label))
++      if (length(cf) && any(library$y_degree[match(names(cf), library$names)] > 1L))
++        aci_abort("aci_error_model_contract",
++                  "A learned CGNS drift cannot contain terms nonlinear in the hidden state.")
++      cf
++    })
++  }
++  coefs_x <- validate_coefs(coefs_x, k, "coefs_x")
++  coefs_y <- validate_coefs(coefs_y, l, "coefs_y")
++  mk_drift <- function(coef_list, rows) function(t, x, y) {
++    Z <- matrix(c(x, y), 1)
++    vapply(seq_len(rows), function(i) {
++      cf <- coef_list[[i]]
++      if (!length(cf)) return(0)
++      sum(cf * vapply(names(cf), function(nm) library$funs[[nm]](Z, t), numeric(1)))
++    }, numeric(1))
++  }
++  aci_model_from_affine(mk_drift(coefs_x, k), mk_drift(coefs_y, l),
++                   Sx = template$Sx1, Sx2 = template$Sx2,
++                   Sy_shared = template$Sy1, Sy_hidden = template$Sy2,
++                   k = k, l = l, name = "learned",
++                   meta = utils::modifyList(template$meta %||% list(),
++                     list(provenance = "learned_model_package_implementation")))
++}
++
++
++#' Model discovery from observations + posterior hidden samples
++#'
++#' jiang2026enkbs s5 loop (sample -> CE prune -> constrained MLE), iterated as
++#' a stochastic-EM.
++#' n_iter = 1 (default) is a single stochastic-EM M-step: structure recovery
++#' is reliable, but hidden equation coefficients carry the posterior path
++#' h-transform drift bias (~20-40% on quadratic terms in the dyad demo).
++#' n_iter >= 2 re-samples under the learned model (structure frozen after
++#' the first pass); this loop is EXPERIMENTAL - without Robbins-Monro
++#' damping it can amplify rather than remove the bias. Validation required against MATLAB Codebase.
++#'
++#' @param model Seed model.
++#' @param obs Observed trajectory.
++#' @param library Function library specification.
++#' @param n_samples Number of posterior hidden paths.
++#' @param method Posterior sampling method.
++#' @param ce_threshold Causation entropy selection threshold.
++#' @param constraints Optional equality constraints.
++#' @param energy_pairs Optional energy-conserving equation pairs.
++#' @param enforce_cgns Restrict selected terms to the CGNS class.
++#' @param n_iter Number of stochastic-EM iterations.
++#' @param seed Reproducibility seed.
++#' @param burn_frac Fraction discarded before fitting.
++#' @param ... Additional arguments passed to path sampling.
++#'
++#' @references
++#' Jiang, Z., Andreou, M., Reich, S. and Chen, N. (2026). A continuous-time
++#' ensemble Kalman-Bucy smoother for causal inference and model discovery.
++#' arXiv:2604.25157. \doi{10.48550/arXiv.2604.25157}
++#'
++#' Chen, N. and Zhang, Y. (2023). A causality-based learning approach for
++#' discovering the underlying dynamics of complex systems from partial
++#' observations with stochastic parameterization. *Physica D* **449**, 133743.
++#' \doi{10.1016/j.physd.2023.133743}
++#' @examples
++#' \donttest{
++#' m <- aci_dyad_model()
++#' sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
++#' ob <- as_obs(sim)
++#' lib <- cgns_library(k = 1, l = 1, degree = 2)
++#' learn_model(m, ob, lib, n_samples = 3, seed = 1)
++#' }
++#'
++#' @export
++learn_model <- function(model, obs, library, n_samples = 20,
++                        method = c("ffbs", "enkbs"),
++                        ce_threshold = "auto", constraints = NULL,
++                        energy_pairs = NULL, enforce_cgns = FALSE,
++                        n_iter = 1, seed = 1, burn_frac = 0.1, ...) {
++  method <- match.arg(method)
++  obs <- as_obs(obs)
++  if (!inherits(model, "stochastic_model") || obs$k != model$k)
++    aci_abort("aci_error_model_contract", "model and observation dimensions are incompatible.")
++  if (!inherits(library, "function_library") || library$k != model$k ||
++      library$l != model$l)
++    aci_abort("aci_error_model_contract", "library dimensions must match model k and l.")
++  if (!is.numeric(n_samples) || length(n_samples) != 1L || !is.finite(n_samples) ||
++      n_samples < 1L || n_samples != floor(n_samples))
++    aci_abort("aci_error_dims", "n_samples must be a positive integer.")
++  n_samples <- as.integer(n_samples)
++  if (!is.numeric(n_iter) || length(n_iter) != 1L || !is.finite(n_iter) ||
++      n_iter < 1L || n_iter != floor(n_iter))
++    aci_abort("aci_error_dims", "n_iter must be a positive integer.")
++  n_iter <- as.integer(n_iter)
++  if (!is.numeric(burn_frac) || length(burn_frac) != 1L ||
++      !is.finite(burn_frac) || burn_frac < 0 || burn_frac >= 1)
++    aci_abort("aci_error_dims", "burn_frac must be in [0, 1).")
++  if (!is.numeric(seed) || length(seed) != 1L || !is.finite(seed) ||
++      seed < 0 || seed > .Machine$integer.max || seed != floor(seed))
++    aci_abort("aci_error_dims", "seed must be one non-negative integer.")
++  if (seed + 97 * (n_iter - 1) > .Machine$integer.max)
++    aci_abort("aci_error_dims", "seed and n_iter produce a seed outside R's integer range.")
++  if (length(enforce_cgns) != 1L || is.na(enforce_cgns) || !is.logical(enforce_cgns))
++    aci_abort("aci_error_dims", "enforce_cgns must be TRUE or FALSE.")
++  if (!is.null(constraints) && !is.list(constraints))
++    aci_abort("aci_error_dims", "constraints must be NULL or a named list by equation.")
++  eq_names <- c(paste0("x", seq_len(model$k)), paste0("y", seq_len(model$l)))
++  if (!is.null(constraints) &&
++      (is.null(names(constraints)) || anyNA(names(constraints)) ||
++       any(!nzchar(names(constraints))) || anyDuplicated(names(constraints)) ||
++       any(!names(constraints) %in% eq_names)))
++    aci_abort("aci_error_dims", sprintf(
++      "constraints must be uniquely named by equation: %s.",
++      paste(eq_names, collapse = ", ")))
++  if (!is.null(constraints) && !is.null(energy_pairs))
++    aci_abort("aci_error_not_implemented",
++              "Combining per-equation constraints with energy_pairs is not implemented.")
++  keep_start <- ceiling(burn_frac * length(obs$t)) + 1L
++  keep_end <- length(obs$t) - 1L
++  if (keep_start > keep_end)
++    aci_abort("aci_error_dims", "burn_frac leaves no increments for model learning.")
++  if (n_iter > 1) enforce_cgns <- TRUE
++  sampler_model <- model
++  frozen_kept <- NULL          # structure is identified once, then held fixed
++  for (it in seq_len(n_iter)) {
++  Y <- sample_paths(sampler_model, obs, n_samples = n_samples, method = method,
++                    seed = seed + 97 * (it - 1), ...)
++  N1 <- length(obs$t); dt <- obs$dt
++  keep_t <- seq.int(keep_start, keep_end)
++  k <- model$k; l <- model$l
++  ThetaL <- list(); dXL <- vector("list", k); dYL <- vector("list", l)
++  for (s in seq_len(n_samples)) {
++    Z <- cbind(obs$x, t(matrix(Y[, , s], l)))[keep_t, , drop = FALSE]
++    Th <- eval_library(library, Z, obs$t[keep_t])
++    ThetaL[[s]] <- Th
++    for (i in seq_len(k)) dXL[[i]] <- c(dXL[[i]], diff(obs$x[, i])[keep_t] / dt)
++    for (i in seq_len(l)) dYL[[i]] <- c(dYL[[i]], diff(Y[i, , s])[keep_t] / dt)
++  }
++  Theta <- do.call(rbind, ThetaL)
++  fit_one <- function(dz, eqname) {
++    cand <- library$names
++    if (enforce_cgns) cand <- cand[library$y_degree <= 1]
++    ce <- causation_entropy(Theta[, cand, drop = FALSE], dz, cand)
++    kept <- if (!is.null(frozen_kept)) frozen_kept[[eqname]]
++            else threshold_structure(ce, ce_threshold)
++    if ("1" %in% library$names) kept <- union("1", kept)
++    cons <- constraints[[eqname]]
++    if (!is.null(cons)) {
++      keep2 <- union(kept, cons$involves %||% character())
++      kept <- intersect(library$names, keep2)
++    }
++    fit <- constrained_mle(Theta[, kept, drop = FALSE], dz, constraints = cons)
++    list(kept = kept, ce = ce, coef = fit$coef,
++         sigma_hat = sqrt(max(fit$sigma2_dt * dt, 0)),
++         fit = fit)
++  }
++  out <- c(lapply(seq_len(k), function(i) fit_one(dXL[[i]], paste0("x", i))),
++           lapply(seq_len(l), function(i) fit_one(dYL[[i]], paste0("y", i))))
++  names(out) <- c(paste0("dx", seq_len(k)), paste0("dy", seq_len(l)))
++  if (!is.null(energy_pairs))
++    out <- .refit_energy_joint(out, Theta, c(dXL, dYL), library,
++                               energy_pairs, k, l, dt = dt)
++  if (it == 1 && n_iter > 1)
++    frozen_kept <- stats::setNames(lapply(out, `[[`, "kept"),
++      c(paste0("x", seq_len(k)), paste0("y", seq_len(l))))
++  if (it < n_iter) {
++    cx <- lapply(seq_len(k), function(i) out[[i]]$coef)
++    cy <- lapply(seq_len(l), function(i) out[[k + i]]$coef)
++    sampler_model <- tryCatch(
++      model_from_learned(cx, cy, library, template = model),
++      error = function(e) {
++        aci_warn("aci_warn_truncation",
++                 sprintf("iteration %d: learned model rejected (%s); keeping previous sampler.",
++                         it, conditionMessage(e)))
++        sampler_model })
++  }
++  }
++  structure(list(equations = out, library = library,
++                 meta = list(n_samples = n_samples, method = method,
++                             n_iter = n_iter)),
++            class = "learned_model")
++}
++
++
++#' Print a learned model
++#'
++#' @param x A `learned_model` object.
++#' @param ... Ignored, for consistency with the generic.
++#' @returns `x`, invisibly; called for the printed output.
++#' @export
++print.learned_model <- function(x, ...) {
++  cat("<learned_model>\n")
++  for (nm in names(x$equations)) {
++    e <- x$equations[[nm]]
++    cf <- e$coef[abs(e$coef) > 1e-10]
++    cat(sprintf("  %s/dt = %s\n", nm,
++        paste(sprintf("%+.3g %s", cf, names(cf)), collapse = " ")))
++  }
++  invisible(x)
++}
++
++
++#' Joint cross-equation refit under energy-conservation equalities
++#'
++#' Imposes coef("xi*ym" in dx_i) + coef("xi^2" in dy_m) = 0,
++#' the quadratic-pair conservation of the dyad/triad/pathways class. The
++#' touched equations are stacked into one block-diagonal KKT system; the
++#' involved terms are unioned into the kept sets if CE pruned them.
++#'
++#' @param out Per-equation fit objects.
++#' @param Theta Design matrix.
++#' @param targets Per-equation response vectors.
++#' @param library Function library specification.
++#' @param pairs Observed/hidden energy-pair constraints.
++#' @param k Number of observed equations.
++#' @param l Number of hidden equations.
++#' @returns The refitted per-equation coefficient list.
++#' @noRd
++.refit_energy_joint <- function(out, Theta, targets, library, pairs, k, l,
++                                dt = NULL) {
++  if (!is.null(names(pairs)) && all(c("obs", "hid") %in% names(pairs)))
++    pairs <- list(pairs)                    # a single bare pair was passed
++  if (!is.list(pairs) || !length(pairs))
++    aci_abort("aci_error_model_contract", "energy_pairs must be a non-empty list of obs/hid index pairs.")
++  pairs <- lapply(pairs, function(p) {
++    if (is.null(names(p)) || !all(c("obs", "hid") %in% names(p)))
++      aci_abort("aci_error_model_contract", "Each energy pair must name obs and hid indices.")
++    i <- p[["obs"]]; m <- p[["hid"]]
++    if (!is.numeric(i) || length(i) != 1L || !is.finite(i) || i != floor(i) ||
++        i < 1L || i > k || !is.numeric(m) || length(m) != 1L ||
++        !is.finite(m) || m != floor(m) || m < 1L || m > l)
++      aci_abort("aci_error_model_contract", "Energy-pair obs/hid indices are out of range.")
++    c(obs = as.integer(i), hid = as.integer(m))
++  })
++  kept <- lapply(out, `[[`, "kept")
++  for (p in pairs) {
++    i <- as.integer(p[["obs"]]); m <- as.integer(p[["hid"]])
++    txy <- sprintf("x%d*y%d", i, m); tx2 <- sprintf("x%d^2", i)
++    if (!all(c(txy, tx2) %in% library$names))
++      aci_abort("aci_error_model_contract",
++                sprintf("energy pair (%d, %d): library lacks %s / %s.", i, m, txy, tx2))
++    kept[[i]] <- union(kept[[i]], txy)
++    kept[[k + m]] <- union(kept[[k + m]], tx2)
++  }
++  nE <- length(out); pj <- vapply(kept, length, integer(1)); off <- cumsum(c(0, pj))
++  nr <- nrow(Theta)
++  TJ <- matrix(0, nE * nr, sum(pj)); yJ <- numeric(nE * nr)
++  joint_names <- unlist(lapply(seq_len(nE), function(e)
++    paste0(names(out)[e] %||% paste0("eq", e), "::", kept[[e]])),
++    use.names = FALSE)
++  colnames(TJ) <- make.unique(joint_names)
++  for (e in seq_len(nE)) {
++    rows <- (e - 1) * nr + seq_len(nr)
++    TJ[rows, off[e] + seq_len(pj[e])] <- Theta[, kept[[e]], drop = FALSE]
++    yJ[rows] <- targets[[e]]
++  }
++  A <- matrix(0, length(pairs), sum(pj)); b <- rep(0, length(pairs))
++  for (r in seq_along(pairs)) {
++    i <- as.integer(pairs[[r]][["obs"]]); m <- as.integer(pairs[[r]][["hid"]])
++    A[r, off[i] + match(sprintf("x%d*y%d", i, m), kept[[i]])] <- 1
++    A[r, off[k + m] + match(sprintf("x%d^2", i), kept[[k + m]])] <- 1
++  }
++  fit <- constrained_mle(TJ, yJ, constraints = list(A = A, b = b))
++  for (e in seq_len(nE)) {
++    cf <- fit$coef[off[e] + seq_len(pj[e])]; names(cf) <- kept[[e]]
++    res <- targets[[e]] - drop(Theta[, kept[[e]], drop = FALSE] %*% cf)
++    ef <- structure(list(coef = cf, rss = sum(res^2), n = length(res),
++                         sigma2_dt = stats::var(res)), class = "cmle_fit")
++    out[[e]]$kept <- kept[[e]]; out[[e]]$coef <- cf
++    out[[e]]$fit <- ef
++    if (!is.null(dt)) out[[e]]$sigma_hat <- sqrt(max(ef$sigma2_dt * dt, 0))
++    out[[e]]$energy_constrained <- TRUE
++  }
++  out
++}
+diff --git a/R/aci-ensemble.R b/R/aci-ensemble.R
+new file mode 100644
+index 0000000..bfb6b71
+--- /dev/null
++++ b/R/aci-ensemble.R
+@@ -0,0 +1,746 @@
++################################################################################
++## ensemble.R - the derivative-free engine: EnKBF/EnKBS with noise reuse
++## ########################################################################## ##
++##
++## Contents:
++##   * ensemble Kalman-Bucy filter (perturbed simulated observations):
++##       - new_ens_path, print.da_path_ensemble, as_gaussian, .eval_members, enkbf,
++##         aci_filter.stochastic_model
++##
++##   * ensemble Kalman-Bucy smoother (forward-noise reuse, hash-enforced):
++##       - enkbs, aci_smoother.stochastic_model
++##
++##   * andreou2026cir/jiang2026enkbs forward finite-lag posterior family:
++##       - ensemble_lag_table
++##
++################################################################################
++
++
++################################################################################
++# EnKBF: ensemble Kalman-Bucy filter (perturbed simulated observations)
++################################################################################
++
++#' Construct an ensemble assimilation path (internal)
++#'
++#' @param t Numeric vector of times.
++#' @param members Numeric array of ensemble members, hidden dimension by member
++#'   by time.
++#' @param kind 1-length character, `"filter"` or `"smoother"`.
++#' @param meta Optional named list of metadata carried on the object.
++#' @returns An object of class `da_path_ensemble`.
++#' @noRd
++new_ens_path <- function(t, members, kind, meta = list()) {
++  structure(list(t = t, members = members, kind = kind, meta = meta),
++            class = c("da_path_ensemble", "da_path"))
++}
++
++
++#' Print an ensemble assimilation path
++#'
++#' @param x A `da_path_ensemble` object.
++#' @param ... Ignored, for consistency with the generic.
++#' @returns `x`, invisibly; called for the printed output.
++#' @export
++print.da_path_ensemble <- function(x, ...) {
++  d <- dim(x$members)
++  cat(sprintf("<da_path_ensemble> kind = %s, l = %d, N+1 = %d, m = %d\n",
++              x$kind, d[1], d[2], d[3])); invisible(x)
++}
++
++
++#' Gaussian moments of an ensemble path
++#'
++#' Reduces an ensemble path to its per-time sample mean and covariance, giving
++#' an object the closed-form diagnostics can consume.
++#'
++#' @param path A `da_path_ensemble` object.
++#' @returns A `da_path_gaussian` object carrying the ensemble moments.
++#'
++#' @seealso [enkbf()], [cross_validate()]
++#'
++#' @examples
++#' m <- aci_dyad_model()
++#' sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
++#' ob <- as_obs(sim)
++#' fr <- enkbf(m, ob, m = 20, seed = 1)
++#' as_gaussian(fr$path)
++#'
++#' @export
++as_gaussian <- function(path) {
++  if (!inherits(path, "da_path_ensemble"))
++    aci_abort("aci_error_dims", "path must be a da_path_ensemble object.")
++  d <- dim(path$members)
++  if (length(d) != 3L || any(d < 1L))
++    aci_abort("aci_error_dims", "Ensemble members must be an l x (N+1) x m array.")
++  if (!is.numeric(path$t) || length(path$t) != d[2] ||
++      any(!is.finite(path$t)))
++    aci_abort("aci_error_dims",
++              "The ensemble path time grid must contain one finite value per member-array time index.")
++  l <- d[1]; N1 <- d[2]
++  if (d[3] <= l)
++    aci_abort("aci_error_ensemble_rank",
++              "Moment-matched Gaussian paths require ensemble size m > l.")
++  MU <- matrix(NA_real_, N1, l); CV <- array(NA_real_, c(l, l, N1))
++  for (j in seq_len(N1)) {
++    Y <- path$members[, j, , drop = FALSE][, 1, ]
++    Y <- matrix(Y, nrow = l)
++    MU[j, ] <- rowMeans(Y)
++    Rj <- sym(tcrossprod(Y - MU[j, ]) / (d[3] - 1))
++    if (is.null(tryCatch(chol(Rj), error = function(e) NULL)))
++      aci_abort("aci_error_ensemble_rank", sprintf(
++        "Ensemble covariance is rank deficient at index %d; increase m or use a separately justified projection.",
++        j))
++    CV[, , j] <- Rj
++  }
++  p <- new_da_path(path$t, MU, CV, path$kind, path$meta)
++  p$meta$moment_matched_from_m <- d[3]
++  p
++}
++
++
++#' Evaluate a drift or diffusion across ensemble members (internal)
++#'
++#' @param fun Function of `(t, x, y)` to evaluate.
++#' @param t 1-length numeric time.
++#' @param x Numeric vector of observations at time `t`.
++#' @param Y Numeric matrix of hidden members, one column per member.
++#' @param vectorized `TRUE` when `fun` accepts the whole member matrix.
++#' @param out_rows Number of rows the result must carry.
++#' @returns A numeric matrix with `out_rows` rows and one column per member.
++#' @noRd
++.eval_members <- function(fun, t, x, Y, vectorized, out_rows) {
++  v <- if (vectorized) fun(t, x, Y) else
++    vapply(seq_len(ncol(Y)), function(i) fun(t, x, Y[, i]),
++           numeric(out_rows))
++  if (!is.numeric(v) || length(v) != out_rows * ncol(Y) ||
++      any(!is.finite(v)))
++    aci_abort("aci_error_model_contract", sprintf(
++      "A member drift must return a finite %d by %d result.",
++      out_rows, ncol(Y)))
++  matrix(v, nrow = out_rows)
++}
++
++
++#' Hash the forward Wiener increments (internal)
++#'
++#' Used to enforce that the backward pass reuses the increments of the forward
++#' run it is paired with.
++#'
++#' @param noise The stored Wiener increments of a forward run.
++#' @returns 1-length character hash.
++#' @noRd
++.noise_fingerprint <- function(noise) {
++  tf <- tempfile(pattern = "aci-noise-", fileext = ".rds")
++  on.exit(unlink(tf), add = TRUE)
++  saveRDS(list(B = noise$B, W = noise$W), tf, version = 3)
++  unname(tools::md5sum(tf))
++}
++
++
++#' Check the ensemble engine's model contract (internal)
++#'
++#' Rejects models whose observation and signal noise share Wiener channels, and
++#' models whose signal diffusion depends on the hidden member.
++#'
++#' @param model A `stochastic_model` object.
++#' @param ob An `obs_traj` object.
++#' @param Y Optional matrix of hidden members used to probe the diffusion.
++#' @returns Invisibly `TRUE`; called for its error conditions.
++#' @noRd
++.validate_ensemble_contract <- function(model, ob, Y = NULL) {
++  # The EnKBF/EnKBS derivation supplied with the package assumes independent
++  # observation and signal Wiener processes. The closed-form CGNS engine is
++  # the supported route for shared/correlated channels.
++  if (inherits(model, "cgns_model")) {
++    corr <- any(vapply(seq_along(ob$t), function(j) {
++      .has_cross_noise(eval_coefs(model, ob$t[j], ob$x[j, ]))
++    }, logical(1)))
++    if (corr)
++      aci_abort("aci_error_ensemble_noise_contract", paste(
++        "The ensemble engine implements the independent-noise EnKBF/EnKBS",
++        "from the supplied paper and cannot be used with shared/correlated",
++        "CGNS noise. Use engine = 'cgns'."))
++  }
++  if (!is.null(Y)) {
++    # The implemented paper recursion evaluates signal diffusion as Sigma(t,x),
++    # not separately at each hidden member. Refuse hidden-dependent diffusion
++    # rather than silently substituting the ensemble mean.
++    y0 <- Y[, 1]
++    ref <- as.matrix(model$Sy(ob$t[1], ob$x[1, ], y0))
++    probes <- unique(c(1L, ncol(Y), max(1L, ceiling(ncol(Y) / 2))))
++    for (i in probes) {
++      now <- as.matrix(model$Sy(ob$t[1], ob$x[1, ], Y[, i]))
++      if (!identical(dim(now), dim(ref)) ||
++          max(abs(now - ref)) > 1e-12 * max(1, max(abs(ref))))
++        aci_abort("aci_error_ensemble_noise_contract", paste(
++          "The supplied EnKBF/EnKBS recursion requires Sy(t, x) to be",
++          "independent of the hidden ensemble member."))
++    }
++  }
++  invisible(TRUE)
++}
++
++
++#' Signal diffusion required to be member-independent (internal)
++#'
++#' @param model A `stochastic_model` object.
++#' @param t 1-length numeric time.
++#' @param x Numeric vector of observations at time `t`.
++#' @param Y Numeric matrix of hidden members.
++#' @returns The signal diffusion matrix at `(t, x)`.
++#' @noRd
++.ensemble_signal_diffusion <- function(model, t, x, Y) {
++  ref <- as.matrix(model$Sy(t, x, Y[, 1]))
++  for (i in seq_len(ncol(Y))) {
++    now <- as.matrix(model$Sy(t, x, Y[, i]))
++    if (!identical(dim(now), dim(ref)) ||
++        max(abs(now - ref)) > 1e-12 * max(1, max(abs(ref))))
++      aci_abort("aci_error_ensemble_noise_contract", paste(
++        "The supplied EnKBF/EnKBS recursion requires Sy(t, x) to be",
++        "independent of the hidden ensemble member."))
++  }
++  ref
++}
++
++
++#' Ensemble Kalman-Bucy filter
++#'
++#' Ensemble Kalman-Bucy filtering following the independent-noise jiang2026enkbs
++#' recursion. Shared/correlated observation and signal noise is not accepted by
++#' this engine; use the closed-form CGNS engine for that case.
++#'
++#' @param model A `stochastic_model` object.
++#' @param obs An observed trajectory, or anything [as_obs()] accepts.
++#' @param m Ensemble size; a positive whole number.
++#' @param ic_sampler Optional function of the ensemble size drawing the initial
++#'   members, or a list with the initial `mean` and `cov` from which members
++#'   are drawn; `NULL` uses the model's default.
++#' @param localization Optional localization specification; see
++#'   [localization_spec()].
++#' @param inflation Positive multiplicative variance inflation factor.
++#' @param conditional Optional `aci_conditional_spec`; see [aci_conditional()].
++#' @param seed Optional non-negative whole number seeding the generator.
++#' @param noise Optional stored Wiener increments to drive the run.
++#' @param keep_members `TRUE` to retain the member paths.
++#' @param ... Must be empty; unused arguments are an error.
++#' @returns A `da_path_ensemble` object of kind `"filter"`, carrying the Wiener
++#'   increments [enkbs()] requires.
++#'
++#' @references
++#' Jiang, Z., Andreou, M., Reich, S. and Chen, N. (2026). A continuous-time
++#' ensemble Kalman-Bucy smoother for causal inference and model discovery.
++#' arXiv:2604.25157. \doi{10.48550/arXiv.2604.25157}
++#' @seealso [enkbs()], [as_gaussian()], [localization_spec()]
++#'
++#' @examples
++#' m <- aci_dyad_model()
++#' sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
++#' ob <- as_obs(sim)
++#' enkbf(m, ob, m = 20, seed = 1)
++#'
++#' @export
++enkbf <- function(model, obs, m, ic_sampler = NULL, localization = NULL,
++                  inflation = 1, conditional = NULL, seed = NULL, noise = NULL,
++                  keep_members = TRUE, ...) {
++  if (length(list(...)))
++    aci_abort("aci_error_dims", "Unused arguments were supplied to enkbf().")
++  obs <- as_obs(obs)
++  if (!inherits(model, "stochastic_model"))
++    aci_abort("aci_error_model_contract", "enkbf() requires a stochastic_model.")
++  if (obs$k != model$k)
++    aci_abort("aci_error_dims", "Observation dimension does not match the stochastic model.")
++  rs <- .resolve_nontarget(model, obs, conditional)
++  md <- rs$model; ob <- rs$obs
++  N1 <- length(ob$t); N <- N1 - 1L; dt <- ob$dt
++  k <- md$k; l <- md$l; sq <- sqrt(dt)
++  if (!is.numeric(m) || length(m) != 1L || !is.finite(m) ||
++      m != floor(m) || m < 2L)
++    aci_abort("aci_error_ensemble_rank",
++              "m must be an integer of at least 2.")
++  m <- as.integer(m)
++  if (!is.null(seed) && (!is.numeric(seed) || length(seed) != 1L ||
++      !is.finite(seed) || seed < 0 || seed > .Machine$integer.max ||
++      seed != floor(seed)))
++    aci_abort("aci_error_dims", "seed must be NULL or one non-negative integer.")
++  if (length(inflation) != 1L || !is.finite(inflation) || inflation < 1)
++    aci_abort("aci_error_dims", "inflation must be a finite scalar >= 1.")
++  if (!isTRUE(keep_members))
++    aci_abort("aci_error_not_implemented",
++              "keep_members = FALSE is unsupported because EnKBS requires the forward members.")
++  if (!is.null(localization) && !is.list(localization))
++    aci_abort("aci_error_dims", "localization must be NULL or a localization_spec-like list.")
++  if (!is.null(seed)) set.seed(seed)
++  Y <- if (is.function(ic_sampler)) ic_sampler(m) else {
++    ic <- ic_sampler %||% list(mean = md$meta$ic_default$y0 %||% rep(0, l),
++                               cov = diag(1, l))
++    if (!is.list(ic) || length(ic$mean %||% numeric()) != l ||
++        !identical(dim(as.matrix(ic$cov)), c(l, l)) ||
++        any(!is.finite(c(ic$mean, ic$cov))))
++      aci_abort("aci_error_dims", "ic_sampler list must contain finite mean (l) and cov (l x l).")
++    ch <- safe_chol(as.matrix(ic$cov))
++    as.numeric(ic$mean) + t(ch) %*% matrix(stats::rnorm(l * m), l, m)
++  }
++  if (length(Y) != l * m || any(!is.finite(Y)))
++    aci_abort("aci_error_dims", "ic_sampler must return l x m finite initial members.")
++  Y <- matrix(Y, l, m)
++  .validate_ensemble_contract(md, ob, Y)
++  dyn <- ncol(as.matrix(md$Sy(ob$t[1], ob$x[1, ], Y[, 1])))
++  dxn <- ncol(as.matrix(md$Sx(ob$t[1], ob$x[1, ])))
++  if (is.null(noise)) {
++    B <- array(stats::rnorm(dyn * N * m), c(dyn, N, m))
++    W <- array(stats::rnorm(dxn * N * m), c(dxn, N, m))
++    noise <- structure(list(B = B, W = W, seed = seed), class = "noise_store")
++  } else {
++    if (!inherits(noise, "noise_store"))
++      aci_abort("aci_error_noise_mismatch", "noise must be a noise_store from enkbf().")
++    B <- noise$B; W <- noise$W
++  }
++  if (!identical(dim(B), c(dyn, N, m)) || !identical(dim(W), c(dxn, N, m)))
++    aci_abort("aci_error_noise_mismatch",
++              "Supplied ensemble noise has dimensions inconsistent with the model, grid, or m.")
++  if (any(!is.finite(c(B, W))))
++    aci_abort("aci_error_noise_mismatch", "Ensemble noise must be finite.")
++  noise$fingerprint <- .noise_fingerprint(noise)
++  C1 <- localization$C1
++  if (!is.null(C1) && !identical(dim(C1), c(l, k)))
++    aci_abort("aci_error_dims", "localization$C1 must have dimensions l x k.")
++  if (!is.null(C1) && (!is.numeric(C1) || any(!is.finite(C1))))
++    aci_abort("aci_error_dims", "localization$C1 must contain finite numeric values.")
++  Yf <- array(NA_real_, c(l, N1, m)); Yf[, 1, ] <- Y
++  for (kk in seq_len(N)) {
++    t <- ob$t[kk]; xk <- ob$x[kk, ]; Dx <- ob$x[kk + 1, ] - xk
++    Fy <- .eval_members(md$f, t, xk, Y, md$vectorized_members, k)     # k x m
++    Sxk <- as.matrix(md$Sx(t, xk)); Gx <- Sxk %*% t(Sxk)
++    Gi <- rs$ginv(Gx)
++    dxi <- dt * Fy + sq * (Sxk %*% matrix(W[, kk, ], dxn, m))          # perturbed sim obs
++    Ya <- Y - rowMeans(Y); Fa <- Fy - rowMeans(Fy)
++    Pyf <- tcrossprod(Ya, Fa) / (m - 1)
++    if (!is.null(C1)) Pyf <- C1 * Pyf
++    K <- Pyf %*% Gi
++    gv <- .eval_members(md$g, t, xk, Y, md$vectorized_members, l)
++    Syk <- .ensemble_signal_diffusion(md, t, xk, Y)
++    Y <- Y + dt * gv + sq * (Syk %*% matrix(B[, kk, ], dyn, m)) +
++         K %*% (Dx - dxi)
++    if (inflation > 1) Y <- apply_inflation(Y, inflation)
++    if (any(!is.finite(Y)))
++      aci_abort("aci_error_ensemble_divergence", sprintf(
++        "EnKBF diverged at step %d; try modest inflation, smaller localization radius, or larger m (jiang2026enkbs Table 2 pattern).", kk))
++    Yf[, kk + 1, ] <- Y
++  }
++  path <- new_ens_path(ob$t, Yf, "filter",
++                       meta = list(m = m, inflation = inflation,
++                                   localization = !is.null(localization),
++                                   localization_spec = localization,
++                                   conditional = rs$tag,
++                                   noise_fingerprint = noise$fingerprint,
++                                   obs_x = ob$x,
++                                   resolved_model = md,
++                                   source_model = model,
++                                   source_obs_x = obs$x,
++                                   source_nontarget = conditional,
++                                   engine = "ensemble"))
++  list(path = path, noise = noise, model = md)
++}
++
++
++#' @describeIn aci_filter Ensemble filter for a general stochastic model.
++#' @param m Ensemble size; a positive whole number.
++#' @param localization Optional localization specification; see
++#'   [localization_spec()].
++#' @param inflation Positive multiplicative variance inflation factor.
++#' @param seed Optional non-negative whole number seeding the generator.
++#' @export
++aci_filter.stochastic_model <- function(model, obs, m = 100, localization = NULL,
++                                       inflation = 1, seed = NULL,
++                                       conditional = NULL, ...) {
++  fr <- enkbf(model, obs, m = m, localization = localization, inflation = inflation,
++              seed = seed, conditional = conditional, ...)
++  fr$path$meta$noise_store <- fr$noise
++  fr$path
++}
++
++
++################################################################################
++# EnKBS: ensemble Kalman-Bucy smoother (forward-noise reuse, hash-enforced)
++################################################################################
++
++#' Ensemble Kalman-Bucy smoother
++#'
++#' Ensemble Kalman-Bucy smoothing following the independent-noise jiang2026enkbs
++#' recursion. `enkbs()` must receive the exact forward Wiener increments
++#' returned by [enkbf()].
++#'
++#' @param model A `stochastic_model` object.
++#' @param filter A `da_path_ensemble` object of kind `"filter"`.
++#' @param noise The Wiener increments of the forward run, which must be the
++#'   ones `filter` was driven with.
++#' @param localization Optional localization specification; see
++#'   [localization_spec()].
++#' @param keep_members `TRUE` to retain the member paths.
++#' @param ... Must be empty; unused arguments are an error.
++#' @returns A `da_path_ensemble` object of kind `"smoother"`.
++#'
++#' @references
++#' Jiang, Z., Andreou, M., Reich, S. and Chen, N. (2026). A continuous-time
++#' ensemble Kalman-Bucy smoother for causal inference and model discovery.
++#' arXiv:2604.25157. \doi{10.48550/arXiv.2604.25157}
++#' @seealso [enkbf()], [ensemble_lag_table()]
++#'
++#' @examples
++#' m <- aci_dyad_model()
++#' sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
++#' ob <- as_obs(sim)
++#' fr <- enkbf(m, ob, m = 20, seed = 1)
++#' enkbs(m, fr$path, fr$noise)
++#'
++#' @export
++enkbs <- function(model, filter, noise, localization = NULL,
++                  keep_members = TRUE, ...) {
++  if (length(list(...)))
++    aci_abort("aci_error_dims", "Unused arguments were supplied to enkbs().")
++  if (!inherits(filter, "da_path_ensemble") || !inherits(noise, "noise_store"))
++    aci_abort("aci_error_noise_mismatch",
++              "filter and noise must come from the same enkbf() result.")
++  if (!identical(filter$kind, "filter"))
++    aci_abort("aci_error_noise_mismatch",
++              "enkbs() requires a forward ensemble filter path, not a smoother or other path kind.")
++  if (!isTRUE(keep_members))
++    aci_abort("aci_error_not_implemented",
++              "keep_members = FALSE is unsupported because the smoother result is an ensemble path.")
++  if (!identical(filter$meta$noise_fingerprint, .noise_fingerprint(noise)))
++    aci_abort("aci_error_noise_mismatch",
++      "The noise store does not match this filter run; EnKBS must reuse the forward Wiener paths (jiang2026enkbs App. A). Re-run enkbf().")
++  d <- dim(filter$members); l <- d[1]; N1 <- d[2]; m <- d[3]
++  dt <- filter$t[2] - filter$t[1]; sq <- sqrt(dt)
++  stored_localization <- filter$meta$localization_spec
++  if (is.null(localization) && !is.null(stored_localization))
++    localization <- stored_localization
++  if (!is.null(localization) && !is.list(localization))
++    aci_abort("aci_error_dims", "localization must be NULL or a localization_spec-like list.")
++  if (!is.null(stored_localization) && !identical(localization, stored_localization))
++    aci_abort("aci_error_dims",
++              "EnKBS must reuse the same localization specification as EnKBF.")
++  C2 <- localization$C2
++  if (!is.null(C2) && !identical(dim(C2), c(l, l)))
++    aci_abort("aci_error_dims", "localization$C2 must have dimensions l x l.")
++  if (!is.null(C2) && (!is.numeric(C2) || any(!is.finite(C2))))
++    aci_abort("aci_error_dims", "localization$C2 must contain finite numeric values.")
++  if (!is.null(C2) && max(abs(C2 - t(C2))) >
++      1e-12 * max(1, max(abs(C2))))
++    aci_abort("aci_error_dims", "localization$C2 must be symmetric.")
++  if (m <= l) {
++    c2_ch <- if (is.null(C2)) NULL else
++      tryCatch(chol(sym(C2)), error = function(e) NULL)
++    if (is.null(c2_ch) || !is.finite(rcond(C2)) || rcond(C2) < 1e-12)
++      aci_abort("aci_error_ensemble_rank",
++                "EnKBS with m <= l requires a numerically positive-definite C2 localization taper.")
++  }
++  Ys <- array(NA_real_, c(l, N1, m))
++  Ys[, N1, ] <- filter$members[, N1, ]                 # invariant #3
++  Ycur <- matrix(Ys[, N1, ], l, m)
++  obx <- filter$meta$obs_x
++  if (is.null(obx)) aci_abort("aci_error_dims", "Filter path lacks obs_x metadata; re-run enkbf().")
++  source_model <- filter$meta$source_model
++  resolved_model <- filter$meta$resolved_model
++  if (!is.null(source_model) && !identical(model, source_model) &&
++      !identical(model, resolved_model))
++    aci_abort("aci_error_model_contract",
++              "The supplied model does not match the ensemble filter run.")
++  model <- resolved_model %||% model
++  if (!inherits(model, "stochastic_model") || ncol(as.matrix(obx)) != model$k)
++    aci_abort("aci_error_model_contract", "Stored filter metadata is incompatible with the stochastic model.")
++  ob_contract <- observed_trajectory(filter$t, obx)
++  .validate_ensemble_contract(model, ob_contract, Ycur)
++  dyn <- ncol(as.matrix(model$Sy(filter$t[1], obx[1, ], Ycur[, 1])))
++  if (!identical(dim(noise$B), c(dyn, N1 - 1L, m)))
++    aci_abort("aci_error_noise_mismatch", "Stored signal noise has incompatible dimensions.")
++  for (kk in (N1 - 1):1) {
++    t1 <- filter$t[kk + 1]
++    x1 <- obx[kk + 1, ]
++    Yf1 <- matrix(filter$members[, kk + 1, ], l, m)
++    Pf <- tcrossprod(Yf1 - rowMeans(Yf1)) / (m - 1)
++    # jiang2026enkbs uses sample covariance, 1/(m-1), in both the filter and
++    # smoother, as does its published MATLAB (EnKBS repository).
++    if (!is.null(C2)) Pf <- C2 * Pf
++    Pf <- sym(Pf)
++    gv <- .eval_members(model$g, t1, x1, Ycur, model$vectorized_members, l)
++    Syk <- .ensemble_signal_diffusion(model, t1, x1, Ycur)
++    Gy <- Syk %*% t(Syk)
++    # Localization can make the Schur product C2 .* Pf positive definite even
++    # when the raw rank is at most m-1 < l (the high-dimensional
++    # jiang2026enkbs regime).
++    # Without it, report the rank limitation instead of silently regularizing.
++    # This inverse is part of the EnKBS equation.  `chol_solve()` deliberately
++    # jitters generic covariance inputs, but doing that here would silently
++    # change the smoother and let rank-deficient tapers bypass the m <= l
++    # contract.  Require an unregularized, numerically nonsingular factor.
++    chPf <- tryCatch(chol(Pf), error = function(e) NULL)
++    if (is.null(chPf))
++      aci_abort("aci_error_ensemble_rank",
++        "Localized/filter covariance is not invertible; provide a positive-definite C2 taper or increase m (jiang2026enkbs s2.4).")
++    rhs <- forwardsolve(t(chPf), Ycur - Yf1)
++    corr <- Gy %*% backsolve(chPf, rhs)
++    Ycur <- Ycur - dt * gv - sq * (Syk %*% matrix(noise$B[, kk, ], dyn, m)) -
++            dt * corr
++    if (any(!is.finite(Ycur)))
++      aci_abort("aci_error_ensemble_divergence",
++                sprintf("EnKBS diverged at backward step %d.", kk))
++    Ys[, kk, ] <- Ycur
++  }
++  new_ens_path(filter$t, Ys, "smoother",
++               meta = c(filter$meta[c("m", "conditional")], list(engine = "ensemble")))
++}
++
++
++#' Truncate an ensemble run (causal forward EnKBF) to an observation horizon (internal)
++#'
++#' @param run A stored forward ensemble run.
++#' @param n Integer number of time points to retain.
++#' @returns The run truncated to its first `n` time points.
++#' @noRd
++.truncate_ensemble_run <- function(run, n) {
++  if (!is.list(run) || !inherits(run$path, "da_path_ensemble") ||
++      !inherits(run$noise, "noise_store"))
++    aci_abort("aci_error_noise_mismatch",
++              "Internal ensemble truncation requires one intact enkbf() result.")
++  N1 <- length(run$path$t)
++  if (!is.numeric(n) || length(n) != 1L || !is.finite(n) ||
++      n != floor(n) || n < 2L || n > N1)
++    aci_abort("aci_error_dims", "Ensemble truncation index must be between 2 and N+1.")
++  n <- as.integer(n)
++  ix <- seq_len(n)
++  jx <- seq_len(n - 1L)
++  noise <- structure(
++    list(B = run$noise$B[, jx, , drop = FALSE],
++         W = run$noise$W[, jx, , drop = FALSE],
++         seed = run$noise$seed),
++    class = "noise_store")
++  noise$fingerprint <- .noise_fingerprint(noise)
++  path <- run$path
++  path$t <- path$t[ix]
++  path$members <- path$members[, ix, , drop = FALSE]
++  path$meta$obs_x <- path$meta$obs_x[ix, , drop = FALSE]
++  if (!is.null(path$meta$source_obs_x))
++    path$meta$source_obs_x <- path$meta$source_obs_x[ix, , drop = FALSE]
++  path$meta$noise_fingerprint <- noise$fingerprint
++  list(path = path, noise = noise, model = run$model)
++}
++
++
++#' Build the ensemble lag table using an ensemble run (internal)
++#'
++#' Uses EnKBS as the posterior engine. The causal EnKBF prefix is reusable, so
++#' only the backward pass is repeated here.
++#'
++#' @param model A `stochastic_model` object.
++#' @param obs An observed trajectory.
++#' @param run A stored forward ensemble run.
++#' @param smoother The complete-record ensemble smoother path.
++#' @param conditional Optional non-target tag recorded on the table.
++#' @param localization Optional localization specification.
++#' @returns An object of class `lag_table` with an ensemble engine tag.
++#' @noRd
++.ensemble_lag_table_from_run <- function(model, obs, run, smoother,
++                                         conditional = NULL,
++                                         localization = NULL) {
++  obs <- as_obs(obs)
++  if (!inherits(model, "stochastic_model") || obs$k != model$k ||
++      !inherits(run$path, "da_path_ensemble") ||
++      !inherits(smoother, "da_path_ensemble"))
++    aci_abort("aci_error_model_contract",
++              "An ensemble lag table needs matching model, observations, filter, and smoother.")
++  d <- dim(run$path$members)
++  if (d[3] <= d[1])
++    aci_abort("aci_error_ensemble_rank", paste(
++      "Ensemble CIR uses full-dimensional Gaussian moment KL and therefore",
++      "requires ensemble size m > l."))
++  if (!identical(dim(smoother$members), d) ||
++      length(run$path$t) != length(obs$t) ||
++      max(abs(run$path$t - obs$t)) > 1e-10 * max(1, max(abs(obs$t))))
++    aci_abort("aci_error_dims",
++              "The ensemble filter/smoother paths do not match the requested observation grid.")
++  N1 <- length(obs$t)
++  if (N1 > 500L)
++    aci_warn("aci_warn_cost", paste(
++      "A full ensemble lag table repeats an EnKBS backward pass for every",
++      "observation horizon and has O(N^2) time-point work and storage."))
++
++  filt_g <- as_gaussian(run$path)
++  full_g <- as_gaussian(smoother)
++  dec <- aci_metric(full_g, filt_g, decompose = TRUE)
++  rows <- lapply(seq_len(N1), function(j) rep(NA_real_, N1 - j + 1L))
++  for (j in seq_len(N1)) {
++    rows[[j]][1] <- dec$total[j]
++    rows[[j]][length(rows[[j]])] <- 0
++  }
++
++  # At n = j, the lagged smoother endpoint is the filter, already stored in
++  # the first cell. At n = N, it is the complete smoother, so the final cell is
++  # exactly zero. Only strict intermediate horizons require another pass.
++  if (N1 > 2L) for (n in 2L:(N1 - 1L)) {
++    prefix <- .truncate_ensemble_run(run, n)
++    sm_n <- enkbs(prefix$model, prefix$path, prefix$noise,
++                  localization = localization)
++    sm_n_g <- as_gaussian(sm_n)
++    if (n > 1L) for (j in seq_len(n - 1L))
++      rows[[j]][n - j + 1L] <- unname(aci_metric_pair(
++        full_g$mean[j, ], full_g$cov[, , j],
++        sm_n_g$mean[j, ], sm_n_g$cov[, , j], decompose = FALSE))
++  }
++  if (any(!is.finite(unlist(rows, use.names = FALSE))))
++    aci_abort("aci_error_internal",
++              "The ensemble lag table construction left a non-finite cell.")
++
++  structure(
++    list(t = obs$t, dt = obs$dt, mode = "full",
++         diag = dec$total, rows = rows, L = N1 - seq_len(N1),
++         diag_signal = dec$signal, diag_dispersion = dec$dispersion,
++         tailbnd = rep(0, N1), onelag = NULL,
++         meta = list(
++           engine = "ensemble", conditional = conditional,
++           tol = 0, window = Inf, max_lag = Inf, init = NULL,
++           source_model = model, source_obs_x = obs$x,
++           reference_smoother = "enkbs_full_horizon",
++           m = d[3], localization = localization,
++           repeated_backward_passes = max(N1 - 2L, 0L),
++           source_status = paste(
++             "andreou2026cir forward lagged-posterior definition evaluated with",
++             "the jiang2026enkbs EnKBS; graded against a literal port of the",
++             "published jiang2026enkbs dyad experiment on identical increments."))),
++    class = "lag_table")
++}
++
++
++#' Forward CIR ensemble lag table
++#'
++#' Ensemble lag table for forward causal influence ranges.
++#' Evaluates complete-versus-lagged smoother divergence using EnKBF/EnKBS
++#' posterior approximation. `ensemble_lag_table()` constructs andreou2026cir's
++#' forward finite-lag posterior family by repeating the jiang2026enkbs backward
++#' pass at every observation horizon. It has quadratic time-point work/storage
++#' and uses full-dimensional Gaussian moment KL, so `m` must exceed the hidden
++#' dimension.
++#'
++#' This route is graded at machine precision against a literal R port of the
++#' published jiang2026enkbs dyad experiment, driven by identical increments
++#' (see `tests/testthat/helper-golden-p3.R`).
++#'
++#' @param model A `stochastic_model` object.
++#' @param obs An observed trajectory, or anything [as_obs()] accepts.
++#' @param m Ensemble size; must exceed the hidden dimension.
++#' @param seed Optional non-negative whole number seeding the generator.
++#' @param conditional Optional `aci_conditional_spec`; see [aci_conditional()].
++#' @param localization Optional localization specification; see
++#'   [localization_spec()].
++#' @param inflation Positive multiplicative variance inflation factor.
++#' @param ic_sampler Optional function of the ensemble size drawing the
++#'   initial members, or a list with the initial `mean` and `cov`; `NULL`
++#'   uses the model's default.
++#' @param ... Must be empty; unused arguments are an error.
++#' @returns An object of class `lag_table` built by the ensemble engine.
++#'
++#' @references
++#' Andreou, M. and Chen, N. (2026). Bridging prediction and attribution:
++#' identifying forward and backward causal influence ranges using assimilative
++#' causal inference. arXiv:2510.21889v2, 4 August 2026.
++#' \doi{10.48550/arXiv.2510.21889}
++#'
++#' Jiang, Z., Andreou, M., Reich, S. and Chen, N. (2026). A continuous-time
++#' ensemble Kalman-Bucy smoother for causal inference and model discovery.
++#' arXiv:2604.25157. \doi{10.48550/arXiv.2604.25157}
++#' @seealso [enkbs()], [aci_range()]
++#'
++#' @examples
++#' \donttest{
++#' m <- aci_dyad_model()
++#' sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
++#' ob <- as_obs(sim)
++#' ensemble_lag_table(m, ob, m = 20, seed = 1)
++#' }
++#'
++#' @export
++ensemble_lag_table <- function(model, obs, m = 100, seed = NULL,
++                               conditional = NULL, localization = NULL,
++                               inflation = 1, ic_sampler = NULL, ...) {
++  if (length(list(...)))
++    aci_abort("aci_error_dims", "Unused arguments were supplied to ensemble_lag_table().")
++  obs <- as_obs(obs)
++  if (!inherits(model, "stochastic_model") || obs$k != model$k)
++    aci_abort("aci_error_model_contract",
++              "ensemble_lag_table() needs a matching stochastic model and observations.")
++  if (!is.numeric(m) || length(m) != 1L || !is.finite(m) ||
++      m != floor(m) || m <= model$l)
++    aci_abort("aci_error_ensemble_rank",
++              "Ensemble CIR requires an integer ensemble size m > l.")
++  run <- enkbf(model, obs, m = m, seed = seed, conditional = conditional,
++               localization = localization, inflation = inflation,
++               ic_sampler = ic_sampler)
++  sm <- enkbs(run$model, run$path, run$noise, localization = localization)
++  aci_warn("aci_warn_ensemble_kl", sprintf(
++    "Forward CIR uses Gaussian ensemble moments (m = %d); assess Monte Carlo stability across seeds and ensemble sizes.",
++    as.integer(m)))
++  .ensemble_lag_table_from_run(model, obs, run, sm,
++                               conditional = conditional,
++                               localization = localization)
++}
++
++
++#' @describeIn aci_smoother Ensemble smoother for a general stochastic model.
++#' @param m Ensemble size; a positive whole number.
++#' @param localization Optional localization specification; see
++#'   [localization_spec()].
++#' @param inflation Positive multiplicative variance inflation factor.
++#' @param seed Optional non-negative whole number seeding the generator.
++#' @param ic_sampler Optional function of the ensemble size drawing the
++#'   initial members, or a list with the initial `mean` and `cov`; `NULL`
++#'   uses the model's default.
++#' @param noise Optional stored Wiener increments of the forward run.
++#' @export
++aci_smoother.stochastic_model <- function(model, obs, filter = NULL, m = 100,
++                                       localization = NULL, inflation = 1,
++                                       seed = NULL, conditional = NULL,
++                                       ic_sampler = NULL, noise = NULL, ...) {
++  if (length(list(...)))
++    aci_abort("aci_error_dims", "Unused arguments were supplied to aci_smoother().")
++  ob_requested <- as_obs(obs)
++  if (!inherits(model, "stochastic_model") || ob_requested$k != model$k)
++    aci_abort("aci_error_model_contract",
++              "model must match the requested observation dimension.")
++  if (is.null(filter)) {
++    filter <- enkbf(model, ob_requested, m = m, localization = localization,
++                    inflation = inflation, seed = seed, conditional = conditional,
++                    ic_sampler = ic_sampler, noise = noise)
++  }
++  path_to_check <- if (inherits(filter, "da_path_ensemble")) filter else filter$path
++  if (!inherits(path_to_check, "da_path_ensemble"))
++    aci_abort("aci_error_noise_mismatch", "filter must be an ensemble path or full enkbf() result.")
++  same_grid <- length(path_to_check$t) == length(ob_requested$t) &&
++    max(abs(path_to_check$t - ob_requested$t)) <=
++      1e-10 * max(1, max(abs(ob_requested$t)))
++  same_obs <- identical(dim(path_to_check$meta$source_obs_x), dim(ob_requested$x)) &&
++    all(abs(path_to_check$meta$source_obs_x - ob_requested$x) <=
++          1e-12 * pmax(1, abs(ob_requested$x)))
++  if (!same_grid || !isTRUE(same_obs))
++    aci_abort("aci_error_dims",
++              "The supplied ensemble filter was computed from different observations.")
++  if (!identical(path_to_check$meta$source_nontarget %||% NULL,
++                 conditional %||% NULL))
++    aci_abort("aci_error_nontarget",
++              "The supplied ensemble filter used a different conditional specification.")
++  if (!identical(path_to_check$meta$source_model, model))
++    aci_abort("aci_error_model_contract",
++              "The supplied ensemble filter was computed with a different model object.")
++  if (inherits(filter, "da_path_ensemble")) {
++    noise <- filter$meta$noise_store
++    if (is.null(noise))
++      aci_abort("aci_error_noise_mismatch", paste(
++        "This ensemble filter path does not carry its forward noise store;",
++        "pass the full enkbf() result or a path returned by aci_filter()."))
++    return(enkbs(filter$meta$resolved_model %||% model, filter, noise,
++                 localization = localization))
++  }
++  if (!is.list(filter) || is.null(filter$noise) || is.null(filter$path))
++    aci_abort("aci_error_noise_mismatch",
++      "Pass the full enkbf() result (path + noise) so the backward pass can reuse the forward Wiener paths.")
++  enkbs(filter$model %||% model, filter$path, filter$noise, localization = localization)
++}
+diff --git a/R/aci-model-library.R b/R/aci-model-library.R
+index 28809a1..6ee95f1 100644
+--- a/R/aci-model-library.R
++++ b/R/aci-model-library.R
+@@ -70,10 +70,13 @@
+ #' aci_dyad_model()
+ #'
+ #' @export
+-aci_dyad_model <- function(variant = "p1", observe = "x", params = NULL) {
++aci_dyad_model <- function(variant = c("p1", "p3", "p4"),
++                       observe = c("x", "y"), params = NULL) {
+   variant <- match.arg(variant); observe <- match.arg(observe)
+   defaults <- switch(variant,
+-    p1 = list(d_x = 0.5, gamma = 2,   f_x = 0.5, s_x = 0.5, d_y = 0.5, f_y = 1,   s_y = 1))
++    p1 = list(d_x = 0.5, gamma = 2,   f_x = 0.5, s_x = 0.5, d_y = 0.5, f_y = 1,   s_y = 1),
++    p3 = list(d_x = 0.5, gamma = 2,   f_x = 1,   s_x = 0.5, d_y = 0.5, f_y = 0.8, s_y = 1),
++    p4 = list(d_x = 0.8, gamma = 1.2, f_x = 1,   s_x = 0.5, d_y = 0.8, f_y = 1,   s_y = 2))
+   p <- .complete_scalar_params(params, defaults, "dyad",
+                                c("d_x", "gamma", "s_x", "d_y", "s_y"))
+   if (observe == "x") {
+@@ -106,22 +109,54 @@ aci_dyad_model <- function(variant = "p1", observe = "x", params = NULL) {
+       Sy1 = coefficient_functions$Sy1,
+       Sy2 = coefficient_functions$Sy2,
+       k = 1, l = 1, name = sprintf("dyad[%s] y->x", variant))
++  } else {
++    m <- stochastic_model(
++      f = function(t, x, y) -p$d_y * x - p$gamma * y^2 + p$f_y,
++      g = function(t, x, y) (-p$d_x + p$gamma * x) * y + p$f_x,
++      Sx = function(t, x) matrix(p$s_y, 1, 1),
++      Sy = function(t, x, y) matrix(p$s_x, 1, 1),
++      k = 1, l = 1, vectorized_members = TRUE,
++      name = sprintf("dyad[%s] x->y (non-injective u^2)", variant))
+   }
+   m$meta$energy_conserving <- TRUE
+   m$meta$params <- p
+-  m$meta$vars <- list(observed = "x", hidden = "y")
++  m$meta$vars <- if (observe == "x")
++    list(observed = "x", hidden = "y") else
++    list(observed = "y", hidden = "x")
+   m$meta$provenance <- switch(variant,
+     p1 = paste("andreou2026aci Sections 3.1 and SI.4.1;",
+-               "ACI_code-main/dyad_interaction_model.m"))
+-  m$meta$source_status <- "paper + MATLAB checked"
++               "ACI_code-main/dyad_interaction_model.m"),
++    p3 = "jiang2026enkbs Section 3.2 bidirectional nonlinear-dyad EnKBS causal-inference benchmark",
++    p4 = "moser2026extremes equations (4.1)-(4.2)")
++  m$meta$source_status <- if (observe == "y" && variant == "p3") {
++    "paper + MATLAB checked (published EnKBS dyad experiment)"
++  } else if (observe == "y") {
++    paste("package extension (source equations; reverse x -> y partition",
++          "is not a supplied paper/MATLAB inference benchmark)")
++  } else if (variant == "p1") {
++    "paper + MATLAB checked"
++  } else if (variant == "p3") {
++    paste("paper checked; the published EnKBS MATLAB studies this direction",
++          "with the ensemble engine")
++  } else {
++    "paper checked; no corresponding MATLAB supplied"
++  }
++  m$meta$partition_caveat <- if (observe == "y")
++    paste("The reverse x -> y partition is not CGNS because the hidden x",
++          "enters through x^2; this constructor is for ensemble methods.",
++          if (variant == "p3")
++            "jiang2026enkbs Section 3.2 studies this direction with EnKBS." else "") else NULL
+   m$meta$anti_damping_threshold <- p$d_x / p$gamma
+   # The MATLAB reference starts each component at its uncoupled forced
+   # equilibrium (F_x / d_x, F_y / d_y).  In particular, the default
+   # andreou2026aci configuration starts at (1, 2), not (1, 0).
+-  m$meta$ic_default <- list(x0 = p$f_x / p$d_x, y0 = p$f_y / p$d_y)
+-  m <- .attach_cgns_realizer(
+-    m, "dyad_observed_x_v1", list(params = p)
+-  )
++  m$meta$ic_default <- if (observe == "x")
++    list(x0 = p$f_x / p$d_x, y0 = p$f_y / p$d_y) else
++    list(x0 = p$f_y / p$d_y, y0 = p$f_x / p$d_x)
++  if (observe == "x")
++    m <- .attach_cgns_realizer(
++      m, "dyad_observed_x_v1", list(params = p)
++    )
+   m
+ }
+ 
+@@ -738,3 +773,106 @@ aci_predprey_model <- function(hidden = c("prey", "predator"),
+   m$meta$matlab_simulator_parity <- TRUE
+   m
+ }
++
++
++#' Stochastic Lorenz-96 (jiang2026enkbs eq. 16)
++#'
++#' @param n Number of cyclic Lorenz-96 variables.
++#' @param F Constant forcing.
++#' @param sigma Legacy common noise amplitude override.
++#' @param observe Observed component indices; `NULL` uses the selected preset.
++#' @param preset jiang2026enkbs or legacy observation/noise convention.
++#' @param sigma_observed Observed component noise amplitude.
++#' @param sigma_hidden Hidden component noise amplitude.
++#'
++#' @references
++#' Jiang, Z., Andreou, M., Reich, S. and Chen, N. (2026). A continuous-time
++#' ensemble Kalman-Bucy smoother for causal inference and model discovery.
++#' arXiv:2604.25157. \doi{10.48550/arXiv.2604.25157}
++#' @examples
++#' model_l96(n = 8)
++#'
++#' @export
++model_l96 <- function(n = 40, F = 8, sigma = NULL, observe = NULL,
++                      preset = c("p3", "legacy"),
++                      sigma_observed = NULL, sigma_hidden = NULL) {
++  preset <- match.arg(preset)
++  if (!is.numeric(n) || length(n) != 1L || !is.finite(n) ||
++      n != as.integer(n) || n < 4L)
++    aci_abort("aci_error_model_contract", "n must be one integer of at least 4.")
++  n <- as.integer(n)
++  if (!is.numeric(F) || length(F) != 1L || !is.finite(F))
++    aci_abort("aci_error_model_contract", "F must be one finite number.")
++  if (is.null(observe))
++    observe <- if (preset == "p3") seq(2, n, by = 2) else seq(1, n, by = 2)
++  if (!is.numeric(observe) || !length(observe) || any(!is.finite(observe)) ||
++      any(observe != as.integer(observe)) || any(observe < 1L | observe > n))
++    aci_abort("aci_error_model_contract",
++              "observe must contain integer component indices in 1:n.")
++  if (!is.null(sigma)) {
++    if (is.null(sigma_observed)) sigma_observed <- sigma
++    if (is.null(sigma_hidden)) sigma_hidden <- sigma
++  }
++  sigma_observed <- sigma_observed %||% if (preset == "p3") sqrt(0.1) else 1
++  sigma_hidden <- sigma_hidden %||% if (preset == "p3") sqrt(5) else 1
++  if (!is.numeric(sigma_observed) || !is.numeric(sigma_hidden) ||
++      length(sigma_observed) != 1L || length(sigma_hidden) != 1L ||
++      any(!is.finite(c(sigma_observed, sigma_hidden))) ||
++      sigma_observed < 0 || sigma_hidden < 0)
++    aci_abort("aci_error_model_contract",
++              "sigma_observed and sigma_hidden must be non-negative finite scalars.")
++  obs_i <- sort(unique(as.integer(observe))); hid_i <- setdiff(seq_len(n), obs_i)
++  if (!length(hid_i)) aci_abort("aci_error_model_contract", "Need at least one hidden component.")
++  ip1 <- c(2:n, 1); im1 <- c(n, 1:(n - 1)); im2 <- c(n - 1, n, 1:(n - 2))
++  drift_full <- function(Z) {
++    if (is.matrix(Z)) (Z[ip1, , drop = FALSE] - Z[im2, , drop = FALSE]) *
++                        Z[im1, , drop = FALSE] - Z + F
++    else (Z[ip1] - Z[im2]) * Z[im1] - Z + F
++  }
++  assemble <- function(x, y) {
++    if (is.matrix(y)) { Z <- matrix(0, n, ncol(y)); Z[obs_i, ] <- x; Z[hid_i, ] <- y }
++    else { Z <- numeric(n); Z[obs_i] <- x; Z[hid_i] <- y }
++    Z
++  }
++  m <- stochastic_model(
++    f = function(t, x, y) { D <- drift_full(assemble(x, y))
++      if (is.matrix(D)) D[obs_i, , drop = FALSE] else D[obs_i] },
++    g = function(t, x, y) { D <- drift_full(assemble(x, y))
++      if (is.matrix(D)) D[hid_i, , drop = FALSE] else D[hid_i] },
++    Sx = function(t, x) diag(sigma_observed, length(obs_i)),
++    Sy = function(t, x, y) diag(sigma_hidden, length(hid_i)),
++    k = length(obs_i), l = length(hid_i), vectorized_members = TRUE,
++    name = sprintf("L96[%s,n=%d,F=%g]", preset, n, F))
++  m$meta$coords <- list(hidden = hid_i, obs = obs_i, period = n)
++  m$meta$params <- list(n = n, F = F, sigma_observed = sigma_observed,
++                        sigma_hidden = sigma_hidden, preset = preset)
++  variable_names <- paste0("x", seq_len(n))
++  m$meta$vars <- list(all = variable_names, observed = variable_names[obs_i],
++                      hidden = variable_names[hid_i])
++  exact_p3_preset <- preset == "p3" && n == 40L && F == 8 &&
++    identical(obs_i, seq(2L, n, by = 2L)) &&
++    isTRUE(all.equal(sigma_observed, sqrt(0.1))) &&
++    isTRUE(all.equal(sigma_hidden, sqrt(5)))
++  m$meta$provenance <- if (preset == "p3")
++    "jiang2026enkbs equation (16), Lorenz-96 benchmark" else
++    "Package legacy preset using the Lorenz-96 drift"
++  m$meta$source_status <- if (exact_p3_preset) {
++    "paper checked; parameters and scheme match the published EnKBS MATLAB"
++  } else if (preset == "p3") {
++    "package extension (jiang2026enkbs equations with a non-benchmark configuration)"
++  } else {
++    "package extension; legacy preset is not in the four ACI papers or supplied MATLAB"
++  }
++  m$meta$preset_caveat <- if (preset == "legacy") {
++    paste("The legacy preset observes odd indices and assigns unit noise to",
++          "both partitions; it is retained for compatibility and is not jiang2026enkbs.")
++  } else if (!exact_p3_preset) {
++    paste("The exact jiang2026enkbs benchmark uses n=40, F=8, even observed indices,",
++          "observed variance 0.1, and hidden variance 5.")
++  } else NULL
++  # Deterministic perturbations keep construction RNG-neutral while retaining
++  # the small, non-uniform perturbation used to leave the unstable equilibrium.
++  z0 <- F + 0.01 * sin(seq_len(n) * sqrt(2))
++  m$meta$ic_default <- list(x0 = z0[obs_i], y0 = z0[hid_i])
++  m
++}
+diff --git a/R/aci-model.R b/R/aci-model.R
+index 058dd0b..b528132 100644
+--- a/R/aci-model.R
++++ b/R/aci-model.R
+@@ -59,7 +59,7 @@
+ #'
+ #' @seealso [aci_model()]
+ #'
+-#' @noRd
++#' @export
+ stochastic_model <- function(f, g, Sx, Sy, k, l,
+                              vectorized_members = FALSE, name = NULL,
+                              meta = list()) {
+diff --git a/tests/testthat/helper-golden-p3.R b/tests/testthat/helper-golden-p3.R
+new file mode 100644
+index 0000000..1789fca
+--- /dev/null
++++ b/tests/testthat/helper-golden-p3.R
+@@ -0,0 +1,100 @@
++# Faithful R port of the published EnKBS dyad experiment (jiang2026enkbs;
++# EnKBS-main/dyad/utov.m: v observed, u hidden, so u -> v is the direction
++# under study). The port mirrors the MATLAB loops statement by statement and
++# is driven by supplied noise, so the package's ensemble engine can be graded
++# against it at machine precision on identical inputs. MATLAB and R random
++# streams differ, which is why the grade drives both sides with one set of
++# increments rather than replaying the published run itself.
++#
++# One deliberate difference of the package is folded in here: the reference
++# adds its observation perturbation (+ sigma_v dW), while the package follows
++# the paper's innovation (dy - dy_i) and subtracts it. The two are identical
++# in distribution; the test passes the package the negated draws so that both
++# sides see the same realised innovations.
++
++# Truth trajectory of the dyad by the reference's Euler scheme.
++golden_p3_truth <- function(n, dt, p, z_u, z_v, u0 = 0.9, v0 = -0.2) {
++  u <- numeric(n); v <- numeric(n)
++  u[1] <- u0; v[1] <- v0
++  for (i in 2:n) {
++    u[i] <- u[i - 1] + ((-p$d_u + p$c * v[i - 1]) * u[i - 1] + p$F_u) * dt +
++      sqrt(dt) * z_u[i - 1] * p$sigma_u
++    v[i] <- v[i - 1] + (-p$d_v * v[i - 1] - p$c * u[i - 1]^2 + p$F_v) * dt +
++      sqrt(dt) * z_v[i - 1] * p$sigma_v
++  }
++  list(u = u, v = v)
++}
++
++# Forward EnKBF: returns the m x n matrix of filter members.
++golden_p3_enkbf <- function(u0_ens, v_truth, z_u_ens, z_v_obs, p, dt) {
++  n <- length(v_truth); m <- length(u0_ens)
++  filt <- matrix(NA_real_, m, n)
++  u_ens <- u0_ens
++  filt[, 1] <- u_ens
++  for (i in 2:n) {
++    v_prev <- v_truth[i - 1]
++    d_y <- v_truth[i] - v_prev
++    f_vals <- (-p$d_u + p$c * v_prev) * u_ens + p$F_u
++    h_vals <- -p$d_v * v_prev - p$c * u_ens^2 + p$F_v
++    du <- u_ens - mean(u_ens)
++    dh <- h_vals - mean(h_vals)
++    p_uh <- sum(du * dh) / (m - 1)
++    gain <- p_uh / p$sigma_v^2
++    u_pred <- u_ens + f_vals * dt + p$sigma_u * sqrt(dt) * z_u_ens[, i - 1]
++    innovation <- d_y - h_vals * dt + p$sigma_v * sqrt(dt) * z_v_obs[, i - 1]
++    u_ens <- u_pred + gain * innovation
++    filt[, i] <- u_ens
++  }
++  filt
++}
++
++# One backward EnKBS pass from horizon `k`, reusing the forward increments.
++# Returns the m x k matrix of smoother members over steps 1..k.
++golden_p3_enkbs <- function(filt, v_truth, z_u_ens, p, dt, k = ncol(filt)) {
++  m <- nrow(filt)
++  smoo <- matrix(NA_real_, m, k)
++  u_s <- filt[, k]
++  smoo[, k] <- u_s
++  if (k > 1) for (i in (k - 1):1) {
++    v_right <- v_truth[i + 1]
++    p_right <- stats::var(filt[, i + 1])
++    f_s <- (-p$d_u + p$c * v_right) * u_s + p$F_u
++    u_s <- u_s - f_s * dt - p$sigma_u * sqrt(dt) * z_u_ens[, i] -
++      (p$sigma_u^2 / p_right) * (u_s - filt[, i + 1]) * dt
++    smoo[, i] <- u_s
++  }
++  smoo
++}
++
++# The lagged triangle: one backward pass per horizon, storing the smoother
++# mean and variance at (step, horizon), then the relative entropy of the
++# complete-record posterior from each partial one.
++golden_p3_delta <- function(filt, v_truth, z_u_ens, p, dt) {
++  n <- ncol(filt)
++  tri_mean <- matrix(NA_real_, n, n)
++  tri_var <- matrix(NA_real_, n, n)
++  for (k in seq_len(n)) {
++    smoo <- golden_p3_enkbs(filt, v_truth, z_u_ens, p, dt, k)
++    tri_mean[seq_len(k), k] <- colMeans(smoo)
++    tri_var[seq_len(k), k] <- apply(smoo, 2, stats::var)
++  }
++  delta <- matrix(NA_real_, n, n)
++  for (k in seq_len(n)) {
++    j <- seq_len(k)
++    ratio <- tri_var[j, n] / tri_var[j, k]
++    delta[j, k] <- 0.5 * ((tri_mean[j, n] - tri_mean[j, k])^2 / tri_var[j, k] +
++                            ratio - 1 - log(ratio))
++  }
++  list(mean = tri_mean, var = tri_var, delta = delta)
++}
++
++# The reference's approximate objective forward CIR from the delta table:
++# Simpson ratio per anchor, zeroed below the strength threshold.
++golden_p3_cir <- function(delta, dt, threshold = 1e-5) {
++  n <- nrow(delta)
++  vapply(seq_len(n), function(r) {
++    re <- delta[r, r:n]
++    if (max(re) <= threshold) return(0)
++    .simps_u(re) * dt / max(re)
++  }, numeric(1))
++}
+diff --git a/tests/testthat/test-03-engine.R b/tests/testthat/test-03-engine.R
+index fc6e878..9b84488 100644
+--- a/tests/testthat/test-03-engine.R
++++ b/tests/testthat/test-03-engine.R
+@@ -96,11 +96,6 @@ test_that("retention alone never changes the headline backward-ODE ACI", {
+   expect_error(aci(m, s$obs, typo = TRUE), class = "aci_error_dims")
+   expect_error(aci(m, s$obs, table = at$table, typo = TRUE),
+                class = "aci_error_dims")
+-  # `m =` would partial-match `model` and silently shift every argument;
+-  # the guard names the deferred ensemble argument instead (the EnKBS
+-  # family restores it as a real argument).
+-  expect_error(aci(m, s$obs, m = 50), class = "aci_error_not_implemented")
+-  expect_error(aci(m, s$obs, m = 50), regexp = "partial-match")
+   expect_error(aci_range(at$table, typo = TRUE), class = "aci_error_dims")
+ })
+ 
+diff --git a/tests/testthat/test-06-ensemble.R b/tests/testthat/test-06-ensemble.R
+new file mode 100644
+index 0000000..e87521a
+--- /dev/null
++++ b/tests/testthat/test-06-ensemble.R
+@@ -0,0 +1,226 @@
++test_that("E1: EnKBF/EnKBS moments approach the CGNS oracle", {
++  m <- aci_dyad_model()
++  s <- simulate(m, seed = 55, T = 1.5, dt = 5e-3)
++  init <- list(mean = 0, cov = diag(1, 1))
++  filt <- suppressWarnings(aci_filter(m, s$obs, init = init))
++  smoo <- aci_smoother(m, s$obs, filter = filt)
++  fr <- enkbf(m, s$obs, m = 800, seed = 8, ic_sampler = init)
++  sm <- enkbs(m, fr$path, fr$noise)
++  fg <- as_gaussian(fr$path); sg <- as_gaussian(sm)
++  burn <- seq_len(60)
++  sc <- stats::sd(smoo$mean[-burn, 1])
++  expect_lt(sqrt(mean((fg$mean[-burn, 1] - filt$mean[-burn, 1])^2)) / sc, 0.15)
++  expect_lt(sqrt(mean((sg$mean[-burn, 1] - smoo$mean[-burn, 1])^2)) / sc, 0.15)
++})
++test_that("E5/E6: noise reuse enforced; no inflation pathway backward", {
++  m <- aci_dyad_model()
++  s <- simulate(m, seed = 56, T = 0.5, dt = 5e-3)
++  fr <- enkbf(m, s$obs, m = 30, seed = 1)
++  bad <- fr$noise; bad$B[1, 2, 1] <- bad$B[1, 2, 1] + 1
++  expect_error(enkbs(m, fr$path, bad), class = "aci_error_noise_mismatch")
++  expect_false("inflation" %in% names(formals(enkbs)))
++})
++
++test_that("P2/P3 forward ensemble CIR uses a complete lagged EnKBS family", {
++  m <- aci_dyad_model()
++  s <- simulate(m, seed = 91, T = 0.06, dt = 0.01)
++  a <- suppressWarnings(aci(m, s$obs, engine = "ensemble", m = 30,
++                            seed = 7, keep = "table"))
++  tab <- a$table
++  expect_s3_class(tab, "lag_table")
++  expect_identical(tab$meta$engine, "ensemble")
++  expect_identical(tab$meta$reference_smoother, "enkbs_full_horizon")
++  expect_equal(tab$diag, a$aci, tolerance = 0)
++  expect_equal(length(tab$rows), length(tab$t))
++  expect_true(all(vapply(tab$rows, function(z)
++    all(is.finite(z)) && all(z >= 0) && tail(z, 1) == 0, logical(1))))
++  expect_identical(tab$L, length(tab$t) - seq_along(tab$t))
++
++  f <- suppressWarnings(aci_range(a, min_M = 0))
++  expect_s3_class(f, "cir_result")
++  expect_identical(f$direction, "forward")
++  ## reserve: needs reserve/fbcir/fbcir.patch (the backward range is
++  ## FBCIR-scope, and the release gate would answer this before the
++  ## ensemble guard could).
++  ## expect_error(aci_range(a, direction = "backward"),
++  ##              class = "aci_error_not_implemented")
++
++  no_table <- suppressWarnings(aci(m, s$obs, engine = "ensemble", m = 30,
++                                   seed = 7, keep = "paths"))
++  expect_error(aci_range(no_table), class = "aci_error_not_implemented")
++
++  direct <- suppressWarnings(ensemble_lag_table(m, s$obs, m = 30, seed = 7))
++  expect_equal(direct$diag, tab$diag, tolerance = 0)
++  expect_equal(direct$rows, tab$rows, tolerance = 0)
++  reused <- aci(m, s$obs, table = direct)
++  expect_equal(reused$aci, direct$diag, tolerance = 0)
++  expect_identical(reused$meta$smoother_scheme, "enkbs_full_horizon")
++})
++
++test_that("ensemble lagged posteriors approach the CGNS finite-lag oracle", {
++  m <- aci_dyad_model()
++  s <- simulate(m, seed = 12, T = 0.05, dt = 0.005)
++  init <- list(mean = 0, cov = matrix(1, 1, 1))
++  exact <- lag_table(m, s$obs, mode = "full", init = init)
++  ens <- suppressWarnings(ensemble_lag_table(
++    m, s$obs, m = 800, seed = 3, ic_sampler = init))
++  x <- unlist(exact$rows, use.names = FALSE)
++  y <- unlist(ens$rows, use.names = FALSE)
++  expect_lt(sqrt(mean((x - y)^2)) / max(x), 0.10)
++})
++
++test_that("ensemble engine rejects unsupported noise contracts and bad m", {
++  mc <- aci_model(
++    Lx = function(t, x) matrix(0, 1, 1), fx = function(t, x) 0,
++    Ly = function(t, x) matrix(-1, 1, 1), fy = function(t, x) 0,
++    Sx1 = function(t, x) matrix(1, 1, 1),
++    Sy1 = function(t, x) matrix(0.5, 1, 1),
++    Sy2 = function(t, x) matrix(1, 1, 1), k = 1, l = 1)
++  s <- simulate(mc, seed = 4, T = 0.1, dt = 0.01,
++                ic = list(x0 = 0, y0 = 0))
++  expect_error(enkbf(mc, s$obs, m = 20),
++               class = "aci_error_ensemble_noise_contract")
++  expect_error(enkbf(aci_dyad_model(), s$obs, m = 1),
++               class = "aci_error_ensemble_rank")
++  expect_error(enkbf(aci_dyad_model(), s$obs, m = 20, inflation = 0.9),
++               class = "aci_error_dims")
++  expect_error(enkbf(aci_dyad_model(), s$obs, m = 20, seed = -1),
++               class = "aci_error_dims")
++  expect_error(enkbf(aci_dyad_model(), s$obs, m = 20, seed = 1.5),
++               class = "aci_error_dims")
++  expect_error(enkbf(aci_dyad_model(), s$obs, m = 20, unknown = TRUE),
++               class = "aci_error_dims")
++  expect_error(aci(aci_dyad_model(), s$obs, engine = "ensemble", m = NA_real_),
++               class = "aci_error_ensemble_rank")
++  expect_error(aci(aci_dyad_model(), s$obs, engine = "ensemble", m = 4.5),
++               class = "aci_error_ensemble_rank")
++  expect_error(ensemble_lag_table(aci_dyad_model(), s$obs, m = 1),
++               class = "aci_error_ensemble_rank")
++})
++test_that("E7: Gaspari-Cohn taper properties", {
++  expect_equal(gaspari_cohn(0), 1)
++  expect_equal(gaspari_cohn(2), 0)
++  expect_true(all(diff(gaspari_cohn(seq(0, 2.5, by = 0.01))) <= 1e-12))
++  set.seed(2); l <- 8
++  P <- crossprod(matrix(rnorm(l * l), l)) + diag(l)
++  C <- gaspari_cohn(abs(outer(1:l, 1:l, "-")) / 3)
++  ev <- eigen(C * P, symmetric = TRUE, only.values = TRUE)$values
++  expect_gt(min(ev), -1e-10)                 # Schur product preserves PSD
++})
++
++test_that("localization preserves matrices and supports m below l", {
++  m <- model_l96(n = 12)
++  s <- simulate(m, seed = 14, T = 0.04, dt = 0.01)
++  loc <- localization_spec(m$meta$coords$hidden, radius = 3,
++                           coords_obs = m$meta$coords$obs,
++                           distance = "cyclic", period = 12)
++  expect_identical(dim(loc$C1), c(m$l, m$k))
++  expect_identical(dim(loc$C2), c(m$l, m$l))
++  fr <- enkbf(m, s$obs, m = 5, seed = 2, localization = loc)
++  sm <- enkbs(m, fr$path, fr$noise)
++  expect_s3_class(sm, "da_path_ensemble")
++  expect_error(enkbs(m, fr$path, fr$noise,
++                     localization = localization_spec(
++                       m$meta$coords$hidden, radius = 2,
++                       coords_obs = m$meta$coords$obs,
++                       distance = "cyclic", period = 12)),
++               class = "aci_error_dims")
++  fr0 <- enkbf(m, s$obs, m = 5, seed = 2)
++  expect_error(enkbs(m, fr0$path, fr0$noise),
++               class = "aci_error_ensemble_rank")
++  expect_error(aci(m, s$obs, engine = "ensemble", m = 5,
++                   seed = 2, localization = loc),
++               class = "aci_error_ensemble_rank")
++
++  # An all-ones taper is rank one and must not obtain an undocumented ridge
++  # from the generic safe-Cholesky helper.
++  bad_loc <- list(C1 = matrix(1, m$l, m$k), C2 = matrix(1, m$l, m$l))
++  bad_fr <- enkbf(m, s$obs, m = 5, seed = 2, localization = bad_loc)
++  expect_error(enkbs(m, bad_fr$path, bad_fr$noise),
++               class = "aci_error_ensemble_rank")
++})
++
++test_that("ensemble smoother verifies its source observations and model", {
++  m <- aci_dyad_model(); s <- simulate(m, seed = 7, T = 0.1, dt = 0.01)
++  f <- aci_filter.stochastic_model(m, s$obs, m = 10, seed = 3)
++  bad_obs <- observed_trajectory(s$obs$t, s$obs$x + 0.01)
++  expect_error(aci_smoother.stochastic_model(m, bad_obs, filter = f),
++               class = "aci_error_dims")
++  other <- aci_dyad_model(params = list(d_x = 0.6, gamma = 2, f_x = 0.5,
++                                    s_x = 0.5, d_y = 0.5, f_y = 1, s_y = 1))
++  expect_error(aci_smoother.stochastic_model(other, s$obs, filter = f),
++               class = "aci_error_model_contract")
++  fr <- enkbf(m, s$obs, m = 10, seed = 3)
++  expect_error(enkbs(other, fr$path, fr$noise),
++               class = "aci_error_model_contract")
++})
++
++test_that("ensemble conversion and smoothing never hide rank or rerun filters", {
++  bad <- new_ens_path(0:1, array(1:8, c(2, 2, 2)), "filter")
++  expect_error(as_gaussian(bad), class = "aci_error_ensemble_rank")
++  wrong_grid <- new_ens_path(0, array(rnorm(16), c(1, 2, 8)), "filter")
++  expect_error(as_gaussian(wrong_grid), class = "aci_error_dims")
++
++  m <- aci_dyad_model(); s <- simulate(m, seed = 8, T = 0.1, dt = 0.01)
++  fr <- enkbf(m, s$obs, m = 8, seed = 12)
++  wrong_kind <- fr$path; wrong_kind$kind <- "smoother"
++  expect_error(enkbs(m, wrong_kind, fr$noise),
++               class = "aci_error_noise_mismatch")
++  expected <- aci_smoother.stochastic_model(m, s$obs, filter = fr)
++  got <- sample_paths(m, s$obs, n_samples = 99, method = "enkbs",
++                      filter = fr, seed = 999)
++  expect_equal(got, expected$members, tolerance = 0)
++  expect_error(sample_paths(m, s$obs, n_samples = 8, method = "enkbs",
++                            filter = fr, init = list(mean = 0, cov = 1)),
++               class = "aci_error_dims")
++
++  sampler <- function(members) matrix(seq(-1, 1, length.out = members), 1, members)
++  fr_fixed <- enkbf(m, s$obs, m = 8, ic_sampler = sampler, seed = 4)
++  sm_fixed <- aci_smoother.stochastic_model(
++    m, s$obs, m = 8, ic_sampler = sampler, noise = fr_fixed$noise, seed = 999)
++  expect_equal(sm_fixed$members,
++               enkbs(fr_fixed$model, fr_fixed$path, fr_fixed$noise)$members,
++               tolerance = 0)
++  sampled <- sample_paths(m, s$obs, n_samples = 8, method = "enkbs",
++                          init = list(mean = 0, cov = matrix(0.2, 1, 1)), seed = 6)
++  expect_identical(dim(sampled), c(1L, length(s$obs$t), 8L))
++})
++## reserve: this block needs reserve/extensions/code/validation_diagnostics.R
++## (nil_causality_check / nil_surrogate_test are package-only extensions, not
++## EnKBS-family), so it is not restored by enkbs.patch.
++## test_that("nil_causality_check passes on a decoupled system, fails when coupled", {
++##   m0 <- aci_model(Lx = function(t, x) matrix(0, 1, 1),
++##                    fx = function(t, x) -x, Ly = function(t, x) matrix(-1, 1, 1),
++##                    fy = function(t, x) 0, Sx1 = function(t, x) matrix(0.4, 1, 1),
++##                    Sy2 = function(t, x) matrix(0.6, 1, 1), k = 1, l = 1)
++##   nc <- suppressWarnings(nil_causality_check(m0, direction = list(cause = 1, effect = 1),
++##                                              T = 3, dt = 2e-3))
++##   expect_true(nc$structural_pass); expect_true(nc$empirical_pass)
++##   m1 <- aci_dyad_model()
++##   nc1 <- suppressWarnings(nil_causality_check(m1, direction = list(cause = 1, effect = 1),
++##                                               T = 3, dt = 2e-3))
++##   expect_false(nc1$structural_pass); expect_false(nc1$empirical_pass)
++## })
++
++## reserve: this block needs reserve/extensions/code/validation_diagnostics.R
++## (nil_causality_check / nil_surrogate_test are package-only extensions, not
++## EnKBS-family), so it is not restored by enkbs.patch.
++## test_that("surrogate-null verdict separates coupled from decoupled systems", {
++##   # A y-identifiable regime: fluctuating hidden state, lower observation
++##   # noise. (The default-parameter dyad can sit in a weakly-identifiable
++##   # window where near-zero LR is the *correct* answer -- see T1c.)
++##   pp <- list(d_x = 0.5, gamma = 2, f_x = 0.5, s_x = 0.3,
++##              d_y = 1, f_y = 0, s_y = 1.5)
++##   m <- aci_dyad_model(params = pp)
++##   s <- simulate(m, seed = 21, T = 3, dt = 5e-3, burn_in = 0.5)
++##   ini <- list(mean = 0, cov = diag(1, 1))
++##   st <- nil_surrogate_test(m, s$obs, B = 19, seed = 2, init = ini)
++##   expect_lt(st$p_value, 0.1)                       # real coupling detected
++##   expect_gt(st$observed_lr, max(st$null_lr))
++##   m0 <- aci_model(Lx = function(t, x) matrix(0, 1, 1),
++##                    fx = m$fx, Ly = m$Ly, fy = m$fy,
++##                    Sx1 = m$Sx1, Sy2 = m$Sy2, k = 1, l = 1)
++##   s0 <- simulate(m0, seed = 22, T = 3, dt = 5e-3, burn_in = 0.5)
++##   st0 <- nil_surrogate_test(m, s0$obs, B = 19, seed = 3, init = ini)
++##   expect_gt(st0$p_value, 0.2)                      # nil data not flagged
++## })
+diff --git a/tests/testthat/test-08-discovery.R b/tests/testthat/test-08-discovery.R
+new file mode 100644
+index 0000000..f227649
+--- /dev/null
++++ b/tests/testthat/test-08-discovery.R
+@@ -0,0 +1,112 @@
++test_that("D1: FFBS sample moments match the smoother marginals (linear)", {
++  lin <- aci_model(Lx = function(t,x) matrix(1,1,1), fx = function(t,x) 0.2,
++                    Ly = function(t,x) matrix(-1,1,1), fy = function(t,x) 0.3,
++                    Sx1 = function(t,x) matrix(0.5,1,1),
++                    Sy2 = function(t,x) matrix(0.6,1,1), k = 1, l = 1)
++  s <- simulate(lin, seed = 1, T = 2, dt = 5e-3, ic = list(x0 = 0, y0 = 0.5))
++  filt <- aci_filter(lin, s$obs, init = list(mean = 0, cov = 1))
++  smoo <- aci_smoother(lin, s$obs, filter = filt)
++  Y <- sample_paths(lin, s$obs, n_samples = 600, seed = 2, filter = filt)
++  idx <- c(50, 150, 250, 350)
++  for (j in idx) {
++    expect_lt(abs(mean(Y[1, j, ]) - smoo$mean[j, 1]),
++              4 * sqrt(smoo$cov[1, 1, j] / 600) + 0.02)
++    expect_lt(abs(var(Y[1, j, ]) / smoo$cov[1, 1, j] - 1), 0.25)
++  }
++  # path continuity: consecutive-time correlation should be high
++  expect_gt(cor(Y[1, 200, ], Y[1, 201, ]), 0.9)
++})
++
++test_that("polynomial library honours degree and includes P3 cubic terms", {
++  l0 <- cgns_library(k = 1, l = 1, degree = 0)
++  expect_equal(l0$names, "1")
++  l3 <- cgns_library(k = 1, l = 2, degree = 3)
++  expect_true(all(c("x1*y1^2", "x1*y2^2", "x1*y1*y2") %in% l3$names))
++})
++
++test_that("candidate-only causation entropy is invariant to unrequested nuisance columns", {
++  set.seed(17)
++  a <- rnorm(100); b <- rnorm(100); nuisance <- a + b
++  target <- a + 0.2 * rnorm(100)
++  base <- causation_entropy(cbind(a = a, b = b), target, c("a", "b"))
++  wide <- causation_entropy(cbind(a = a, b = b, nuisance = nuisance),
++                            target, c("a", "b"))
++  expect_equal(wide, base, tolerance = 0)
++})
++
++test_that("learned model preserves shared diffusion channels", {
++  lib <- cgns_library(1, 1, degree = 1)
++  template <- list(k = 1, l = 1,
++    Sx1 = function(t, x) matrix(1, 1, 1),
++    Sx2 = function(t, x) matrix(0, 1, 1),
++    Sy1 = function(t, x) matrix(0.5, 1, 1),
++    Sy2 = function(t, x) matrix(1, 1, 1))
++  rebuilt <- model_from_learned(list(c("1" = 0, "y1" = 1)),
++                                list(c("y1" = -1)), lib, template)
++  expect_equal(cgns_grams(rebuilt, 0, 0)$gyx[1, 1], 0.5)
++})
++
++test_that("D2/D3: dyad structure + coefficients recovered; nil term pruned", {
++  m <- aci_dyad_model()             # dx = (0.5 - 0.5 x + 2 x y) dt; dy = (1 - 0.5 y - 2 x^2) dt
++  s <- simulate(m, seed = 6, T = 30, dt = 2e-3, burn_in = 2)
++  lib <- cgns_library(k = 1, l = 1, degree = 2)
++  lm_ <- suppressWarnings(learn_model(m, s$obs, lib, n_samples = 20,
++                                      ce_threshold = "auto", seed = 3))
++  ex <- lm_$equations$dx1; ey <- lm_$equations$dy1
++  # structure: true terms recovered in both equations
++  expect_true(all(c("1", "x1", "x1*y1") %in% ex$kept))
++  expect_true(all(c("1", "x1^2") %in% ey$kept))
++  # nil term stays below threshold (D3)
++  expect_lt(ex$ce[["y1^2"]], attr(threshold_structure(ex$ce, "auto"), "threshold"))
++  # observed equation coefficients: tight (regression on true observations)
++  expect_lt(abs(ex$coef[["x1*y1"]] - 2) / 2, 0.25)
++  # A single posterior-sampling M-step has the documented h-transform bias;
++  # test signs/order rather than claiming oracle coefficient accuracy.
++  expect_lt(ex$coef[["x1"]], 0)
++  expect_gt(ex$coef[["1"]], 0)
++  # hidden equation coefficients: single-pass h-transform bias documented in
++  # learn_model(); assert sign + order of magnitude, not tight recovery
++  expect_lt(ey$coef[["x1^2"]], -0.5)
++  expect_gt(ey$coef[["1"]], 0.4)
++  # Diffusion amplitudes use increment variance times dt (not derivative SD).
++  expect_equal(ex$sigma_hat, 0.5, tolerance = 0.08)
++  expect_equal(ey$sigma_hat, 1, tolerance = 0.15)
++})
++
++test_that("D4: constrained_mle satisfies KKT conditions exactly", {
++  set.seed(4)
++  Th <- matrix(rnorm(200 * 5), 200); colnames(Th) <- paste0("t", 1:5)
++  xi_true <- c(1, -2, 0.5, 0, 3)
++  y <- drop(Th %*% xi_true) + rnorm(200, 0, 0.1)
++  A <- matrix(c(1, 1, 0, 0, 0), 1); b <- -1        # xi1 + xi2 = -1
++  f <- constrained_mle(Th, y, constraints = list(A = A, b = b))
++  expect_equal(drop(A %*% f$coef), -1, tolerance = 1e-10)
++  grad <- drop(crossprod(Th) %*% f$coef - crossprod(Th, y))
++  # stationarity: gradient lies in row space of A
++  proj <- drop(t(A) %*% solve(A %*% t(A)) %*% (A %*% grad))
++  expect_lt(max(abs(grad - proj)), 1e-6 * max(abs(grad), 1))
++  f0 <- constrained_mle(Th, y)
++  expect_lt(max(abs(f0$coef - xi_true)), 0.05)
++})
++
++test_that("D5: joint energy constraint holds exactly and preserves recovery", {
++  m <- aci_dyad_model(); s <- simulate(m, seed = 6, T = 30, dt = 2e-3, burn_in = 2)
++  lib <- cgns_library(k = 1, l = 1, degree = 2)
++  fit <- suppressWarnings(learn_model(m, s$obs, lib, n_samples = 15, seed = 3,
++                                      energy_pairs = list(c(obs = 1, hid = 1))))
++  cxy <- fit$equations$dx1$coef[["x1*y1"]]
++  cx2 <- fit$equations$dy1$coef[["x1^2"]]
++  expect_lt(abs(cxy + cx2), 1e-8)                 # exact conservation
++  expect_lt(abs(cxy - 2) / 2, 0.3)                # recovery intact
++  expect_true(fit$equations$dx1$energy_constrained)
++})
++
++test_that("discovery rejects unnamed equation constraints and unused FFBS arguments", {
++  m <- aci_dyad_model(); s <- simulate(m, seed = 1, T = 0.1, dt = 0.01)
++  lib <- cgns_library(1, 1, degree = 1)
++  expect_error(learn_model(m, s$obs, lib, n_samples = 2,
++                           constraints = list(list(A = matrix(1), b = 0))),
++               class = "aci_error_dims")
++  expect_error(sample_paths(m, s$obs, n_samples = 2, typo = TRUE),
++               class = "aci_error_dims")
++})
+diff --git a/tests/testthat/test-14-golden-enkbs.R b/tests/testthat/test-14-golden-enkbs.R
+new file mode 100644
+index 0000000..0eb74a2
+--- /dev/null
++++ b/tests/testthat/test-14-golden-enkbs.R
+@@ -0,0 +1,80 @@
++# Golden alignment of the ensemble engine against a literal port of the
++# published EnKBS dyad experiment (helper-golden-p3.R; EnKBS-main/dyad/utov.m).
++# Both sides are driven by one set of increments and one initial ensemble, so
++# every difference below is implementation, not randomness. The port adds its
++# observation perturbation as the reference does; the package receives the
++# negated draws and subtracts, which realises identical innovations.
++
++.golden_p3_params <- function() {
++  list(d_u = 0.5, d_v = 0.5, c = 2, F_u = 1, F_v = 0.8,
++       sigma_u = 0.5, sigma_v = 1)
++}
++
++.golden_p3_setup <- function(n1 = 161L, m = 40L, dt = 1e-3, seed = 42L) {
++  p <- .golden_p3_params()
++  set.seed(seed)
++  truth <- golden_p3_truth(n1, dt, p, stats::rnorm(n1 - 1), stats::rnorm(n1 - 1))
++  z_u <- matrix(stats::rnorm(m * (n1 - 1)), m)
++  z_v <- matrix(stats::rnorm(m * (n1 - 1)), m)
++  u0 <- truth$u[1] + 0.1 * stats::rnorm(m)
++  B <- array(NA_real_, c(1L, n1 - 1L, m))
++  W <- array(NA_real_, c(1L, n1 - 1L, m))
++  for (e in seq_len(m)) {
++    B[1L, , e] <- z_u[e, ]
++    W[1L, , e] <- -z_v[e, ]
++  }
++  list(p = p, dt = dt, n1 = n1, m = m, truth = truth, z_u = z_u, u0 = u0,
++       model = aci_dyad_model(variant = "p3", observe = "y"),
++       obs = observed_trajectory(dt * (seq_len(n1) - 1L),
++                                 matrix(truth$v, ncol = 1L)),
++       noise = structure(list(B = B, W = W, seed = NULL),
++                         class = "noise_store"),
++       filt = golden_p3_enkbf(u0, truth$v, z_u, z_v, p, dt))
++}
++
++test_that("G3: EnKBF and EnKBS match the ported published dyad code", {
++  gs <- .golden_p3_setup()
++  run <- enkbf(gs$model, gs$obs, m = gs$m,
++               ic_sampler = function(mm) matrix(gs$u0, 1L, mm),
++               noise = gs$noise)
++  got_f <- matrix(run$path$members[1L, , ], gs$n1, gs$m)
++  expect_lt(max(abs(got_f - t(gs$filt))), 1e-10)
++
++  port_s <- golden_p3_enkbs(gs$filt, gs$truth$v, gs$z_u, gs$p, gs$dt)
++  sm <- enkbs(run$model, run$path, run$noise)
++  got_s <- matrix(sm$members[1L, , ], gs$n1, gs$m)
++  expect_lt(max(abs(got_s - t(port_s))), 1e-9)
++})
++
++test_that("G4: ensemble lag table and forward CIR match the port triangle", {
++  gs <- .golden_p3_setup()
++  run <- enkbf(gs$model, gs$obs, m = gs$m,
++               ic_sampler = function(mm) matrix(gs$u0, 1L, mm),
++               noise = gs$noise)
++  sm <- enkbs(run$model, run$path, run$noise)
++  tab <- suppressWarnings(
++    .ensemble_lag_table_from_run(gs$model, gs$obs, run, sm)
++  )
++  gd <- golden_p3_delta(gs$filt, gs$truth$v, gs$z_u, gs$p, gs$dt)
++
++  # The diagonal is the ACI metric of the ensemble route: the complete-record
++  # posterior against the filter, which the reference stores at (j, j).
++  expect_lt(max(abs(tab$diag - diag(gd$delta))), 1e-8)
++
++  # Every retained lagged cell: row j holds horizons j..N1.
++  for (j in seq_len(gs$n1)) {
++    expect_lt(max(abs(tab$rows[[j]] - gd$delta[j, j:gs$n1])), 1e-8)
++  }
++
++  # The forward ensemble CIR: the reference's Simpson ratio per anchor. The
++  # port zeroes anchors whose peak is at or below its threshold; the package
++  # masks them, so the comparison is on the anchors both sides resolve.
++  fc <- aci_range(tab, method = "l1_linf", min_M = NULL)
++  port_cir <- golden_p3_cir(gd$delta, gs$dt)
++  peaks <- vapply(seq_len(gs$n1), function(r)
++    max(gd$delta[r, r:gs$n1]), numeric(1))
++  keep <- which(peaks > 1e-5)
++  expect_gt(length(keep), 50L)
++  expect_lt(max(abs(fc$M[keep] - peaks[keep])), 1e-10)
++  expect_lt(max(abs(fc$tau[keep] - port_cir[keep])), 1e-9)
++})

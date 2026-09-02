@@ -1,0 +1,36 @@
+## Reference kernels hoisted from FBCIR_code (Andreou and Chen, 2026), the
+## backward causal influence range. Same mechanism as extracts.dcf: `Lines`
+## addresses the UNMODIFIED reference script in matlab_reference_fbcir/,
+## tools/extract.R copies the range byte for byte, and check_extraction fails
+## on a byte of drift. Reference commit f9fe922 (2026-07-27), MIT.
+##
+## Gate G1 for these records runs against the script's own workspace saved
+## from a complete, unmodified run (N = 22000 completes in about 190 s on base
+## MATLAB, so no problem-size knob is needed).
+
+Function: ref_backward_cir_tipping
+Script: climate_tipping_y_bifurcation_driven.m
+Lines: 939-1277
+Provenance: the reference implementation of Andreou and Chen (FBCIR_code) | Copyright (c) 2026 Marios Andreou
+Inputs: CIR_epsilon_values, E_j_matrices, F_j_matrices, L_x, L_y, N,
+ RE_metric_threshold, back_lag_time_end_plot,
+ calculate_and_plot_exact_objective_backward_CIR,
+ calculate_and_plot_normalised_backward_CIR_metric, dt, eps_ord_values, f_x,
+ f_y, filter_cov, filter_mean, first_idx, gamma, plot_len, target_last_idx, x
+Outputs: back_subjective_CIR, back_approx_objective_CIR,
+ back_defn_objective_CIR, back_max_RE_metric, back_RE_metric_mask,
+ adaptive_approx_objective_backward_CIR_n, lag_bound, back_plot_len,
+ back_lag_steps
+Pairs: aci_range(direction = "backward")
+Note: The whole BACKWARD CIR section of the bifurcation-driven tipping script,
+ from the first code line after the section banner to the line before the
+ plotting section: the adaptive-lag online smoother run backward from every
+ observational time, the centred complete backward CIR metric, the subjective
+ backward range over the 513 epsilon thresholds, the objective backward range
+ by the Theorem 1 approximation and by the definition (Simpson over epsilon),
+ and the validity gate (back_max_RE_metric against RE_metric_threshold). The
+ section consumes the forward section's online-smoother auxiliaries
+ (E_j_matrices, F_j_matrices) and the filter, so those are inputs rather than
+ recomputed. lag_bound is the literal N inside the slice, as the script sets
+ it. The inputs and outputs were derived mechanically from the slice against
+ the saved workspace on 2026-08-28.
