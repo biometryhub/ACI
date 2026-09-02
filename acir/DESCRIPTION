@@ -5,7 +5,7 @@ Title: Closed-Form Assimilative Causal Inference for Conditional
 Version: 0.1.0
 Authors@R: c(
     person("Aidan", "Moller", role = c("aut", "cre", "cph"),
-           email = "aj.moller97@gmail.com"),
+           email = "aidan.moller@adelaide.edu.au"),
     person("Max", "Moldovan", role = c("aut", "cph"),
            comment = c(ORCID = "0000-0001-9680-8474")),
     person("Marios", "Andreou", role = "cph",

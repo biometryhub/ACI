@@ -21,7 +21,7 @@ abstract: Causal inference as a Bayesian inverse problem via data assimilation, 
 authors:
 - family-names: Moller
   given-names: Aidan
-  email: aj.moller97@gmail.com
+  email: aidan.moller@adelaide.edu.au
 - family-names: Moldovan
   given-names: Max
   orcid: https://orcid.org/0000-0001-9680-8474
@@ -32,7 +32,7 @@ preferred-citation:
   authors:
   - family-names: Moller
     given-names: Aidan
-    email: aj.moller97@gmail.com
+    email: aidan.moller@adelaide.edu.au
   - family-names: Moldovan
     given-names: Max
     orcid: https://orcid.org/0000-0001-9680-8474
@@ -44,7 +44,7 @@ url: https://biometryhub.github.io/ACI/
 contact:
 - family-names: Moller
   given-names: Aidan
-  email: aj.moller97@gmail.com
+  email: aidan.moller@adelaide.edu.au
 references:
 - type: article
   title: Assimilative causal inference

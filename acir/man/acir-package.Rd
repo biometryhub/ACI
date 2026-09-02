@@ -18,7 +18,7 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Aidan Moller \email{aj.moller97@gmail.com} [copyright holder]
+\strong{Maintainer}: Aidan Moller \email{aidan.moller@adelaide.edu.au} [copyright holder]
 
 Authors:
 \itemize{
