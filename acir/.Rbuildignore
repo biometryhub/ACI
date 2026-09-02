@@ -15,3 +15,5 @@
 ^API_STABILITY\.md$
 ^inst/validation/README\.md$
 ^pkgdown($|/)
+^CITATION\.cff$
+^codemeta\.json$

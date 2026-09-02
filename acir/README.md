@@ -1,5 +1,9 @@
 # acir
 
+[![R-CMD-check](https://github.com/biometryhub/ACI/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/biometryhub/ACI/actions/workflows/R-CMD-check.yaml)
+[![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](API_STABILITY.md)
+[![Licence: MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE.md)
+
 acir is a closed-form assimilative causal inference engine for conditional
 Gaussian nonlinear systems, consolidating the `aci` and `aciR` packages into a
 single implementation.
