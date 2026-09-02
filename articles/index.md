@@ -1,13 +1,10 @@
 # Articles
 
-### Get started
+### All vignettes
 
-- [Assimilative causal inference on the nonlinear dyad
-  model](https://biometryhub.github.io/ACI/articles/aciR.md):
-
-### Scope and evidence
-
-- [Assumptions and
-  interpretation](https://biometryhub.github.io/ACI/articles/assumptions.md):
-- [Validation and the independent
-  oracle](https://biometryhub.github.io/ACI/articles/validation.md):
+- [Assimilative causal inference (ACI) in
+  R](https://biometryhub.github.io/ACI/articles/vignette-1-intro.md):
+- [The closed-form ACI
+  engine](https://biometryhub.github.io/ACI/articles/vignette-2-advanced.md):
+- [Reproducing the reference MATLAB
+  codebase](https://biometryhub.github.io/ACI/articles/vignette-3-matlab.md):

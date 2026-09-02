@@ -1,82 +1,115 @@
-# Forward conditional Gaussian filter
+# Data assimilation filter
 
-Runs the forward filter of a conditional Gaussian nonlinear system.
-Given an observed signal and the system components, it returns the
-filtered mean and covariance of the unobserved component at each time
-step, that is the mean and covariance of the unobserved state
-conditional on the observed path up to and including the current step.
+Generic reconstructing the hidden state from the observed record up to
+each time. The closed-form method is used for a `cgns_model`; a general
+`stochastic_model` is out of scope in this release.
 
 ## Usage
 
 ``` r
-aci_filter(x, comp, dt, mu0, R0)
+aci_filter(model, obs, ...)
+
+# S3 method for class 'cgns_model'
+aci_filter(
+  model,
+  obs,
+  init = NULL,
+  conditional = NULL,
+  stepper = c("explicit", "implicit"),
+  nsub = 1L,
+  regularize = NULL,
+  loglik = TRUE,
+  ...
+)
+
+# S3 method for class 'stochastic_model'
+aci_filter(model, obs, ...)
 ```
 
 ## Arguments
 
-- x:
+- model:
 
-  Numeric vector. The observed signal, one value per time step; at least
-  two complete, finite observations.
+  A `cgns_model` or `stochastic_model` object.
 
-- comp:
+- obs:
 
-  A conditional Gaussian components list; see
-  [aci_components](https://biometryhub.github.io/ACI/reference/aci_components.md).
+  An observed trajectory, or anything
+  [`as_obs()`](https://biometryhub.github.io/ACI/reference/as_obs.md)
+  accepts.
 
-- dt:
+- ...:
 
-  Numeric scalar. The integration time step; must be positive.
+  Arguments passed to methods.
 
-- mu0:
+- init:
 
-  Numeric scalar. The initial filtered mean of the unobserved component.
+  Optional list with the initial hidden `mean` and `cov`; `NULL` uses a
+  diffuse prior and warns.
 
-- R0:
+- conditional:
 
-  Numeric scalar. The initial filtered covariance of the unobserved
-  component; must be positive.
+  Optional `aci_conditional_spec` selecting a conditional ACI reduction;
+  see
+  [`aci_conditional()`](https://biometryhub.github.io/ACI/reference/aci_conditional.md).
+
+- stepper:
+
+  Either `"explicit"` or `"implicit"`; the implicit Riccati step
+  preserves positivity.
+
+- nsub:
+
+  Positive whole number of sub-steps taken per observation.
+
+- regularize:
+
+  Covariance policy for this call. `"none"` (the default, and the value
+  of `getOption("aci.regularize")` when it is unset) stops with a
+  classed `aci_error_covariance_not_spd` naming the site, grid index and
+  time as soon as a covariance leaves the positive-definite cone.
+  `"floor"` is the previous behaviour: the covariance is projected back
+  by
+  [`spd_floor()`](https://biometryhub.github.io/ACI/reference/spd_floor.md)
+  and every such event is recorded in the result's
+  `meta$regularization`.
+
+- loglik:
+
+  `TRUE` (the default) accumulates the predictive log-likelihood into
+  `meta$loglik`. `FALSE` skips that work; the filter moments are
+  unchanged and `meta$loglik` is `NULL`. The likelihood is not used by
+  ACI, so `FALSE` is the cheaper choice when only the state estimate is
+  wanted.
 
 ## Value
 
-A list with two numeric vectors, `mean` and `cov`, the filtered mean and
-covariance of the unobserved component at each time step.
+An assimilation path: `da_path_gaussian` for the closed-form engine. Its
+`meta$loglik` holds the predictive log-likelihood of the observed
+record, or `NULL` when the method was called with `loglik = FALSE`.
 
-## Details
+## Methods (by class)
 
-The recursion is the closed-form conditional Gaussian filter and is
-integrated with a first-order (Euler) step of width `dt`. The observed
-signal is assumed to be complete and sampled on a regular grid of
-spacing `dt`.
+- `aci_filter(cgns_model)`: Closed-form filter for a
+  conditional-Gaussian model.
 
-The filtered covariance is checked at every step. An explicit Euler
-scheme can drive the covariance non-positive when `dt` is too large for
-the system, even for a perfectly admissible model, and the relative
-entropy that scores the result has no meaning in that state. The
-recursion therefore stops at the first offending step and names it,
-rather than returning a trajectory that looks like a result.
-
-## References
-
-Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal
-inference. *Nature Communications*, 17, 1854.
-[doi:10.1038/s41467-026-68568-0](https://doi.org/10.1038/s41467-026-68568-0)
+- `aci_filter(stochastic_model)`: Classed not-implemented condition for
+  a general (non-CGNS) stochastic model.
 
 ## See also
 
 [`aci_smoother()`](https://biometryhub.github.io/ACI/reference/aci_smoother.md),
-[`aci_metric()`](https://biometryhub.github.io/ACI/reference/aci_metric.md),
-[`aci()`](https://biometryhub.github.io/ACI/reference/aci.md)
+[`aci()`](https://biometryhub.github.io/ACI/reference/aci.md),
+[`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md)
 
 ## Examples
 
 ``` r
-model <- aci_dyad_model()
-sim <- aci_simulate(model, n = 2000, seed = 1)
-comp <- aci_dyad_components(sim$x, model$parameters)
-filt <- aci_filter(sim$x, comp, dt = 0.001, mu0 = model$y0, R0 = 0.1)
-str(filt)
-#> List of 2
-#>  $ mean: num [1:2000] 2 1.99 1.99 1.98 2 ...
-#>  $ cov : num [1:2000] 0.1 0.101 0.101 0.102 0.103 ...
+m <- aci_dyad_model()
+sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
+ob <- as_obs(sim)
+f <- aci_filter(m, ob)
+#> Warning: No init$cov supplied; using a diffuse prior. Discard an initial burn-in window when interpreting results.
+f
+#> <da_path_gaussian> kind = filter, l = 1, N+1 = 201
 ```

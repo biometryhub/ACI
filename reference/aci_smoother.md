@@ -1,78 +1,115 @@
-# Backward conditional Gaussian smoother
+# Data assimilation smoother
 
-Runs the backward smoother of a conditional Gaussian nonlinear system.
-Starting from the final filtered estimate, it sweeps backward through
-time and returns the smoothed mean and covariance of the unobserved
-component, that is the mean and covariance of the unobserved state
-conditional on the whole observed path.
+Generic reconstructing the hidden state from the whole observed record.
+The closed-form method is used for a `cgns_model`; a general
+`stochastic_model` is out of scope in this release.
 
 ## Usage
 
 ``` r
-aci_smoother(x, comp, dt, filt)
+aci_smoother(model, obs, ...)
+
+# S3 method for class 'cgns_model'
+aci_smoother(
+  model,
+  obs,
+  filter = NULL,
+  conditional = NULL,
+  init = NULL,
+  stepper = c("explicit", "implicit"),
+  nsub = 1L,
+  regularize = NULL,
+  force_validate = FALSE,
+  ...
+)
+
+# S3 method for class 'stochastic_model'
+aci_smoother(model, obs, ...)
 ```
 
 ## Arguments
 
-- x:
+- model:
 
-  Numeric vector. The observed signal, one value per time step.
+  A `cgns_model` or `stochastic_model` object.
 
-- comp:
+- obs:
 
-  A conditional Gaussian components list; see
-  [aci_components](https://biometryhub.github.io/ACI/reference/aci_components.md).
+  An observed trajectory, or anything
+  [`as_obs()`](https://biometryhub.github.io/ACI/reference/as_obs.md)
+  accepts.
 
-- dt:
+- ...:
 
-  Numeric scalar. The integration time step; must be positive.
+  Arguments passed to methods.
 
-- filt:
+- filter:
 
-  A list with numeric vectors `mean` and `cov`, as returned by
+  Optional precomputed filter path; recomputed when `NULL`.
+
+- conditional:
+
+  Optional `aci_conditional_spec` selecting a conditional ACI reduction;
+  see
+  [`aci_conditional()`](https://biometryhub.github.io/ACI/reference/aci_conditional.md).
+
+- init:
+
+  Optional list with the initial hidden `mean` and `cov`.
+
+- stepper:
+
+  Either `"explicit"` or `"implicit"`.
+
+- nsub:
+
+  Positive whole number of sub-steps taken per observation.
+
+- regularize:
+
+  Covariance policy for this call; see
   [`aci_filter()`](https://biometryhub.github.io/ACI/reference/aci_filter.md).
+  One record covers the whole call, so a filter recomputed here and the
+  backward recursion that consumes it share the `meta$regularization` on
+  the returned smoother.
+
+- force_validate:
+
+  `FALSE` (the default) lets a `filter` that
+  [`aci_filter()`](https://biometryhub.github.io/ACI/reference/aci_filter.md)
+  produced for this same model, observations and conditional
+  specification, and that has not been altered since, skip the per-step
+  re-validation of its covariances. Any other supplied path, including
+  one that has been through
+  [`saveRDS()`](https://rdrr.io/r/base/readRDS.html), is validated in
+  full as before. `TRUE` validates unconditionally. The smoother result
+  is the same either way.
 
 ## Value
 
-A list with two numeric vectors, `mean` and `cov`, the smoothed mean and
-covariance of the unobserved component at each time step.
+An assimilation path: `da_path_gaussian` for the closed-form engine.
 
-## Details
+## Methods (by class)
 
-The recursion is the closed-form conditional Gaussian smoother and is
-integrated with a first-order (Euler) step of width `dt`. It consumes
-the filtered trajectory returned by
-[`aci_filter()`](https://biometryhub.github.io/ACI/reference/aci_filter.md),
-and, like the filter, stops at the first step at which the smoothed
-covariance leaves its domain.
+- `aci_smoother(cgns_model)`: Closed-form backward-ODE smoother for a
+  conditional-Gaussian model.
 
-At the final index the smoother is the filter by construction, because
-conditioning on the whole observed path and conditioning on the path up
-to the final step are the same conditioning. The returned trajectory
-reproduces that identity exactly.
-
-## References
-
-Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal
-inference. *Nature Communications*, 17, 1854.
-[doi:10.1038/s41467-026-68568-0](https://doi.org/10.1038/s41467-026-68568-0)
+- `aci_smoother(stochastic_model)`: Classed not-implemented condition
+  for a general (non-CGNS) stochastic model.
 
 ## See also
 
 [`aci_filter()`](https://biometryhub.github.io/ACI/reference/aci_filter.md),
-[`aci_metric()`](https://biometryhub.github.io/ACI/reference/aci_metric.md),
 [`aci()`](https://biometryhub.github.io/ACI/reference/aci.md)
 
 ## Examples
 
 ``` r
-model <- aci_dyad_model()
-sim <- aci_simulate(model, n = 2000, seed = 1)
-comp <- aci_dyad_components(sim$x, model$parameters)
-filt <- aci_filter(sim$x, comp, dt = 0.001, mu0 = model$y0, R0 = 0.1)
-smooth <- aci_smoother(sim$x, comp, dt = 0.001, filt)
-str(smooth)
-#> List of 2
-#>  $ mean: num [1:2000] 1.97 1.97 1.97 1.97 1.96 ...
-#>  $ cov : num [1:2000] 0.0658 0.0661 0.0663 0.0666 0.0668 ...
+m <- aci_dyad_model()
+sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
+ob <- as_obs(sim)
+f <- aci_filter(m, ob)
+#> Warning: No init$cov supplied; using a diffuse prior. Discard an initial burn-in window when interpreting results.
+aci_smoother(m, ob, filter = f)
+#> <da_path_gaussian> kind = smoother, l = 1, N+1 = 201
 ```

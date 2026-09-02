@@ -1,119 +1,112 @@
 # Package index
 
-## Model layer
+## Assimilation and the causal measure
 
-High-level entry points. Build a conditional Gaussian nonlinear system
-as a model object, simulate a realisation of it, and run the whole
-assimilative causal inference workflow in a single call.
-
-- [`aci()`](https://biometryhub.github.io/ACI/reference/aci.md) : Run
-  assimilative causal inference
-- [`aci_cgns_model()`](https://biometryhub.github.io/ACI/reference/aci_cgns_model.md)
-  : Conditional Gaussian nonlinear system model
-- [`aci_dyad_model()`](https://biometryhub.github.io/ACI/reference/aci_dyad_model.md)
-  : Nonlinear dyad model
-- [`aci_simulate()`](https://biometryhub.github.io/ACI/reference/aci_simulate.md)
-  : Simulate a conditional Gaussian nonlinear system
-
-## Conditional Gaussian core
-
-The numerical core. The forward filter, the backward smoother and the
-causal-information metric, each written against a general components
-list so they apply to any conditional Gaussian nonlinear system.
-
+- [`aci()`](https://biometryhub.github.io/ACI/reference/aci.md) :
+  Assimilative causal inference
 - [`aci_filter()`](https://biometryhub.github.io/ACI/reference/aci_filter.md)
-  : Forward conditional Gaussian filter
+  : Data assimilation filter
 - [`aci_smoother()`](https://biometryhub.github.io/ACI/reference/aci_smoother.md)
-  : Backward conditional Gaussian smoother
+  : Data assimilation smoother
 - [`aci_metric()`](https://biometryhub.github.io/ACI/reference/aci_metric.md)
-  : Assimilative causal-information metric
+  : Gaussian relative entropy along a pair of paths
+- [`aci_metric_pair()`](https://biometryhub.github.io/ACI/reference/aci_metric_pair.md)
+  : Gaussian relative entropy
+- [`aci_online()`](https://biometryhub.github.io/ACI/reference/aci_online.md)
+  : Fixed-lag online data assimilation
 
-## Causal influence range
+## Influence range and conditioning
 
-How far ahead in the observed record the estimate of the unobserved
-state keeps improving, and the fixed-lag online smoother it is built
-from. These answer a different question from the causal-information
-metric, which measures how much the record says rather than how long it
-takes to say it.
-
-- [`aci_online_smoother()`](https://biometryhub.github.io/ACI/reference/aci_online_smoother.md)
-  : Fixed-lag online conditional Gaussian smoother
-- [`aci_cir()`](https://biometryhub.github.io/ACI/reference/aci_cir.md)
+- [`aci_range()`](https://biometryhub.github.io/ACI/reference/aci_range.md)
   : Causal influence range
-
-## Vector states and conditional questions
-
-The numerical core takes vector-valued states with matrix coefficients,
-and the conditional construction asks what one observed component says
-about the unobserved state given that the others are also watched.
-
 - [`aci_conditional()`](https://biometryhub.github.io/ACI/reference/aci_conditional.md)
-  : Condition the causal question on a subset of the observed components
+  : Conditional ACI specification
+- [`aci_conditional_reduce()`](https://biometryhub.github.io/ACI/reference/aci_conditional_reduce.md)
+  : Reduce a model by prescribing the conditioning channels
+- [`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md)
+  : Finite-lag divergence table
+- [`lt_diag()`](https://biometryhub.github.io/ACI/reference/lt_diag.md)
+  : Diagonal of a lag table
+- [`lt_row()`](https://biometryhub.github.io/ACI/reference/lt_row.md) :
+  One row of a lag table
+- [`lt_tail_bound()`](https://biometryhub.github.io/ACI/reference/lt_tail_bound.md)
+  : Heuristic tail estimate of a lag table
 
-## The stochastic ENSO model
+## Models and simulation
 
-The six-dimensional El Nino Southern Oscillation system of the paper’s
-case study. The largest system the package expresses, and the only one
-whose noise covariances vary in time.
-
-- [`aci_enso_model()`](https://biometryhub.github.io/ACI/reference/aci_enso_model.md)
-  : Stochastic ENSO model
-- [`aci_enso_components()`](https://biometryhub.github.io/ACI/reference/aci_enso_components.md)
-  : Conditional Gaussian components of the stochastic ENSO model
-- [`aci_enso_parameters()`](https://biometryhub.github.io/ACI/reference/aci_enso_parameters.md)
-  : Parameters of the stochastic ENSO model
-
-## The noisy predator-prey model
-
-A stochastic Lotka-Volterra pair, studied in either causal direction. It
-is the model whose latent self-drift is set by the observed state, and
-so the one that exercises a self-drift varying in time.
-
+- [`aci_model()`](https://biometryhub.github.io/ACI/reference/aci_model.md)
+  : Conditional-Gaussian nonlinear system
+- [`aci_model_from_affine()`](https://biometryhub.github.io/ACI/reference/aci_model_from_affine.md)
+  : CGNS model from an affine-in-hidden drift pair
+- [`aci_linear_model()`](https://biometryhub.github.io/ACI/reference/aci_linear_model.md)
+  : Conditionally linear model from constant coefficients
+- [`aci_dyad_model()`](https://biometryhub.github.io/ACI/reference/aci_dyad_model.md)
+  : Nonlinear dyad (andreou2026aci eq. 1-2)
 - [`aci_predprey_model()`](https://biometryhub.github.io/ACI/reference/aci_predprey_model.md)
-  : Noisy predator-prey model
-- [`aci_predprey_components()`](https://biometryhub.github.io/ACI/reference/aci_predprey_components.md)
-  : Conditional Gaussian components of the noisy predator-prey model
+  : Noisy predator-prey benchmark model
+- [`aci_enso_model()`](https://biometryhub.github.io/ACI/reference/aci_enso_model.md)
+  : Six-variable stochastic conceptual ENSO model (andreou2026aci SI via
+  chen2022enso eqs. 1a-1f).
+- [`aci_simulate()`](https://biometryhub.github.io/ACI/reference/aci_simulate.md)
+  : Simulate a path from a model
+- [`as_obs()`](https://biometryhub.github.io/ACI/reference/as_obs.md) :
+  Coerce to an observed trajectory
+- [`observed_trajectory()`](https://biometryhub.github.io/ACI/reference/observed_trajectory.md)
+  : Observed trajectory on a uniform time grid
 
-## The nonlinear dyad model
+## Numerical policies
 
-The worked-example dyad model with intermittent extreme events, at the
-components level, and the components schema it illustrates.
-
-- [`aci_components`](https://biometryhub.github.io/ACI/reference/aci_components.md)
-  : Conditional Gaussian components list
-- [`aci_dyad_components()`](https://biometryhub.github.io/ACI/reference/aci_dyad_components.md)
-  : Conditional Gaussian components of the nonlinear dyad model
+- [`safe_chol()`](https://biometryhub.github.io/ACI/reference/safe_chol.md)
+  : Cholesky with escalating jitter ladder
+- [`spd_floor()`](https://biometryhub.github.io/ACI/reference/spd_floor.md)
+  : Project to SPD by eigenvalue flooring (used after Euler covariance
+  updates)
 
 ## Methods
 
-Reporting methods for the model and result objects. Inspecting, plotting
-or exporting a result should never require indexing into it.
+Print, plot, coercion and simulation methods for the package’s classes.
 
-- [`print(`*`<aci>`*`)`](https://biometryhub.github.io/ACI/reference/print.aci.md)
-  : Print an assimilative causal inference result
-- [`print(`*`<aci_model>`*`)`](https://biometryhub.github.io/ACI/reference/print.aci_model.md)
-  : Print a conditional Gaussian nonlinear system model
-- [`summary(`*`<aci>`*`)`](https://biometryhub.github.io/ACI/reference/summary.aci.md)
-  : Summarise an assimilative causal inference result
-- [`print(`*`<summary.aci>`*`)`](https://biometryhub.github.io/ACI/reference/print.summary.aci.md)
-  : Print a summary of an assimilative causal inference result
-- [`as.data.frame(`*`<aci>`*`)`](https://biometryhub.github.io/ACI/reference/as.data.frame.aci.md)
-  : Coerce an assimilative causal inference result to a data frame
-- [`plot(`*`<aci>`*`)`](https://biometryhub.github.io/ACI/reference/plot.aci.md)
-  : Plot an assimilative causal inference result
-- [`print(`*`<aci_cir>`*`)`](https://biometryhub.github.io/ACI/reference/print.aci_cir.md)
-  : Print a causal influence range
-- [`summary(`*`<aci_cir>`*`)`](https://biometryhub.github.io/ACI/reference/summary.aci_cir.md)
-  [`print(`*`<summary.aci_cir>`*`)`](https://biometryhub.github.io/ACI/reference/summary.aci_cir.md)
-  : Summarise a causal influence range
-- [`as.data.frame(`*`<aci_cir>`*`)`](https://biometryhub.github.io/ACI/reference/as.data.frame.aci_cir.md)
-  : Coerce a causal influence range to a data frame
-- [`plot(`*`<aci_cir>`*`)`](https://biometryhub.github.io/ACI/reference/plot.aci_cir.md)
-  : Plot a causal influence range
+- [`print(`*`<aci_result>`*`)`](https://biometryhub.github.io/ACI/reference/print.aci_result.md)
+  : Print aci() result
+- [`print(`*`<cir_result>`*`)`](https://biometryhub.github.io/ACI/reference/print.cir_result.md)
+  : Print the causal influence range
+- [`print(`*`<da_path_gaussian>`*`)`](https://biometryhub.github.io/ACI/reference/print.da_path_gaussian.md)
+  : Print a Gaussian assimilation path
+- [`print(`*`<lag_table>`*`)`](https://biometryhub.github.io/ACI/reference/print.lag_table.md)
+  : Print a lag table
+- [`print(`*`<obs_traj>`*`)`](https://biometryhub.github.io/ACI/reference/print.obs_traj.md)
+  : Print an observed trajectory
+- [`print(`*`<aci_conditional_spec>`*`)`](https://biometryhub.github.io/ACI/reference/print.aci_conditional_spec.md)
+  : Print a conditional ACI specification
+- [`print(`*`<stochastic_model>`*`)`](https://biometryhub.github.io/ACI/reference/print.stochastic_model.md)
+  : Print a stochastic model
+- [`plot(`*`<aci_result>`*`)`](https://biometryhub.github.io/ACI/reference/plot.aci_result.md)
+  : Plot an ACI result
+- [`plot(`*`<cir_result>`*`)`](https://biometryhub.github.io/ACI/reference/plot.cir_result.md)
+  : Plot a causal influence range result
+- [`plot(`*`<da_path_gaussian>`*`)`](https://biometryhub.github.io/ACI/reference/plot.da_path_gaussian.md)
+  : Plot a Gaussian assimilation path
+- [`as.data.frame(`*`<aci_result>`*`)`](https://biometryhub.github.io/ACI/reference/as.data.frame.aci_result.md)
+  : aci() result to data.frame
+- [`as.data.frame(`*`<da_path_gaussian>`*`)`](https://biometryhub.github.io/ACI/reference/as.data.frame.da_path_gaussian.md)
+  : Coerce a Gaussian assimilation path to a data frame
+- [`as.data.frame(`*`<lag_table>`*`)`](https://biometryhub.github.io/ACI/reference/as.data.frame.lag_table.md)
+  : Coerce a lag table to a data frame
+- [`as.data.frame(`*`<obs_traj>`*`)`](https://biometryhub.github.io/ACI/reference/as.data.frame.obs_traj.md)
+  : Coerce an observed trajectory to a data frame
+- [`simulate(`*`<stochastic_model>`*`)`](https://biometryhub.github.io/ACI/reference/simulate.stochastic_model.md)
+  : Simulate a stochastic or conditional-Gaussian model
 
-## Package
+## Topics
 
-- [`aciR`](https://biometryhub.github.io/ACI/reference/aciR-package.md)
-  [`aciR-package`](https://biometryhub.github.io/ACI/reference/aciR-package.md)
-  : aciR: Assimilative Causal Inference for Conditional Gaussian
-  Nonlinear Systems
+The model contract, the assimilation surface, the causal measures, and
+the references.
+
+- [`model_contracts`](https://biometryhub.github.io/ACI/reference/model_contracts.md)
+  : Model and observation contracts
+- [`assimilation_api`](https://biometryhub.github.io/ACI/reference/assimilation_api.md)
+  : Data assimilation and finite-lag API
+- [`causal_metrics`](https://biometryhub.github.io/ACI/reference/causal_metrics.md)
+  : Assimilative causal metrics and influence ranges
+- [`aci_references`](https://biometryhub.github.io/ACI/reference/aci_references.md)
+  : References
