@@ -44,7 +44,7 @@ In this repository the package is the `acir/` subdirectory, so from the
 ACI-project root (the patches are package-root-relative):
 
 ```sh
-git checkout -b restore/fbcir acir-package
+git checkout -b restore/fbcir main
 git apply --directory=acir dev/reserve/fbcir/fbcir.patch
 R CMD INSTALL acir --library=<a scratch library>
 ```
