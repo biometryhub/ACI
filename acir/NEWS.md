@@ -2,6 +2,18 @@
 
 ## Performance
 
+* **A model supplied as closures is realised once per record, not once per
+  verb.** The generic route evaluated every coefficient closure at every grid
+  point on each call, so a filter, a smoother, an online smoother and an
+  influence range on one model and one record realised the same arrays four
+  times. The last four realisations are now kept, keyed on the model object
+  and the grid, and a stored one is reused after its coefficients are
+  re-evaluated at three grid points and found unchanged, which catches a
+  parameter the closures read from their environment moving between calls.
+  The arrays are identical either way, so no number moves. The option
+  `aci.realiser_cache = FALSE` bypasses the cache (`R/aci-realiser-cache.R`,
+  the specification's fingerprint, plan v0.3 PR-7).
+
 * For a scalar hidden state the Theorem 3 auxiliaries (the update factor,
   the gain row and the one-lag increments of every interval) are formed as
   vector expressions over the record (`.online_aux_scalar()`,

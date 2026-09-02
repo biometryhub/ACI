@@ -608,11 +608,13 @@
 
   N1 <- length(source_obs$t)
   N <- N1 - 1L
-  if (is.null(full)) full <- .realise_cgns_grid_once(model, source_obs)
+  if (is.null(full)) full <- .realise_cgns_grid_cached(model, source_obs)
 
   if (is.null(conditional)) {
     coefficients <- full
-    coefficients$gxx_weight <- .compiled_precision_path(full$gxx, N)
+    weight <- attr(full, "gxx_weight", exact = TRUE)
+    coefficients$gxx_weight <- if (is.null(weight))
+      .compiled_precision_path(full$gxx, N) else weight
     rs <- list(
       model = model,
       obs = source_obs,
