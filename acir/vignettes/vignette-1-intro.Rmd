@@ -86,7 +86,7 @@ truth aside to check the reconstruction against.
 ```{r quickstart-data}
 truth <- aci_dyad_model(params = list(d_x = 1, gamma = 2, f_x = 1.5, s_x = 0.7,
                                   d_y = 1, f_y = 0.5, s_y = 2))
-sim <- simulate(truth, seed = 8, T = 5, dt = 5e-3, burn_in = 1)
+sim <- simulate(truth, seed = 8, t_end = 5, dt = 5e-3, burn_in = 1)
 dat <- data.frame(t = sim$obs$t, x1 = sim$obs$x[, 1], y = sim$hidden[, 1])
 head(dat, 3)
 ```

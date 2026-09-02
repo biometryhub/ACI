@@ -54,7 +54,7 @@ test_that("streamed scalar forward CIR matches reduction of retained rows", {
   old <- options(aci.default_tol = 1e-5)
   on.exit(options(old), add = TRUE)
   model <- aci_dyad_model()
-  sim <- simulate(model, seed = 271, T = 0.5, dt = 0.005, burn_in = 0)
+  sim <- simulate(model, seed = 271, t_end = 0.5, dt = 0.005, burn_in = 0)
   obs <- as_obs(sim)
   init <- list(mean = 2, cov = matrix(0.1, 1, 1))
   bundle <- .compile_cgns_run(model, obs)
@@ -101,7 +101,7 @@ test_that("aci_range on an unstored ACI result uses the streamed route", {
   old <- options(aci.default_tol = 1e-6)
   on.exit(options(old), add = TRUE)
   model <- aci_dyad_model()
-  sim <- simulate(model, seed = 81, T = 0.25, dt = 0.005, burn_in = 0)
+  sim <- simulate(model, seed = 81, t_end = 0.25, dt = 0.005, burn_in = 0)
   obs <- as_obs(sim)
   init <- list(mean = 2, cov = matrix(0.1, 1, 1))
   result <- aci(model, obs, init = init, keep = "paths")
@@ -122,7 +122,7 @@ test_that("aci_range on an unstored ACI result uses the streamed route", {
 
 test_that("streamed forward CIR preserves warnings and argument errors", {
   model <- aci_dyad_model()
-  sim <- simulate(model, seed = 9, T = 0.08, dt = 0.01, burn_in = 0)
+  sim <- simulate(model, seed = 9, t_end = 0.08, dt = 0.01, burn_in = 0)
   obs <- as_obs(sim)
   init <- list(mean = 2, cov = matrix(0.1, 1, 1))
   bundle <- .compile_cgns_run(model, obs)

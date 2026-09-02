@@ -135,7 +135,7 @@
   function() {
     if (!is.null(cached)) return(cached)
     m <- aci_enso_model(variant = "aci_code", hidden = c("u", "hW", "tau"))
-    s <- stats::simulate(m, seed = 4242L, T = 110, dt = .tc_p$dt)
+    s <- stats::simulate(m, seed = 4242L, t_end = 110, dt = .tc_p$dt)
     x <- as.matrix(s$obs$x); y <- as.matrix(s$hidden)
     path <- data.frame(t = s$obs$t, u = y[, 1L], hW = y[, 2L], TC = x[, 1L],
                        TE = x[, 2L], tau = y[, 3L], I = x[, 3L])
@@ -253,9 +253,9 @@ test_that("the TC model refuses to simulate and refuses a foreign grid", {
   # hidden drift and return a plausible-looking path of a system nobody wrote
   # down.  The message has to name the constructor that can generate one.
   expect_false(m$meta$simulate_supported)
-  expect_error(stats::simulate(m, seed = 1L, T = 1, dt = .tc_p$dt),
+  expect_error(stats::simulate(m, seed = 1L, t_end = 1, dt = .tc_p$dt),
                class = "aci_error_model_contract")
-  expect_error(stats::simulate(m, seed = 1L, T = 1, dt = .tc_p$dt),
+  expect_error(stats::simulate(m, seed = 1L, t_end = 1, dt = .tc_p$dt),
                "aci_enso_model(hidden = c(\"u\", \"hW\", \"tau\")", fixed = TRUE)
 
   # The prescribed forcings are looked up by index, so an observation grid that
@@ -289,7 +289,7 @@ test_that("the TC model refuses to simulate and refuses a foreign grid", {
 
   # Every other model is untouched by the check.
   d <- aci_dyad_model()
-  sim <- stats::simulate(d, seed = 1L, T = 1, dt = 0.01)
+  sim <- stats::simulate(d, seed = 1L, t_end = 1, dt = 0.01)
   expect_null(d$meta$prescribed_grid)
   expect_s3_class(aci_filter(d, as_obs(sim), init = list(mean = 2, cov = 0.1)),
                   "da_path")

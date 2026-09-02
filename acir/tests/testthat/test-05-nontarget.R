@@ -8,7 +8,7 @@ chain_model <- function(gA = 0) aci_model(
 
 test_that("T7a: chain y -> xB -> xA gives near-zero conditional ACI", {
   m <- chain_model(gA = 0)
-  s <- simulate(m, seed = 33, T = 4, dt = 2e-3, ic = list(x0 = c(0, 0), y0 = 0.5))
+  s <- simulate(m, seed = 33, t_end = 4, dt = 2e-3, ic = list(x0 = c(0, 0), y0 = 0.5))
   a_un <- suppressWarnings(aci(m, s$obs))
   a_c  <- suppressWarnings(
     aci(m, s$obs, conditional = aci_conditional(given = 2, method = "reduce")))
@@ -17,7 +17,7 @@ test_that("T7a: chain y -> xB -> xA gives near-zero conditional ACI", {
 })
 test_that("T7b: 'reduce' and 'mask' agree when both defined", {
   m <- chain_model(gA = 1)
-  s <- simulate(m, seed = 34, T = 3, dt = 2e-3, ic = list(x0 = c(0, 0), y0 = 0.5))
+  s <- simulate(m, seed = 34, t_end = 3, dt = 2e-3, ic = list(x0 = c(0, 0), y0 = 0.5))
   a1 <- suppressWarnings(aci(m, s$obs,
           conditional = aci_conditional(given = 2, method = "reduce")))
   a2 <- suppressWarnings(aci(m, s$obs,
@@ -28,7 +28,7 @@ test_that("T7b: 'reduce' and 'mask' agree when both defined", {
 
 test_that("prescribed-forcing paths retain stable source-model provenance", {
   m <- chain_model(gA = 1)
-  s <- simulate(m, seed = 35, T = 0.2, dt = 0.01,
+  s <- simulate(m, seed = 35, t_end = 0.2, dt = 0.01,
                 ic = list(x0 = c(0, 0), y0 = 0.5))
   nt <- aci_conditional(given = 2, method = "reduce")
   f <- suppressWarnings(aci_filter(m, s$obs, conditional = nt))
@@ -41,7 +41,7 @@ test_that("prescribed-forcing paths retain stable source-model provenance", {
 })
 
 test_that("non-target block specifications reject empty, fractional, and duplicate indices", {
-  m <- chain_model(); s <- simulate(m, seed = 1, T = 0.1, dt = 0.01)
+  m <- chain_model(); s <- simulate(m, seed = 1, t_end = 0.1, dt = 0.01)
   for (bad in list(numeric(0), 1.5, c(1, 1), 3))
     expect_error(aci_filter(m, s$obs,
                             conditional = aci_conditional(bad, "mask")),

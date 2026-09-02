@@ -17,7 +17,7 @@ local_generic_model <- function(env) {
 }
 
 local_record <- function(n, seed = 1L) {
-  as_obs(simulate(aci_dyad_model(), seed = seed, T = n * 0.01, dt = 0.01,
+  as_obs(simulate(aci_dyad_model(), seed = seed, t_end = n * 0.01, dt = 0.01,
                   burn_in = 0))
 }
 

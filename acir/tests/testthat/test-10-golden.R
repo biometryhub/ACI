@@ -6,7 +6,7 @@ golden_setup <- function() {
   prm <- list(d_x = 0.5, d_y = 0.5, gamma = 2, F_x = 0.5, F_y = 1,
               s_x = 0.5, s_y = 1)
   m <- aci_dyad_model()                       # package defaults == golden params
-  s <- simulate(m, seed = 7, T = 0.8, dt = 1e-3, burn_in = 0)
+  s <- simulate(m, seed = 7, t_end = 0.8, dt = 1e-3, burn_in = 0)
   x <- s$obs$x[, 1]; mu0 <- s$hidden[1, 1]
   g <- golden_p1_moments(x, s$obs$dt, prm, mu0 = mu0, R0 = 0.1)
   list(m = m, s = s, x = x, g = g,

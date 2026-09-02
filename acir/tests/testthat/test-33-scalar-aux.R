@@ -7,11 +7,11 @@
 .scalar_aux_case <- function(which) {
   if (which == "dyad") {
     model <- aci_dyad_model()
-    sim <- simulate(model, seed = 271, T = 3, dt = 0.005, burn_in = 0)
+    sim <- simulate(model, seed = 271, t_end = 3, dt = 0.005, burn_in = 0)
     init <- list(mean = 2, cov = matrix(0.1, 1, 1))
   } else {
     model <- aci_enso_model(hidden = "u")
-    sim <- stats::simulate(model, seed = 3, T = 4, dt = 0.005)
+    sim <- stats::simulate(model, seed = 3, t_end = 4, dt = 0.005)
     init <- list(mean = 0, cov = matrix(0.1, 1, 1))
   }
   obs <- as_obs(sim)

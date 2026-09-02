@@ -2,15 +2,12 @@ Package: acir
 Type: Package
 Title: Closed-Form Assimilative Causal Inference for Conditional
     Gaussian Nonlinear Systems
-Version: 0.0.0.9000
+Version: 0.1.0
 Authors@R: c(
     person("Aidan", "Moller", role = c("aut", "cre", "cph"),
-           email = "aj.moller97@gmail.com",
-           comment = paste("Interim maintainer for the development branch;",
-                           "author roles, order and the maintainer field are",
-                           "under joint review")),
+           email = "aj.moller97@gmail.com"),
     person("Max", "Moldovan", role = c("aut", "cph"),
-           comment = "Author; roles under joint review"),
+           comment = c(ORCID = "0000-0001-9680-8474")),
     person("Marios", "Andreou", role = "cph",
            comment = paste("Author and copyright holder of the MIT-licensed",
                            "reference MATLAB implementation 'ACI_code',",

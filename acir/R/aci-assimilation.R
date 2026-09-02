@@ -42,7 +42,7 @@
 #'
 #' @examples
 #' m <- aci_dyad_model()
-#' sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
+#' sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
 #' ob <- as_obs(sim)
 #' f <- aci_filter(m, ob)
 #' f
@@ -66,7 +66,7 @@ aci_filter <- function(model, obs, ...) UseMethod("aci_filter")
 #'
 #' @examples
 #' m <- aci_dyad_model()
-#' sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
+#' sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
 #' ob <- as_obs(sim)
 #' f <- aci_filter(m, ob)
 #' aci_smoother(m, ob, filter = f)
@@ -133,7 +133,7 @@ aci_smoother <- function(model, obs, ...) UseMethod("aci_smoother")
 #'
 #' @examples
 #' m <- aci_dyad_model()
-#' sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
+#' sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
 #' ob <- as_obs(sim)
 #' aci_online(m, ob, lag = 5)
 #'
@@ -673,7 +673,7 @@ aci_online.stochastic_model <- function(model, obs, lag, ...)
 #'
 #' @examples
 #' m <- aci_dyad_model()
-#' sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
+#' sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
 #' ob <- as_obs(sim)
 #' lag_table(m, ob, mode = "forward")
 #'
@@ -767,7 +767,7 @@ lag_table <- function(model, obs, mode = c("forward", "full"),
 #'
 #' @examples
 #' m <- aci_dyad_model()
-#' sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
+#' sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
 #' ob <- as_obs(sim)
 #' tb <- lag_table(m, ob, mode = "forward")
 #' head(lt_diag(tb))
@@ -795,7 +795,7 @@ lt_diag <- function(x) {
 #'
 #' @examples
 #' m <- aci_dyad_model()
-#' sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
+#' sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
 #' ob <- as_obs(sim)
 #' tb <- lag_table(m, ob, mode = "forward")
 #' head(lt_row(tb, 1))
@@ -828,7 +828,7 @@ lt_row <- function(x, j, pad = c("zero", "na")) {
 #'
 #' @examples
 #' m <- aci_dyad_model()
-#' sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
+#' sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
 #' ob <- as_obs(sim)
 #' tb <- lag_table(m, ob, mode = "forward")
 #' head(lt_tail_bound(tb))
@@ -1108,7 +1108,7 @@ print.aci_conditional_spec <- function(x, ...) {
 #'   Sx1 = function(t, x) diag(0.5, 2),
 #'   Sy2 = function(t, x) matrix(1, 1, 1),
 #'   k = 2, l = 1)
-#' sim2 <- simulate(m2, seed = 1, T = 1, dt = 0.01)
+#' sim2 <- simulate(m2, seed = 1, t_end = 1, dt = 0.01)
 #' aci_conditional_reduce(m2, as_obs(sim2), aci_conditional(2, "reduce"))
 #'
 #' @export

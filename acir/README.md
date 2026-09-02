@@ -9,9 +9,10 @@ reference implementation, and the evidence documents accompany this repository.
 
 ## Status
 
-acir is under active joint development. Authorship, citation and the maintainer
-field are under joint review, and nothing in `DESCRIPTION` pre-empts the outcome
-of that review.
+Version 0.1.0 is the parity milestone: every quantity the reference MATLAB
+implementation computes is reproduced to the tolerance recorded in the
+evidence register, and the performance table of the specification is met.
+Maintainer: Aidan Moller. Authors: Aidan Moller and Max Moldovan.
 
 The numerical core is fixed at parity with the reference implementation; the
 public interface may still change before 1.0, and every such change is
@@ -38,7 +39,7 @@ remotes::install_github("biometryhub/ACI", subdir = "acir")
 ```r
 library(acir)
 model <- aci_dyad_model()
-sim <- aci_simulate(model, T = 5, dt = 0.005, seed = 1)
+sim <- aci_simulate(model, t_end = 5, dt = 0.005, seed = 1)
 fit <- aci(model, sim)
 fit
 plot(fit)

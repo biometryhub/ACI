@@ -4,16 +4,16 @@
 ## can stop being the object this namespace produced sends it back to the
 ## unchanged full-validation route.
 
-trusted_scalar_setup <- function(T = 0.3, dt = 0.001, seed = 19) {
+trusted_scalar_setup <- function(t_end = 0.3, dt = 0.001, seed = 19) {
   model <- aci_dyad_model()
-  obs <- as_obs(simulate(model, seed = seed, T = T, dt = dt, burn_in = 0))
+  obs <- as_obs(simulate(model, seed = seed, t_end = t_end, dt = dt, burn_in = 0))
   init <- list(mean = 2, cov = matrix(0.1, 1, 1))
   list(model = model, obs = obs, init = init,
        filter = aci_filter(model, obs, init = init))
 }
 
 
-trusted_matrix_setup <- function(T = 0.3, dt = 0.002, seed = 23) {
+trusted_matrix_setup <- function(t_end = 0.3, dt = 0.002, seed = 23) {
   model <- aci_model(
     Lx = function(t, x) matrix(c(0.8, -0.3, 0.15, 0.6), 2, 2),
     fx = function(t, x) c(-0.4 * x[1] + 0.1, -0.25 * x[2]),
@@ -22,7 +22,7 @@ trusted_matrix_setup <- function(T = 0.3, dt = 0.002, seed = 23) {
     Sx1 = function(t, x) diag(c(0.6, 0.5), 2),
     Sy2 = function(t, x) diag(c(0.7, 0.4), 2),
     k = 2, l = 2, name = "trusted-matrix")
-  obs <- as_obs(simulate(model, seed = seed, T = T, dt = dt, burn_in = 0))
+  obs <- as_obs(simulate(model, seed = seed, t_end = t_end, dt = dt, burn_in = 0))
   init <- list(mean = c(0, 0), cov = diag(0.1, 2))
   list(model = model, obs = obs, init = init,
        filter = aci_filter(model, obs, init = init))
@@ -72,7 +72,7 @@ test_that("the authenticated route survives the substepped and implicit filters"
 test_that("the authenticated route carries a non-target reduction", {
   model <- aci_enso_model(hidden = "hW", variant = "aci_code")
   observed <- model$meta$vars$observed
-  sim <- simulate(model, seed = 31, T = 0.4, dt = 0.002, burn_in = 0)
+  sim <- simulate(model, seed = 31, t_end = 0.4, dt = 0.002, burn_in = 0)
   x <- as_obs(sim)$x
   colnames(x) <- observed
   obs <- observed_trajectory(as_obs(sim)$t, x)
@@ -238,7 +238,7 @@ test_that("a foreign or forged token is not authenticated", {
 
 test_that("a filter built for a different grid is rejected as before", {
   ds <- trusted_scalar_setup()
-  longer <- trusted_scalar_setup(T = 0.5)
+  longer <- trusted_scalar_setup(t_end = 0.5)
   expect_false(.da_filter_authenticated(
     longer$filter, .compile_cgns_run(ds$model, ds$obs), ds$model))
   expect_error(aci_smoother(ds$model, ds$obs, filter = longer$filter,

@@ -23,16 +23,16 @@ with_reg <- function(policy, expr) {
   force(expr)
 }
 
-pol_dyad <- function(T = 3, dt = 0.001, seed = 11) {
+pol_dyad <- function(t_end = 3, dt = 0.001, seed = 11) {
   m <- aci_dyad_model()
-  s <- simulate(m, seed = seed, T = T, dt = dt)
+  s <- simulate(m, seed = seed, t_end = t_end, dt = dt)
   list(model = m, obs = s$obs, init = list(mean = 2, cov = matrix(0.1, 1, 1)))
 }
 
 ## The S4 probe: the oracle dyad path resampled to a 200x coarser grid, where
 ## the explicit Riccati step overshoots.
 probe_S4 <- function() {
-  d <- pol_dyad(T = 3, dt = 0.001, seed = 11)
+  d <- pol_dyad(t_end = 3, dt = 0.001, seed = 11)
   idx <- seq.int(1L, length(d$obs$t), by = 200L)
   d$obs <- observed_trajectory(d$obs$t[idx],
                                d$obs$x[idx, , drop = FALSE])
@@ -41,7 +41,7 @@ probe_S4 <- function() {
 
 ## The S5 probe: a legitimate but vanishingly tight scalar prior.
 probe_S5 <- function() {
-  d <- pol_dyad(T = 3, dt = 0.001, seed = 11)
+  d <- pol_dyad(t_end = 3, dt = 0.001, seed = 11)
   d$init <- list(mean = 2, cov = matrix(1e-14, 1, 1))
   d
 }
@@ -90,7 +90,7 @@ test_that("every site id used in the sources is in the site register", {
 
 
 test_that("a clean run always carries a zero-event record, never NULL", {
-  d <- pol_dyad(T = 0.4, dt = 0.002)
+  d <- pol_dyad(t_end = 0.4, dt = 0.002)
   shape <- function(r, policy) {
     expect_type(r, "list")
     expect_identical(names(r),
@@ -125,7 +125,7 @@ test_that("a clean run always carries a zero-event record, never NULL", {
 
 test_that("the multivariate and implicit routes carry the record too", {
   m <- aci_enso_model(hidden = c("u", "hW"), variant = "aci_code")
-  s <- simulate(m, seed = 8, T = 1, dt = 0.005)
+  s <- simulate(m, seed = 8, t_end = 1, dt = 0.005)
   ini <- list(mean = c(0, 0), cov = 0.05 * diag(2))
   for (st in c("explicit", "implicit")) {
     f <- aci_filter(m, s$obs, init = ini, stepper = st)
@@ -194,7 +194,7 @@ test_that("S5: a vanishingly tight scalar prior stops in the smoother", {
 
 test_that("S5b: a vanishingly tight matrix prior stops in the smoother", {
   m <- aci_enso_model(hidden = c("u", "hW"), variant = "aci_code")
-  s <- simulate(m, seed = 8, T = 1, dt = 0.005)
+  s <- simulate(m, seed = 8, t_end = 1, dt = 0.005)
   ini <- list(mean = c(0, 0), cov = 1e-14 * diag(2))
   e <- tryCatch(quiet(aci(m, s$obs, init = ini)), error = function(e) e)
   expect_s3_class(e, "aci_error_covariance_not_spd")
@@ -381,7 +381,7 @@ test_that("the exported regularisers keep their documented behaviour", {
 
 
 test_that("a saved result's own policy governs its recomputed forward CIR", {
-  d <- pol_dyad(T = 0.3, dt = 0.002)
+  d <- pol_dyad(t_end = 0.3, dt = 0.002)
   a <- aci(d$model, d$obs, init = d$init, keep = "paths")
   expect_identical(a$meta$regularization$policy, "none")
   ## the option changes after the result was produced; the result does not

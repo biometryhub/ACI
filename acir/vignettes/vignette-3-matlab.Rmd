@@ -70,8 +70,8 @@ c(prey_hidden = mp_prey$meta$vars$hidden,
   predator_hidden = mp_pred$meta$vars$hidden,
   predator_observed = mp_pred$meta$vars$observed)
 
-sp_prey <- simulate(mp_prey, seed = 11, T = 20, dt = 0.01, burn_in = 5)
-sp_pred <- simulate(mp_pred, seed = 11, T = 20, dt = 0.01, burn_in = 5)
+sp_prey <- simulate(mp_prey, seed = 11, t_end = 20, dt = 0.01, burn_in = 5)
+sp_pred <- simulate(mp_pred, seed = 11, t_end = 20, dt = 0.01, burn_in = 5)
 a_prey  <- aci(mp_prey, as_obs(sp_prey),
                init = list(mean = mp_prey$meta$ic_default$y0,
                            cov = matrix(1, 1, 1)))
@@ -109,7 +109,7 @@ supplied as prescribed forcings looked up by index on their own grid:
 
 ```{r tc-partition}
 mj   <- aci_enso_model(hidden = c("u", "hW", "tau"))
-sj   <- simulate(mj, seed = 21, T = 4, dt = 5e-3, burn_in = 1)
+sj   <- simulate(mj, seed = 21, t_end = 4, dt = 5e-3, burn_in = 1)
 path <- data.frame(t = sj$obs$t, u = sj$hidden[, 1], hW = sj$hidden[, 2],
                    tau = sj$hidden[, 3])
 
@@ -126,7 +126,7 @@ model, not of the six-state system, so the model refuses to generate a path
 of its own and names the constructor that can:
 
 ```{r tc-simulate, error = TRUE}
-simulate(mtc, seed = 1, T = 1, dt = 5e-3)
+simulate(mtc, seed = 1, t_end = 1, dt = 5e-3)
 ```
 
 
@@ -173,7 +173,7 @@ names both sides of it. `"uniform"` masks every slice and is the default;
 
 ```{r first-step}
 me     <- aci_enso_model(hidden = "hW")
-se     <- simulate(me, seed = 12, T = 4, dt = 5e-3, burn_in = 1)
+se     <- simulate(me, seed = 12, t_end = 4, dt = 5e-3, burn_in = 1)
 obe    <- as_obs(se)
 init_e <- list(mean = me$meta$ic_default$y0, cov = matrix(0.1, 1, 1))
 
@@ -222,7 +222,7 @@ mt_full <- aci_enso_model(hidden = "tau", observations = "full")
 c(default = mt_red$meta$observations, alternative = mt_full$meta$observations)
 mt_red$meta$estimand_nontarget
 
-st     <- simulate(mt_full, seed = 3, T = 8, dt = 5e-3, burn_in = 1)
+st     <- simulate(mt_full, seed = 3, t_end = 8, dt = 5e-3, burn_in = 1)
 obt    <- as_obs(st)
 init_t <- list(mean = mt_red$meta$ic_default$y0, cov = matrix(0.1, 1, 1))
 
@@ -266,7 +266,7 @@ check, and where each is explained:
 
 ```{r conventions-checklist}
 m    <- aci_dyad_model()
-sim  <- simulate(m, seed = 7, T = 4, dt = 0.01, burn_in = 1)
+sim  <- simulate(m, seed = 7, t_end = 4, dt = 0.01, burn_in = 1)
 ob   <- as_obs(sim)
 init <- list(mean = 0, cov = matrix(1, 1, 1))
 a    <- aci(m, ob, init = init)

@@ -5,7 +5,6 @@
 ^\.github($|/)
 ^\.gitignore$
 ^LICENSE\.md$
-^build($|/)
 ^vignettes/.*\.html$
 ^benchmarks($|/)
 ^tools($|/)

@@ -2,9 +2,9 @@
 # compatibility mode, subjective read-out convention and status vocabulary.
 # Ledger entry C2b.
 
-.c2b_setup <- function(T = 0.5, dt = 0.005, seed = 271) {
+.c2b_setup <- function(t_end = 0.5, dt = 0.005, seed = 271) {
   model <- aci_dyad_model()
-  sim <- simulate(model, seed = seed, T = T, dt = dt, burn_in = 0)
+  sim <- simulate(model, seed = seed, t_end = t_end, dt = dt, burn_in = 0)
   obs <- as_obs(sim)
   init <- list(mean = 2, cov = matrix(0.1, 1, 1))
   bundle <- .compile_cgns_run(model, obs)

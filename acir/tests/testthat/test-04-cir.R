@@ -46,7 +46,7 @@ test_that("C4/C5: l1_linf bound directions and equality under monotonicity", {
 })
 test_that("C6-lite: dyad CIR pipeline runs and produces sane windows", {
   m <- aci_dyad_model()
-  s <- simulate(m, seed = 21, T = 3, dt = 5e-3)
+  s <- simulate(m, seed = 21, t_end = 3, dt = 5e-3)
   a <- suppressWarnings(aci(m, s$obs, keep = "table"))
   f <- suppressWarnings(aci_range(a$table))
   expect_true(all(is.na(f$tau) | (f$tau >= 0 & f$tau <= max(f$t) + 1e-9)))
@@ -58,7 +58,7 @@ test_that("masked_value = 'zero' reports the published zero convention", {
   # andreou2026cir Rmks B.4/C.4 and the FBCIR scripts set a low-strength
   # length to 0; the default keeps NA so masking stays visible.
   m <- aci_dyad_model()
-  s <- simulate(m, seed = 21, T = 0.5, dt = 5e-3)
+  s <- simulate(m, seed = 21, t_end = 0.5, dt = 5e-3)
   tab <- suppressWarnings(lag_table(m, s$obs, mode = "forward"))
   f_na <- suppressWarnings(aci_range(tab, min_M = 1e6))
   f_z  <- suppressWarnings(aci_range(tab, min_M = 1e6,
@@ -70,7 +70,7 @@ test_that("masked_value = 'zero' reports the published zero convention", {
 
 test_that("quadrature options give both published ratio conventions", {
   m <- aci_dyad_model()
-  s <- simulate(m, seed = 9, T = 1, dt = 0.01)
+  s <- simulate(m, seed = 9, t_end = 1, dt = 0.01)
   tab <- suppressWarnings(lag_table(m, s$obs, mode = "forward", tol = 0))
   f_simp <- suppressWarnings(aci_range(tab, method = "l1_linf",
                                        min_M = NULL))

@@ -134,7 +134,7 @@ test_that("implicit matrix filter and smoother retain 0.0.21 policy", {
 
 test_that("compiled dispatcher covers scalar implicit execution", {
   model <- aci_dyad_model()
-  sim <- simulate(model, seed = 71, T = 0.2, dt = 0.002, burn_in = 0)
+  sim <- simulate(model, seed = 71, t_end = 0.2, dt = 0.002, burn_in = 0)
   obs <- as_obs(sim)
   init <- list(mean = 2, cov = matrix(0.1, 1, 1))
   bundle <- .compile_cgns_run(model, obs)

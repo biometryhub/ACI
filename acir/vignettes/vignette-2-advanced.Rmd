@@ -103,7 +103,7 @@ lin <- aci_linear_model(lambda_x = 1, lambda_y = -0.5,
 lin
 c(Lx = lin$Lx(0, 1), Ly = lin$Ly(0, 1))
 
-s_lin <- simulate(lin, seed = 2, T = 4, dt = 0.01, burn_in = 1)
+s_lin <- simulate(lin, seed = 2, t_end = 4, dt = 0.01, burn_in = 1)
 max(aci(lin, as_obs(s_lin), init = list(mean = 0, cov = matrix(1, 1, 1)))$aci)
 ```
 
@@ -158,7 +158,7 @@ readable, because `aci_conditional()` accepts channel names.
 
 ```{r engine-setup}
 m    <- aci_dyad_model()
-sim  <- simulate(m, seed = 7, T = 8, dt = 0.01, burn_in = 1)
+sim  <- simulate(m, seed = 7, t_end = 8, dt = 0.01, burn_in = 1)
 ob   <- observed_trajectory(sim$obs$t, sim$obs$x, names = "x")
 init <- list(mean = 0, cov = matrix(1, 1, 1))
 
@@ -610,7 +610,7 @@ when the observation-noise Gram has no $A$-$B$ cross-block, and the
 package checks that along the whole path rather than at its first point:
 
 ```{r cross-noise, error = TRUE}
-s2 <- simulate(m2, seed = 1, T = 1, dt = 0.01)
+s2 <- simulate(m2, seed = 1, t_end = 1, dt = 0.01)
 o2 <- observed_trajectory(s2$obs$t, s2$obs$x, names = c("xA", "xB"))
 aci_conditional_reduce(m2, o2, aci_conditional("xB", "reduce"))
 ```
@@ -634,7 +634,7 @@ different route to the same operator, not to a second answer.
 
 ```{r strategies-coincide}
 me     <- aci_enso_model(hidden = "hW")
-se     <- simulate(me, seed = 12, T = 4, dt = 5e-3, burn_in = 1)
+se     <- simulate(me, seed = 12, t_end = 4, dt = 5e-3, burn_in = 1)
 obe    <- as_obs(se)
 init_e <- list(mean = me$meta$ic_default$y0, cov = matrix(0.1, 1, 1))
 

@@ -31,7 +31,7 @@ m2 <- aci_model(
   Sx1 = function(t, x) diag(0.5, 2),
   Sy2 = function(t, x) matrix(1, 1, 1),
   k = 2, l = 1)
-sim2 <- simulate(m2, seed = 1, T = 1, dt = 0.01)
+sim2 <- simulate(m2, seed = 1, t_end = 1, dt = 0.01)
 aci_conditional_reduce(m2, as_obs(sim2), aci_conditional(2, "reduce"))
 
 }

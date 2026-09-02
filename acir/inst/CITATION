@@ -1,0 +1,33 @@
+citHeader("To cite acir in publications, please cite both the package and the method:")
+
+bibentry(
+  bibtype = "Manual",
+  title = paste("acir: Closed-Form Assimilative Causal Inference for",
+                "Conditional Gaussian Nonlinear Systems"),
+  author = c(person("Aidan", "Moller"), person("Max", "Moldovan")),
+  year = "2026",
+  note = "R package version 0.1.0",
+  url = "https://github.com/biometryhub/ACI",
+  textVersion = paste(
+    "Moller, A. and Moldovan, M. (2026). acir: Closed-Form Assimilative",
+    "Causal Inference for Conditional Gaussian Nonlinear Systems.",
+    "R package version 0.1.0. https://github.com/biometryhub/ACI"
+  )
+)
+
+bibentry(
+  bibtype = "Article",
+  title = "Assimilative causal inference",
+  author = c(person("Marios", "Andreou"), person("Nan", "Chen"),
+             person("Erik", "Bollt")),
+  journal = "Nature Communications",
+  year = "2026",
+  volume = "17",
+  pages = "1854",
+  doi = "10.1038/s41467-026-68568-0",
+  textVersion = paste(
+    "Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal",
+    "inference. Nature Communications, 17, 1854.",
+    "https://doi.org/10.1038/s41467-026-68568-0"
+  )
+)

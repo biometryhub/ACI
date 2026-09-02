@@ -173,7 +173,7 @@ test_that("the divergence guard stops an unstable simulation and names the step"
   )
   # The hidden self-drift is 1e6, so on a 1e-3 grid the Euler factor is 1001
   # per step and the state leaves the double range inside 110 steps.
-  err <- tryCatch(stats::simulate(m, seed = 1L, T = 0.2, dt = 1e-3,
+  err <- tryCatch(stats::simulate(m, seed = 1L, t_end = 0.2, dt = 1e-3,
                                   burn_in = 0),
                   error = function(e) e)
   expect_s3_class(err, "aci_error_sim_divergence")
@@ -183,7 +183,7 @@ test_that("the divergence guard stops an unstable simulation and names the step"
 
   # The same model on a grid fine enough to stay finite returns normally, so
   # the abort is the guard firing and not the constructor refusing the model.
-  ok <- stats::simulate(m, seed = 1L, T = 2e-4, dt = 1e-6, burn_in = 0)
+  ok <- stats::simulate(m, seed = 1L, t_end = 2e-4, dt = 1e-6, burn_in = 0)
   expect_true(all(is.finite(ok$obs$x)))
 })
 
@@ -210,7 +210,7 @@ test_that("a non-CGNS model is refused by every assimilation verb", {
 
 test_that("the backward range is refused on both aci_range methods", {
   m <- aci_dyad_model()
-  s <- stats::simulate(m, seed = 1L, T = 0.3, dt = 0.01, burn_in = 0)
+  s <- stats::simulate(m, seed = 1L, t_end = 0.3, dt = 0.01, burn_in = 0)
   ob <- as_obs(s)
   init <- list(mean = 2, cov = matrix(0.1, 1L, 1L))
   table <- lag_table(m, ob, mode = "forward", init = init)

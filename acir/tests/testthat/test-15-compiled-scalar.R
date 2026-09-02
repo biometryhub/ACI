@@ -1,6 +1,6 @@
-compiled_dyad_setup <- function(T = 0.4, dt = 0.001, seed = 41) {
+compiled_dyad_setup <- function(t_end = 0.4, dt = 0.001, seed = 41) {
   model <- aci_dyad_model()
-  sim <- simulate(model, seed = seed, T = T, dt = dt, burn_in = 0)
+  sim <- simulate(model, seed = seed, t_end = t_end, dt = dt, burn_in = 0)
   obs <- as_obs(sim)
   init <- list(mean = 2, cov = matrix(0.1, 1, 1))
   list(model = model, obs = obs, init = init,
@@ -74,7 +74,7 @@ test_that("compiled CGNS generic fallback realizes each grid point once", {
 
 
 test_that("directed dyad realiser fills the same neutral compiled contract", {
-  ds <- compiled_dyad_setup(T = 0.2, dt = 0.001)
+  ds <- compiled_dyad_setup(t_end = 0.2, dt = 0.001)
   directed <- .compile_dyad_cgns(ds$model, ds$obs)
   expect_identical(ds$bundle$realization, "generic_closure_one_pass")
   expect_identical(directed$realization, "dyad_directed")
@@ -108,7 +108,7 @@ test_that("directed dyad realiser fills the same neutral compiled contract", {
 
 
 test_that("automatic realiser selection uses sealed constructor identity", {
-  ds <- compiled_dyad_setup(T = 0.05, dt = 0.005)
+  ds <- compiled_dyad_setup(t_end = 0.05, dt = 0.005)
   model <- ds$model
   expect_true(is.environment(.cgns_realizer_descriptor(model)))
   expect_identical(
@@ -143,7 +143,7 @@ test_that("automatic realiser selection uses sealed constructor identity", {
 
 
 test_that("compiled identity excludes init but binds model, observations, and policy", {
-  ds <- compiled_dyad_setup(T = 0.05, dt = 0.005)
+  ds <- compiled_dyad_setup(t_end = 0.05, dt = 0.005)
   expect_no_error(.validate_compiled_cgns(
     ds$bundle, ds$model, ds$obs, scalar = TRUE))
 
@@ -168,7 +168,7 @@ test_that("compiled identity excludes init but binds model, observations, and po
 
 
 test_that("compiled bundles reject internal mutation and mismatched metric grids", {
-  ds <- compiled_dyad_setup(T = 0.05, dt = 0.005)
+  ds <- compiled_dyad_setup(t_end = 0.05, dt = 0.005)
   mutations <- list(
     function(x) { x$t[2] <- x$t[2] + 0.001; x },
     function(x) { x$x[2, 1] <- x$x[2, 1] + 0.1; x },
@@ -200,7 +200,7 @@ test_that("prescribed forcing compiles after resolution to a scalar contract", {
     fy = function(t, x) 0.1 * x[2],
     Sx1 = function(t, x) diag(c(0.4, 0.3)),
     Sy2 = function(t, x) matrix(0.7, 1, 1), k = 2, l = 1)
-  sim <- simulate(model, seed = 9, T = 0.1, dt = 0.005,
+  sim <- simulate(model, seed = 9, t_end = 0.1, dt = 0.005,
                   ic = list(x0 = c(0, 0), y0 = 0.2))
   nt <- aci_conditional(2, "reduce")
   init <- list(mean = 0.2, cov = matrix(0.3, 1, 1))
@@ -259,7 +259,7 @@ test_that("private scalar kernels and production public routing agree", {
 
 
 test_that("scalar proof preserves warnings and covariance policy", {
-  ds <- compiled_dyad_setup(T = 0.1, dt = 0.005)
+  ds <- compiled_dyad_setup(t_end = 0.1, dt = 0.005)
   public_default <- capture_aci_warnings(aci_filter(ds$model, ds$obs))
   scalar_default <- capture_aci_warnings(.cgns_filter_scalar(ds$bundle))
   expect_identical(scalar_default$classes, public_default$classes)
@@ -281,7 +281,7 @@ test_that("scalar proof preserves warnings and covariance policy", {
   # Updated for the strict covariance policy (decision D3): the stiff case
   # below floors the variance, so both routes are asked for the opt-in, and
   # both are also pinned to stop identically under the default.
-  stiff <- compiled_dyad_setup(T = 0.2, dt = 0.005, seed = 55)
+  stiff <- compiled_dyad_setup(t_end = 0.2, dt = 0.005, seed = 55)
   big <- list(mean = 0, cov = matrix(100, 1, 1))
   public_strict <- tryCatch(aci_filter(stiff$model, stiff$obs, init = big),
                             error = function(e) e)
@@ -363,7 +363,7 @@ test_that("scalar proof preserves warnings and covariance policy", {
 
 
 test_that("compiled scalar path matches the bundled independent MATLAB P1 port", {
-  ds <- compiled_dyad_setup(T = 0.3, dt = 0.001, seed = 333)
+  ds <- compiled_dyad_setup(t_end = 0.3, dt = 0.001, seed = 333)
   p <- ds$model$meta$params
   golden <- golden_p1_moments(
     ds$obs$x[, 1], ds$obs$dt,
@@ -433,7 +433,7 @@ test_that("terminal-only cross-noise is retained in scalar route metadata", {
 
 
 test_that("valid named supplied filters retain the terminal invariant", {
-  ds <- compiled_dyad_setup(T = 0.05, dt = 0.005)
+  ds <- compiled_dyad_setup(t_end = 0.05, dt = 0.005)
   filter <- .cgns_filter_scalar(ds$bundle, ds$init)
   colnames(filter$mean) <- "hidden"
   smoother <- expect_no_error(.cgns_smoother_scalar(ds$bundle, filter))

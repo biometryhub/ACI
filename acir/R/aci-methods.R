@@ -67,7 +67,7 @@ plot.cir_result <- function(x, ...) {
          main = sprintf("%s CIR (%s)", x$direction, x$method), ...)
   } else {
     graphics::plot.new(); graphics::title(main = sprintf(
-      "%s CIR at T = %.4g: tau = %.4g", x$direction, x$t, x$tau))
+      "%s CIR at t_end = %.4g: tau = %.4g", x$direction, x$t, x$tau))
   }
   invisible(x)
 }
