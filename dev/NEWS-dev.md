@@ -1,7 +1,7 @@
 # acir 0.0.0.9000
 
 * **The evidence a feature rests on now ships with the package, and two tests
-  keep it honest.** `inst/evidence/register.csv` is one row per checked feature
+  enforce it.** `inst/evidence/register.csv` is one row per checked feature
   of the public surface: what is checked, by which method, against what, at
   which tolerance class, and with which hash-pinned fixture behind it. Every
   exported verb appears, and a row that claims a fixture must name one that is

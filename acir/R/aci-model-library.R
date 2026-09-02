@@ -62,6 +62,9 @@
 #' @param variant Paper-specific parameter preset.
 #' @param observe Which dyad component is treated as observed.
 #' @param params Optional complete parameter list overriding the preset.
+#' @returns A `cgns_model` for the dyad, ready for [simulate()] and the
+#'   assimilation verbs; the observed-x variant carries a sealed realiser
+#'   descriptor so that compilation takes the directed route.
 #'
 #' @references
 #' Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
@@ -212,6 +215,8 @@ aci_dyad_model <- function(variant = "p1", observe = "x", params = NULL) {
 #'
 #' Chen, N., Fang, X. and Yu, J.-Y. (2022). A multiscale model for El Nino
 #' complexity. *npj Climate and Atmospheric Science* **5**, 16. arXiv:2104.07174.
+#' @returns A `cgns_model` for the chosen ENSO partition, ready for
+#'   [simulate()] and the assimilation verbs.
 #' @examples
 #' aci_enso_model()
 #'

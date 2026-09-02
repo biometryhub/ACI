@@ -13,6 +13,10 @@ acir is under active joint development. Authorship, citation and the maintainer
 field are under joint review, and nothing in `DESCRIPTION` pre-empts the outcome
 of that review.
 
+The numerical core is fixed at parity with the reference implementation; the
+public interface may still change before 1.0, and every such change is
+announced in `NEWS.md`. Details in `API_STABILITY.md`.
+
 ## Installation
 
 From a source checkout of this repository (the package lives in the
