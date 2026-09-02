@@ -179,7 +179,12 @@ test_that("a non-positive variance reaches the covariance policy by cell", {
   )
   sfx <- .scalar_rows_suffix(rec)
   j <- 1000L
-  ref <- .scalar_rows_recursion(j, rec, sfx, 0.3, 1, 0, Inf, Inf)
+  ## the reference recursion does not floor, so the negative variance at that
+  ## cell reaches log() and sqrt() and base R warns; the NaN is asserted below
+  expect_warning(
+    ref <- .scalar_rows_recursion(j, rec, sfx, 0.3, 1, 0, Inf, Inf),
+    "NaNs produced"
+  )
   strict <- .aci_reg_for("none", NA_real_)
   expect_error(
     .cir_scalar_row(j, rec$sp, sfx$T2, sfx$Ub, 2000L, 0.3, 1, ref$mu_s,
