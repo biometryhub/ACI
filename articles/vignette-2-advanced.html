@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">acir</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -428,7 +428,7 @@ afterwards, and the values it returns are the same ones to the bit:</p>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>all_401_anchors <span class="op">=</span> <span class="va">t_all</span>, fifteen_anchors <span class="op">=</span> <span class="va">t_w15</span>, ratio <span class="op">=</span> <span class="va">t_all</span> <span class="op">/</span> <span class="va">t_w15</span><span class="op">)</span></span>
 <span><span class="co">#&gt; all_401_anchors fifteen_anchors           ratio </span></span>
-<span><span class="co">#&gt;         0.07000         0.00600        11.66667</span></span>
+<span><span class="co">#&gt;         0.07200         0.00700        10.28571</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">f_all</span><span class="op">$</span><span class="va">tau</span><span class="op">[</span><span class="va">w15</span><span class="op">]</span>, <span class="va">f_w15</span><span class="op">$</span><span class="va">tau</span><span class="op">)</span>    <span class="co"># the same values, not a resample</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
 <p>The saving is on the streamed route only. <code><a href="../reference/lag_table.html">lag_table()</a></code>
@@ -995,7 +995,7 @@ modelling decision and not a budget:</p>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu"><a href="../reference/aci_online.html">aci_online</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, lag <span class="op">=</span> <span class="va">L</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span><span class="op">)</span><span class="op">[[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"lag_"</span>, <span class="va">lags</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   lag_1  lag_20 lag_400 lag_800 </span></span>
-<span><span class="co">#&gt;   0.012   0.023   0.022   0.002</span></span></code></pre></div>
+<span><span class="co">#&gt;   0.013   0.024   0.023   0.002</span></span></code></pre></div>
 <p>An online path carries <code>kind = "online"</code>, and that is what
 keeps it out of the places a complete smoother is required:
 <code>lag_table(smoother = )</code> rejects it rather than treating a
