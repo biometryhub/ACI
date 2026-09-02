@@ -57,6 +57,10 @@ and \code{2.75} in ACI, and the time-integrated ACI roughly doubles; filter and
 smoother covariances are identical, because the term enters only the mean
 equations.}
 }
+\value{
+A \code{cgns_model} for the chosen ENSO partition, ready for
+\code{\link[=simulate]{simulate()}} and the assimilation verbs.
+}
 \description{
 Constructs the six-variable ENSO system split into an observed and a hidden
 component at \code{hidden}. \code{I} must remain observed, and so must \code{TC} unless the

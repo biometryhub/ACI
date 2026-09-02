@@ -8,12 +8,21 @@
 \description{
 Causal inference as a Bayesian inverse problem via data assimilation, restricted to the closed-form conditional-Gaussian (CGNS) engine. Implements the assimilative causal inference (ACI) metric, closed-form CGNS filtering and smoothing, the Theorem 3 lagged-divergence table with its online smoother, conditional ACI masking, the forward causal influence range, and the benchmark models of the reference MATLAB codebase. Based on Andreou, Chen & Bollt (2026) \doi{10.1038/s41467-026-68568-0}, with the causal influence range of Andreou & Chen (2026) \doi{10.48550/arXiv.2510.21889} and the adaptive online smoother of Andreou, Chen & Li (2026) \doi{10.1007/s00332-026-10271-x}.
 }
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/biometryhub/ACI}
+  \item \url{https://biometryhub.github.io/ACI/}
+  \item Report bugs at \url{https://github.com/biometryhub/ACI/issues}
+}
+
+}
 \author{
-\strong{Maintainer}: Aidan Moller \email{aj.moller97@gmail.com} (Interim maintainer for the development branch; author roles, order and the maintainer field are under joint review)
+\strong{Maintainer}: Aidan Moller \email{aj.moller97@gmail.com} (Interim maintainer for the development branch; author roles, order and the maintainer field are under joint review) [copyright holder]
 
 Authors:
 \itemize{
-  \item Max Moldovan (Author; roles under joint review)
+  \item Max Moldovan (Author; roles under joint review) [copyright holder]
 }
 
 Other contributors:

@@ -13,3 +13,5 @@
 ^\.lintr$
 ^_pkgdown\.yml$
 ^\.Rproj\.user$
+^API_STABILITY\.md$
+^inst/validation/README\.md$

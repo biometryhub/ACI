@@ -13,6 +13,11 @@ aci_dyad_model(variant = "p1", observe = "x", params = NULL)
 
 \item{params}{Optional complete parameter list overriding the preset.}
 }
+\value{
+A \code{cgns_model} for the dyad, ready for \code{\link[=simulate]{simulate()}} and the
+assimilation verbs; the observed-x variant carries a sealed realiser
+descriptor so that compilation takes the directed route.
+}
 \description{
 Nonlinear dyad (andreou2026aci eq. 1-2)
 }
