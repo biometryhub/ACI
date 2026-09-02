@@ -5,7 +5,7 @@
 # when --gate turns drift into a failure.
 on:
   push:
-    branches: [acir-package, main]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
