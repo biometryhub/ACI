@@ -603,7 +603,9 @@ aci_model_from_affine <- function(f_full, g_full, Sx, Sy_hidden, k, l,
 #' @param seed Optional non-negative whole number seeding the generator. Seeding
 #'   is contained: the caller's `.Random.seed` is restored when the call
 #'   returns, so a reproducible path leaves the caller's stream where it was.
-#' @param T Positive 1-length numeric total simulated time, excluding burn-in.
+#' @param t_end Positive 1-length numeric total simulated time, excluding
+#'   burn-in. Called `T` before 0.1.0; that name is accepted with a warning
+#'   until 0.2.0.
 #' @param dt Positive 1-length numeric integration step.
 #' @param ic Optional list with elements `x0` and `y0` giving the initial state;
 #'   `NULL` uses the model's default initial condition.
@@ -621,9 +623,23 @@ aci_model_from_affine <- function(f_full, g_full, Sx, Sy_hidden, k, l,
 #' @seealso [aci_model()], [aci_conditional()]
 #' @export
 simulate.stochastic_model <- function(object, nsim = 1, seed = NULL,
-                                      T, dt, ic = NULL, burn_in = 0,
+                                      t_end, dt, ic = NULL, burn_in = 0,
                                       keep_hidden = TRUE, keep_noise = TRUE, ...) {
-  if (length(list(...)))
+  dots <- list(...)
+  ## The horizon was called `T` until 0.1.0. That name shadows R's `TRUE`
+  ## alias, so it is retired; it is still accepted here, with a warning, until
+  ## 0.2.0, and never together with `t_end`.
+  if (!is.null(dots$T)) {
+    if (!missing(t_end))
+      aci_abort("aci_error_dims",
+                "Supply t_end only; T is the retired name of that argument.")
+    retired <- paste("simulate(): the argument T is now t_end. T is accepted",
+                     "with this warning until acir 0.2.0.")
+    aci_warn("aci_warning_deprecated", retired)
+    t_end <- dots$T
+    dots$T <- NULL
+  }
+  if (length(dots))
     aci_abort("aci_error_dims", "Unused arguments were supplied to simulate().")
   # A model that is an inference-only approximation of some larger system says
   # so, and is refused here rather than integrated: the generic path would
@@ -660,7 +676,7 @@ simulate.stochastic_model <- function(object, nsim = 1, seed = NULL,
     on.exit(assign(".Random.seed", old_seed, envir = globalenv()), add = TRUE)
     set.seed(seed)
   }
-  one <- function() .simulate_one(object, T = T, dt = dt, ic = ic,
+  one <- function() .simulate_one(object, t_end = t_end, dt = dt, ic = ic,
                                   burn_in = burn_in, keep_hidden = keep_hidden,
                                   keep_noise = keep_noise)
   if (nsim == 1) one() else lapply(seq_len(nsim), function(i) one())
@@ -680,7 +696,7 @@ simulate.cgns_model <- simulate.stochastic_model
 #' `simulate(model)` keeps working.
 #'
 #' @param object A `stochastic_model` or `cgns_model` object.
-#' @param ... Passed to the `simulate()` method: `nsim`, `seed`, `T`, `dt`,
+#' @param ... Passed to the `simulate()` method: `nsim`, `seed`, `t_end`, `dt`,
 #'   `ic`, `burn_in`, `keep_hidden`, `keep_noise`.
 #' @returns Whatever the method returns: an `aci_sim` object, or a list of
 #'   them when `nsim` exceeds one.
@@ -689,7 +705,7 @@ simulate.cgns_model <- simulate.stochastic_model
 #'
 #' @examples
 #' m <- aci_dyad_model()
-#' aci_simulate(m, seed = 1, T = 2, dt = 0.01)
+#' aci_simulate(m, seed = 1, t_end = 2, dt = 0.01)
 #'
 #' @export
 aci_simulate <- function(object, ...) {
@@ -725,7 +741,7 @@ aci_simulate <- function(object, ...) {
 #' Generate one Euler-Maruyama realisation (internal)
 #'
 #' @param m A `stochastic_model` or `cgns_model` object.
-#' @param T Positive 1-length numeric total simulated time.
+#' @param t_end Positive 1-length numeric total simulated time.
 #' @param dt Positive 1-length numeric integration step.
 #' @param ic Optional list with elements `x0` and `y0`.
 #' @param burn_in Non-negative 1-length numeric time discarded before recording.
@@ -733,15 +749,16 @@ aci_simulate <- function(object, ...) {
 #' @param keep_noise `TRUE` to retain the driving Wiener increments.
 #' @returns An object of class `aci_sim`.
 #' @noRd
-.simulate_one <- function(m, T, dt, ic, burn_in, keep_hidden, keep_noise) {
-  if (length(T) != 1L || length(dt) != 1L || !is.finite(T) || !is.finite(dt) ||
-      T <= 0 || dt <= 0)
-    aci_abort("aci_error_dims", "T and dt must be finite positive scalars.")
+.simulate_one <- function(m, t_end, dt, ic, burn_in, keep_hidden, keep_noise) {
+  bad_horizon <- length(t_end) != 1L || length(dt) != 1L ||
+    !is.finite(t_end) || !is.finite(dt) || t_end <= 0 || dt <= 0
+  if (bad_horizon)
+    aci_abort("aci_error_dims", "t_end and dt must be finite positive scalars.")
   if (length(burn_in) != 1L || !is.finite(burn_in) || burn_in < 0)
     aci_abort("aci_error_dims", "burn_in must be a finite non-negative scalar.")
-  N <- round(T / dt); Nb <- round(burn_in / dt)
-  if (N < 1L || abs(N * dt - T) > 1e-8 * max(T, dt))
-    aci_abort("aci_error_dims", "T must be an integer multiple of dt.")
+  N <- round(t_end / dt); Nb <- round(burn_in / dt)
+  if (N < 1L || abs(N * dt - t_end) > 1e-8 * max(t_end, dt))
+    aci_abort("aci_error_dims", "t_end must be an integer multiple of dt.")
   if (abs(Nb * dt - burn_in) > 1e-8 * max(burn_in, dt))
     aci_abort("aci_error_dims", "burn_in must be an integer multiple of dt.")
   N <- as.integer(N); Nb <- as.integer(Nb); Ntot <- Nb + N

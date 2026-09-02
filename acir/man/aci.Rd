@@ -69,7 +69,7 @@ their finite-grid diagonal can therefore differ from headline ACI.
 }
 \examples{
 m <- aci_dyad_model()
-sim <- simulate(m, seed = 1, T = 2, dt = 0.01)
+sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
 ob <- as_obs(sim)
 a <- aci(m, ob)
 a

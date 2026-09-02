@@ -223,7 +223,7 @@ aci_dyad_model <- function(variant = "p1", observe = "x", params = NULL) {
 #' # The T_C-hidden partition is not self-contained: it needs the u, h_W and
 #' # tau series it treats as prescribed forcings.
 #' sim <- simulate(aci_enso_model(hidden = c("u", "hW", "tau")),
-#'                 seed = 1, T = 1, dt = 0.005)
+#'                 seed = 1, t_end = 1, dt = 0.005)
 #' path <- data.frame(t = sim$obs$t, u = sim$hidden[, 1],
 #'                    hW = sim$hidden[, 2], tau = sim$hidden[, 3])
 #' aci_enso_model(hidden = "TC", approximation = "zeroth_order_c1",

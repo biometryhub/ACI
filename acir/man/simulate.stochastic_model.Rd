@@ -8,7 +8,7 @@
   object,
   nsim = 1,
   seed = NULL,
-  T,
+  t_end,
   dt,
   ic = NULL,
   burn_in = 0,
@@ -26,7 +26,9 @@
 is contained: the caller's \code{.Random.seed} is restored when the call
 returns, so a reproducible path leaves the caller's stream where it was.}
 
-\item{T}{Positive 1-length numeric total simulated time, excluding burn-in.}
+\item{t_end}{Positive 1-length numeric total simulated time, excluding
+burn-in. Called \code{T} before 0.1.0; that name is accepted with a warning
+until 0.2.0.}
 
 \item{dt}{Positive 1-length numeric integration step.}
 

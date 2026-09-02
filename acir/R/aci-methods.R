@@ -22,8 +22,10 @@
 #' @returns `x`, invisibly; called for the plot it draws.
 #' @export
 plot.aci_result <- function(x, decompose = TRUE, ...) {
-  plot(x$t, x$aci, type = "l", xlab = "t", ylab = "ACI",
-       main = "ACI(t) = KL(smoother || filter)", ...)
+  main_kl <- expression(
+    ACI(t) == D[KL] * group("(", smoother ~ "||" ~ filter, ")")
+  )
+  plot(x$t, x$aci, type = "l", xlab = "t", ylab = "ACI", main = main_kl, ...)
   if (decompose && !is.null(x$signal)) {
     graphics::lines(x$t, x$signal, col = 4, lty = 2)
     graphics::lines(x$t, x$dispersion, col = 2, lty = 3)
@@ -45,8 +47,8 @@ plot.aci_result <- function(x, decompose = TRUE, ...) {
 plot.da_path_gaussian <- function(x, component = 1, truth = NULL, ...) {
   mu <- x$mean[, component]; sdv <- sqrt(pmax(x$cov[component, component, ], 0))
   ylim <- range(mu + 2 * sdv, mu - 2 * sdv, truth, na.rm = TRUE)
-  plot(x$t, mu, type = "l", xlab = "t", ylab = sprintf("y%d", component),
-       ylim = ylim, main = sprintf("%s mean +/- 2 sd", x$kind), ...)
+  plot(x$t, mu, type = "l", xlab = "t", ylab = bquote(y[.(component)]),
+       ylim = ylim, main = bquote(.(x$kind) ~ "mean" %+-% "2 sd"), ...)
   graphics::lines(x$t, mu + 2 * sdv, lty = 3, col = "grey40")
   graphics::lines(x$t, mu - 2 * sdv, lty = 3, col = "grey40")
   if (!is.null(truth)) graphics::lines(x$t, truth, col = 2)
@@ -63,11 +65,12 @@ plot.da_path_gaussian <- function(x, component = 1, truth = NULL, ...) {
 plot.cir_result <- function(x, ...) {
   if (length(x$tau) > 1) {
     plot(x$t, x$tau, type = "l", xlab = "t",
-         ylab = sprintf("tau_%s", substr(x$direction, 1, 1)),
+         ylab = bquote(tau[.(substr(x$direction, 1, 1))]),
          main = sprintf("%s CIR (%s)", x$direction, x$method), ...)
   } else {
-    graphics::plot.new(); graphics::title(main = sprintf(
-      "%s CIR at T = %.4g: tau = %.4g", x$direction, x$t, x$tau))
+    graphics::plot.new()
+    graphics::title(main = sprintf("%s CIR at t = %.4g: tau = %.4g",
+                                   x$direction, x$t, x$tau))
   }
   invisible(x)
 }

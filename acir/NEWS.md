@@ -1,4 +1,25 @@
-# acir 0.0.0.9000
+# acir 0.1.0
+
+The parity release: every quantity the reference MATLAB implementation
+computes is reproduced to the tolerance recorded in
+`inst/evidence/register.csv`, and every stage of the specification's
+performance table is inside its budget.
+
+## Breaking changes
+
+* **The simulation horizon is `t_end`, not `T`.** `simulate()` and
+  `aci_simulate()` take `t_end`; the name `T` shadowed the alias of `TRUE`
+  in R and is retired. A call that still passes `T` works, with a warning of class
+  `aci_warning_deprecated`, until acir 0.2.0; passing both is an error.
+
+
+## Bug fixes
+
+* **The built package carries its vignette index.** The build-ignore rule
+  `^build($|/)`, inherited from aci, removed the `build/` directory that
+  `R CMD build` creates, so an installed package listed no vignettes under
+  `vignette()` or `browseVignettes()` and the CRAN incoming check reported a
+  missing vignette index. The rule is gone.
 
 ## Performance
 

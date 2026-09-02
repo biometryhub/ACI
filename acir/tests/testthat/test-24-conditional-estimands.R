@@ -10,7 +10,7 @@
 ## --------------------------------------------------------------------------
 ## The ENSO path used by the measured constants below.  It is the same
 ## source-derived realisation the C-series comparison reports were computed on
-## (`aci_enso_model(hidden = c("u","hW","tau"))`, seed 42, T = 20, dt = 0.005,
+## (`aci_enso_model(hidden = c("u","hW","tau"))`, seed 42, t_end = 20, dt = 0.005,
 ## 4001 points), regenerated here rather than shipped, and it agrees with the
 ## stored copy of that path to 5e-15.  Built once for the whole file.
 enso_c2c_cache <- new.env(parent = emptyenv())
@@ -18,7 +18,7 @@ enso_c2c_cache <- new.env(parent = emptyenv())
 enso_c2c_path <- function() {
   if (!is.null(enso_c2c_cache$path)) return(enso_c2c_cache$path)
   sim <- simulate(aci_enso_model(hidden = c("u", "hW", "tau"), variant = "aci_code"),
-                  seed = 42, T = 20, dt = 0.005)
+                  seed = 42, t_end = 20, dt = 0.005)
   x <- as.matrix(sim$obs$x)
   y <- as.matrix(sim$hidden)
   colnames(x) <- c("TC", "TE", "I")

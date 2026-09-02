@@ -85,7 +85,7 @@
 
 test_that("compiled Theorem-3 auxiliaries match the published matrix equation", {
   model <- aci_dyad_model()
-  sim <- simulate(model, seed = 31, T = 0.12, dt = 0.01, burn_in = 0)
+  sim <- simulate(model, seed = 31, t_end = 0.12, dt = 0.01, burn_in = 0)
   obs <- as_obs(sim)
   init <- list(mean = 1.8, cov = matrix(0.2, 1, 1))
   bundle <- .compile_cgns_complete(model, obs)
@@ -127,7 +127,7 @@ test_that("compiled Theorem-3 auxiliaries match the published matrix equation", 
 
 test_that("compiled scalar lag tables match all established storage modes", {
   model <- aci_dyad_model()
-  sim <- simulate(model, seed = 91, T = 0.14, dt = 0.01, burn_in = 0)
+  sim <- simulate(model, seed = 91, t_end = 0.14, dt = 0.01, burn_in = 0)
   obs <- as_obs(sim)
   init <- list(mean = 2, cov = matrix(0.1, 1, 1))
   bundle <- .compile_cgns_complete(model, obs)
@@ -176,7 +176,7 @@ test_that("compiled correlated matrix lag execution matches public assembly", {
 
 test_that("compiled Theorem-3 stepper and lag-table warning policies remain", {
   model <- aci_dyad_model()
-  sim <- simulate(model, seed = 7, T = 0.08, dt = 0.01, burn_in = 0)
+  sim <- simulate(model, seed = 7, t_end = 0.08, dt = 0.01, burn_in = 0)
   obs <- as_obs(sim)
   init <- list(mean = 2, cov = matrix(0.1, 1, 1))
   bundle <- .compile_cgns_complete(model, obs)

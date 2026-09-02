@@ -3,6 +3,7 @@ url: https://biometryhub.github.io/ACI/
 
 template:
   bootstrap: 5
+  math-rendering: katex
 
 reference:
 - title: Assimilation and the causal measure

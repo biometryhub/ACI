@@ -45,7 +45,7 @@ kf_rts <- function(obs, a, b, fx0, fy0, sx, sy, mu0, P0) {
 test_that("T1: filter/smoother converge to the exact discrete KF/RTS oracle", {
   m <- lin_model()
   err_at <- function(dt) {
-    s <- simulate(m, seed = 42, T = 4, dt = dt, ic = list(x0 = 0, y0 = 0.5))
+    s <- simulate(m, seed = 42, t_end = 4, dt = dt, ic = list(x0 = 0, y0 = 0.5))
     filt <- aci_filter(m, s$obs, init = list(mean = 0, cov = 1))
     smoo <- aci_smoother(m, s$obs, filter = filt)
     or <- kf_rts(s$obs, 1, -1, 0.2, 0.3, 0.5, 0.6, 0, 1)
@@ -65,7 +65,7 @@ test_that("T1: filter/smoother converge to the exact discrete KF/RTS oracle", {
 
 test_that("T3: online-table identities -- diag == ACI == KL; P[j,N] == 0", {
   m <- aci_dyad_model()
-  s <- simulate(m, seed = 5, T = 2, dt = 5e-3)
+  s <- simulate(m, seed = 5, t_end = 2, dt = 5e-3)
   filt <- suppressWarnings(aci_filter(m, s$obs))
   smoo <- online_smoother(m, s$obs, filt)
   lt <- lag_table(m, s$obs, mode = "full", filter = filt, smoother = smoo)
@@ -82,7 +82,7 @@ test_that("T3: online-table identities -- diag == ACI == KL; P[j,N] == 0", {
 
 test_that("retention alone never changes the headline backward-ODE ACI", {
   m <- aci_dyad_model(); ini <- list(mean = 0, cov = matrix(1, 1, 1))
-  s <- simulate(m, seed = 5, T = 0.4, dt = 0.01)
+  s <- simulate(m, seed = 5, t_end = 0.4, dt = 0.01)
   ap <- aci(m, s$obs, init = ini, keep = "paths")
   at <- aci(m, s$obs, init = ini, keep = "table")
   an <- aci(m, s$obs, init = ini, keep = "none")
@@ -106,7 +106,7 @@ test_that("retention alone never changes the headline backward-ODE ACI", {
 
 test_that("lag table full mode cannot be silently capped", {
   m <- aci_dyad_model()
-  s <- simulate(m, seed = 5, T = 0.2, dt = 0.01)
+  s <- simulate(m, seed = 5, t_end = 0.2, dt = 0.01)
   expect_error(lag_table(m, s$obs, mode = "full", max_lag = 2),
                class = "aci_error_dims")
 })
@@ -119,8 +119,8 @@ test_that("the closed-form engine rejects mismatched observations", {
 
 test_that("Gaussian paths cannot be reused with different data or model", {
   m <- aci_dyad_model()
-  s1 <- simulate(m, seed = 1, T = 0.2, dt = 0.01)
-  s2 <- simulate(m, seed = 2, T = 0.2, dt = 0.01)
+  s1 <- simulate(m, seed = 1, t_end = 0.2, dt = 0.01)
+  s2 <- simulate(m, seed = 2, t_end = 0.2, dt = 0.01)
   f1 <- suppressWarnings(aci_filter(m, s1$obs,
                                     init = list(mean = 0, cov = diag(1))))
   expect_error(aci_smoother(m, s2$obs, filter = f1), class = "aci_error_dims")
@@ -135,7 +135,7 @@ test_that("Gaussian paths cannot be reused with different data or model", {
 })
 
 test_that("lag tables reject a theorem smoother from another prior", {
-  m <- aci_dyad_model(); s <- simulate(m, seed = 3, T = 0.2, dt = 0.01)
+  m <- aci_dyad_model(); s <- simulate(m, seed = 3, t_end = 0.2, dt = 0.01)
   f1 <- aci_filter(m, s$obs, init = list(mean = 0, cov = matrix(1, 1, 1)))
   f2 <- aci_filter(m, s$obs, init = list(mean = 3, cov = matrix(0.2, 1, 1)))
   sm2 <- online_smoother(m, s$obs, f2)
@@ -145,7 +145,7 @@ test_that("lag tables reject a theorem smoother from another prior", {
 })
 
 test_that("T4: adaptive truncation engages and agrees with the full table", {
-  m <- aci_dyad_model(); s <- simulate(m, seed = 3, T = 3, dt = 5e-3)
+  m <- aci_dyad_model(); s <- simulate(m, seed = 3, t_end = 3, dt = 5e-3)
   filt <- suppressWarnings(aci_filter(m, s$obs)); smoo <- online_smoother(m, s$obs, filt)
   full <- lag_table(m, s$obs, mode = "full", filter = filt, smoother = smoo)
   adap <- lag_table(m, s$obs, mode = "forward", tol = 1e-4,
@@ -166,7 +166,7 @@ test_that("T4: adaptive truncation engages and agrees with the full table", {
 })
 
 test_that("max_lag is an exact positive-lag storage cap", {
-  m <- aci_dyad_model(); s <- simulate(m, seed = 2, T = 0.1, dt = 0.01)
+  m <- aci_dyad_model(); s <- simulate(m, seed = 2, t_end = 0.1, dt = 0.01)
   # An explicit prior: the storage cap under test does not depend on it, and
   # defaulting would exercise the diffuse-prior path incidentally.
   ini <- list(mean = 2, cov = matrix(1, 1, 1))
@@ -187,7 +187,7 @@ test_that("T1b(strict): the diffuse-init stress case stops under the default", {
   # and returned a path; the collapse this block used to assert *was* the
   # floor. Under the default the same call stops instead, and the condition
   # carries where and when.
-  m <- aci_dyad_model(); s <- simulate(m, seed = 55, T = 1.5, dt = 5e-3)
+  m <- aci_dyad_model(); s <- simulate(m, seed = 55, t_end = 1.5, dt = 5e-3)
   big <- list(mean = 0, cov = diag(100, 1))
   e <- tryCatch(aci_filter(m, s$obs, init = big, stepper = "explicit"),
                 error = function(e) e)
@@ -205,7 +205,7 @@ test_that("T1b(strict): the diffuse-init stress case stops under the default", {
 })
 
 test_that("T1b(floor): the documented explicit collapse is still available", {
-  m <- aci_dyad_model(); s <- simulate(m, seed = 55, T = 1.5, dt = 5e-3)
+  m <- aci_dyad_model(); s <- simulate(m, seed = 55, t_end = 1.5, dt = 5e-3)
   big <- list(mean = 0, cov = diag(100, 1))
   # The explicit scheme is expected to report its own instability here; that
   # warning is part of the documented behaviour this test pins down.
@@ -227,7 +227,7 @@ test_that("T1b(floor): the documented explicit collapse is still available", {
 })
 
 test_that("T1b: implicit Riccati step survives the diffuse-init stress case", {
-  m <- aci_dyad_model(); s <- simulate(m, seed = 55, T = 1.5, dt = 5e-3)
+  m <- aci_dyad_model(); s <- simulate(m, seed = 55, t_end = 1.5, dt = 5e-3)
   fi <- aci_filter(m, s$obs, init = list(mean = 0, cov = diag(100, 1)),
                    stepper = "implicit")
   expect_gt(min(fi$cov[1, 1, ]), 0.05)     # implicit stays positive-definite
@@ -251,7 +251,7 @@ test_that("T1b: implicit Riccati step survives the diffuse-init stress case", {
 })
 
 test_that("user priors must be genuinely positive definite", {
-  m <- aci_dyad_model(); s <- simulate(m, seed = 1, T = 0.1, dt = 0.01)
+  m <- aci_dyad_model(); s <- simulate(m, seed = 1, t_end = 0.1, dt = 0.01)
   expect_error(aci_filter(m, s$obs, init = list(mean = 0, cov = matrix(0, 1, 1))),
                class = "aci_error_spd")
   expect_error(aci_filter(m, s$obs, init = list(mean = 0, cov = matrix(-1, 1, 1))),
@@ -278,7 +278,7 @@ test_that("correlation activated after t0 selects the correlated backward ODE", 
     Sx1 = function(t, x) matrix(0.4, 1, 1),
     Sy1 = function(t, x) matrix(0.2 * x[1], 1, 1),
     Sy2 = function(t, x) matrix(0.5, 1, 1), k = 1, l = 1)
-  s <- simulate(m, seed = 1, T = 0.2, dt = 0.01,
+  s <- simulate(m, seed = 1, t_end = 0.2, dt = 0.01,
                 ic = list(x0 = 0, y0 = 1))
   f <- suppressWarnings(aci_filter(m, s$obs, init = list(mean = 0, cov = 1)))
   sm <- suppressWarnings(aci_smoother(m, s$obs, filter = f))
@@ -322,7 +322,7 @@ test_that("correlated smoother transcribes the active MATLAB backward loop", {
 })
 
 test_that("supplied Gaussian paths must match grid and conditioning", {
-  m <- aci_dyad_model(); s <- simulate(m, seed = 2, T = 0.2, dt = 0.01)
+  m <- aci_dyad_model(); s <- simulate(m, seed = 2, t_end = 0.2, dt = 0.01)
   f <- suppressWarnings(aci_filter(m, s$obs, init = list(mean = 0, cov = 1)))
   bad <- f; bad$t[2] <- bad$t[2] + 0.001
   expect_error(aci_smoother(m, s$obs, filter = bad), class = "aci_error_dims")
@@ -344,7 +344,7 @@ test_that("T1c: nonlinear truth-tracking referee -- particle filter agrees", {
   # Closes a verification gap: T1/T3/T5 check scheme identities, not whether
   # the nonlinear posterior itself is right. A bootstrap particle filter with
   # exact discrete weights is an independent referee on the dyad.
-  m <- aci_dyad_model(); s <- simulate(m, seed = 21, T = 2.5, dt = 5e-3, burn_in = 0.5)
+  m <- aci_dyad_model(); s <- simulate(m, seed = 21, t_end = 2.5, dt = 5e-3, burn_in = 0.5)
   fp <- suppressWarnings(aci_filter(m, s$obs, init = list(mean = 0, cov = diag(1, 1))))
   set.seed(9); Np <- 2000; dt <- s$obs$dt; x <- s$obs$x[, 1]; N <- length(x) - 1
   yp <- rnorm(Np, 0, 1); pm <- pv <- numeric(N + 1); pm[1] <- 0; pv[1] <- 1

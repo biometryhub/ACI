@@ -85,7 +85,7 @@ record("influence range, reporting anchors",
 
 # -- a climate record of the reference's size, simulated by the package --------
 enso <- acir::aci_enso_model(hidden = c("u", "hW", "tau"))
-sim <- stats::simulate(enso, seed = 1L, T = 100, dt = 0.005)
+sim <- stats::simulate(enso, seed = 1L, t_end = 100, dt = 0.005)
 ob_c <- acir::as_obs(sim); init_c <- list(mean = rep(0, enso$l), cov = diag(0.1, enso$l))
 fc <- NULL
 record("climate filter, 20000 steps", median_time(function() fc <<- acir::aci_filter(enso, ob_c, init = init_c), 3L), 3L)

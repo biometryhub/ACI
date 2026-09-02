@@ -26,10 +26,10 @@ test_that("Z1b: construction is RNG-neutral and affine conversion is strict", {
 })
 test_that("Z2: simulate reproducibility", {
   m <- aci_dyad_model()
-  s1 <- simulate(m, seed = 7, T = 1, dt = 1e-3)
-  s2 <- simulate(m, seed = 7, T = 1, dt = 1e-3)
+  s1 <- simulate(m, seed = 7, t_end = 1, dt = 1e-3)
+  s2 <- simulate(m, seed = 7, t_end = 1, dt = 1e-3)
   expect_identical(s1$obs$x, s2$obs$x); expect_identical(s1$hidden, s2$hidden)
-  expect_error(simulate(m, seed = 7, T = 1, dt = 1e-3, typo = TRUE),
+  expect_error(simulate(m, seed = 7, t_end = 1, dt = 1e-3, typo = TRUE),
                class = "aci_error_dims")
   expect_error(stochastic_model(
     f = function(t, x, y) y, g = function(t, x, y) -y,
@@ -42,9 +42,9 @@ test_that("Z2b: seeded simulation contains the caller's generator state", {
 
   ## the seeded path is unchanged: set.seed(seed) still governs the draws
   set.seed(101)
-  s1 <- simulate(m, seed = 7, T = 0.2, dt = 1e-2)
+  s1 <- simulate(m, seed = 7, t_end = 0.2, dt = 1e-2)
   set.seed(202)                                  # a different caller state
-  s2 <- simulate(m, seed = 7, T = 0.2, dt = 1e-2)
+  s2 <- simulate(m, seed = 7, t_end = 0.2, dt = 1e-2)
   expect_identical(s1$obs$x, s2$obs$x)
   expect_identical(s1$hidden, s2$hidden)
   expect_identical(s1$noise$W, s2$noise$W)
@@ -52,12 +52,12 @@ test_that("Z2b: seeded simulation contains the caller's generator state", {
   ## the caller's stream is where it was left
   set.seed(303)
   before <- .Random.seed
-  invisible(simulate(m, seed = 7, T = 0.2, dt = 1e-2))
+  invisible(simulate(m, seed = 7, t_end = 0.2, dt = 1e-2))
   expect_identical(.Random.seed, before)
 
   ## containment does not defeat the caller's own stream: the draw that follows
   ## a seeded call is the draw that would have followed no call at all
-  set.seed(303); invisible(simulate(m, seed = 7, T = 0.2, dt = 1e-2))
+  set.seed(303); invisible(simulate(m, seed = 7, t_end = 0.2, dt = 1e-2))
   with_sim <- stats::runif(3)
   set.seed(303)
   expect_identical(with_sim, stats::runif(3))
@@ -65,18 +65,18 @@ test_that("Z2b: seeded simulation contains the caller's generator state", {
   ## nsim > 1 draws nsim distinct realisations and still contains the state
   set.seed(404)
   before <- .Random.seed
-  many <- simulate(m, nsim = 3, seed = 5, T = 0.2, dt = 1e-2)
+  many <- simulate(m, nsim = 3, seed = 5, t_end = 0.2, dt = 1e-2)
   expect_length(many, 3L)
   expect_false(identical(many[[1L]]$obs$x, many[[2L]]$obs$x))
   expect_identical(.Random.seed, before)
 
   ## unseeded calls are untouched: they draw from, and advance, the caller
   set.seed(505)
-  u1 <- simulate(m, T = 0.2, dt = 1e-2)
+  u1 <- simulate(m, t_end = 0.2, dt = 1e-2)
   after_u <- .Random.seed
   expect_false(identical(after_u, {set.seed(505); .Random.seed}))
   set.seed(505)
-  u2 <- simulate(m, T = 0.2, dt = 1e-2)
+  u2 <- simulate(m, t_end = 0.2, dt = 1e-2)
   expect_identical(u1$obs$x, u2$obs$x)
   expect_identical(.Random.seed, after_u)
 
@@ -84,12 +84,12 @@ test_that("Z2b: seeded simulation contains the caller's generator state", {
   ## checked in this frame (nsim) or downstream in .simulate_one (T)
   set.seed(606)
   before <- .Random.seed
-  expect_error(simulate(m, seed = 3, nsim = 0, T = 0.2, dt = 1e-2),
+  expect_error(simulate(m, seed = 3, nsim = 0, t_end = 0.2, dt = 1e-2),
                class = "aci_error_dims")
   expect_identical(.Random.seed, before)
-  expect_error(simulate(m, seed = 3, T = -1, dt = 1e-2), class = "aci_error_dims")
+  expect_error(simulate(m, seed = 3, t_end = -1, dt = 1e-2), class = "aci_error_dims")
   expect_identical(.Random.seed, before)
-  expect_error(simulate(m, seed = 3, T = 0.2, dt = 1e-2,
+  expect_error(simulate(m, seed = 3, t_end = 0.2, dt = 1e-2,
                         ic = list(x0 = c(0, 0), y0 = 0)), class = "aci_error_dims")
   expect_identical(.Random.seed, before)
 })
@@ -107,13 +107,13 @@ test_that("Z2c: seeded simulation works with no pre-existing .Random.seed", {
   expect_false(exists(".Random.seed", envir = globalenv(), inherits = FALSE))
 
   m <- aci_dyad_model()
-  s <- simulate(m, seed = 7, T = 0.2, dt = 1e-2)
+  s <- simulate(m, seed = 7, t_end = 0.2, dt = 1e-2)
 
   ## the absent state was materialised rather than left missing, and the draws
   ## are exactly the ones set.seed(7) produces
   expect_true(exists(".Random.seed", envir = globalenv(), inherits = FALSE))
   set.seed(7)
-  expect_identical(s$obs$x, simulate(m, T = 0.2, dt = 1e-2)$obs$x)
+  expect_identical(s$obs$x, simulate(m, t_end = 0.2, dt = 1e-2)$obs$x)
 })
 test_that("Z3: dyad energy conservation of the quadratic pair", {
   m <- aci_dyad_model()
@@ -143,7 +143,7 @@ test_that("Z8: obs validators", {
 test_that("predator-prey golden model validates and assimilates both ways", {
   for (h in c("prey", "predator")) {
     m <- aci_predprey_model(hidden = h)
-    s <- simulate(m, seed = 42, T = 3, dt = 5e-3)
+    s <- simulate(m, seed = 42, t_end = 3, dt = 5e-3)
     f <- suppressWarnings(aci_filter(m, s$obs,
                                      init = list(mean = 4, cov = diag(1, 1))))
     expect_true(all(is.finite(f$mean)))
@@ -155,7 +155,7 @@ test_that("enso6 golden variant and u-hidden partitions stay CGNS", {
   for (v in "aci_code") {
     m <- aci_enso_model(hidden = c("u", "hW", "tau"), variant = v)
     expect_s3_class(m, "cgns_model")
-    expect_true(all(is.finite(simulate(m, seed = 12, T = 1, dt = 5e-3)$obs$x)))
+    expect_true(all(is.finite(simulate(m, seed = 12, t_end = 1, dt = 5e-3)$obs$x)))
   }
   expect_equal(aci_enso_model(variant = "aci_code")$meta$params$factor, 0.65)
   expect_error(aci_enso_model(hidden = "TC"), class = "aci_error_model_contract")
@@ -174,7 +174,7 @@ test_that("a simulation carries the model's observed-channel names", {
                        nm = c("u", "TC", "TE", "tau", "I")),
                   list(m = aci_enso_model(hidden = c("u", "hW", "tau")),
                        nm = c("TC", "TE", "I")))) {
-    s <- simulate(cs$m, seed = 6, T = 0.2, dt = 0.005)
+    s <- simulate(cs$m, seed = 6, t_end = 0.2, dt = 0.005)
     expect_identical(colnames(s$obs$x), cs$nm)
     expect_identical(colnames(as_obs(s)$x), cs$nm)
     expect_identical(cs$nm, cs$m$meta$vars$observed)
@@ -183,11 +183,11 @@ test_that("a simulation carries the model's observed-channel names", {
   }
   ## a model with no usable meta$vars is left exactly as it was
   m <- aci_dyad_model(); m$meta$vars <- NULL
-  expect_null(colnames(simulate(m, seed = 6, T = 0.2, dt = 0.005)$obs$x))
+  expect_null(colnames(simulate(m, seed = 6, t_end = 0.2, dt = 0.005)$obs$x))
   m$meta$vars <- list(observed = c("a", "b"))          # wrong length for k = 1
-  expect_null(colnames(simulate(m, seed = 6, T = 0.2, dt = 0.005)$obs$x))
+  expect_null(colnames(simulate(m, seed = 6, t_end = 0.2, dt = 0.005)$obs$x))
   m$meta$vars <- list(observed = "")                   # not a usable name
-  expect_null(colnames(simulate(m, seed = 6, T = 0.2, dt = 0.005)$obs$x))
+  expect_null(colnames(simulate(m, seed = 6, t_end = 0.2, dt = 0.005)$obs$x))
 })
 
 
@@ -195,7 +195,7 @@ test_that("simulate() -> as_obs() -> conditional aci() works in three lines", {
   ## The path the README example had to work around: aci_conditional() resolves
   ## names against colnames(obs$x), which a simulation now supplies.
   me <- aci_enso_model(hidden = "hW")
-  sim <- simulate(me, seed = 2, T = 0.5, dt = 0.005)
+  sim <- simulate(me, seed = 2, t_end = 0.5, dt = 0.005)
   ob <- as_obs(sim)
   a <- aci(me, ob,
            conditional = aci_conditional(target = "TC", method = "mask"),

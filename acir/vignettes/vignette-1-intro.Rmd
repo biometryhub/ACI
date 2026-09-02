@@ -4,6 +4,8 @@ output:
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 2
+    mathjax: "https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"
+    pandoc_args: ["--include-in-header=mathjax-config.html"]
 vignette: >
   %\VignetteIndexEntry{Assimilative causal inference (ACI) in R}
   %\VignetteEngine{knitr::rmarkdown}
@@ -17,96 +19,77 @@ library(acir)
 set.seed(1)
 ```
 
-## 1. Answering causal questions
+## 1. The question
 
-### Estimating causal effects
-Causal inference techniques provide useful tools for answering questions about
-causality using observational data, including tasks that require estimating the
-size of treatment effects. Many such frameworks and methods exist for causal effect
-estimation, including graphical modelling approaches for estimating the causal effect
-of a treatment (the cause) on an outcome (the effect). Such approaches require 
-observable causes and their effect(s), captured in the data, to identify a causal estimand.
+Assimilative causal inference (Andreou, Chen and Bollt, 2026) treats
+causality as an inverse problem. Given a model of how an observed process
+$x$ and a hidden process $y$ evolve together, it asks whether the future of
+$x$ carries information about $y_t$ that the past of $x$ did not. If it
+does, $y$ drives $x$, and the amount of new information is the strength of
+that influence at time $t$. The answer is computed along one trajectory,
+so it describes causality as it happened rather than on average.
 
+The causal influence range (Andreou and Chen, 2026) extends the question
+from strength to duration: for how long does an influence planted at time
+$t$ persist, and how far back did the precursors of an event reach. This
+release computes the forward range.
 
-### Tracing backward from effects to causes
-Assimilative causal inference (ACI) (Andreou et al., 2026) is a complementary
-approach that formulates causality as an inverse problem, using Bayesian data 
-assimilation to trace causes backward from their observed effects. This approach
-can detect if one variable (a latent cause) influences another (an observed effect),
-and if so, for how long a causal influence persists.
+## 2. The model comes first
 
-### The causal influence range (CIR)
+In a regression workflow the model is the output: `lm()` is handed data
+and returns coefficients. Here the model is the input, a statement of how
+the observed and hidden variables evolve and how noisy each is, supplied
+before the question is asked. It can be a benchmark constructor such as
+`aci_dyad_model()`, the coefficient blocks written directly with
+`aci_model()`, or a full drift that `aci_model_from_affine()` splits for
+you. *The closed-form ACI engine* describes the three routes. Learning the
+model from data is not part of this release.
 
-Andreou & Chen (2026) develop the causal influence range (CIR) for quantifying 
-the duration of a causal effect in both forward and backward directions. 
-This answers questions such as: (1) "for how long will a causal effect persist?" 
-(forward CIR); and (2) "when did the causal precursors of this event emerge?" 
-(backward CIR). 
+### Two reconstructions and one number
 
-## 2. Getting started with ACI in R
+Given the model, two Gaussian reconstructions of the hidden state are
+available in closed form:
 
-### A different way of thinking about modelling
-ACI requires a dynamical model to identify instantaneous causal relationships (Andreou et al., 2026).
-In a standard regression workflow the model is the output: `lm()` is handed
-data and returns coefficients. Here the model is the input: a statement of how
-the observed and hidden variables evolve together, and how noisy each is,
-supplied before the causal question is asked. Fitting is not part of this
-release. The model is written down: a benchmark constructor (`aci_dyad_model()`),
-the coefficient blocks directly (`aci_model()`), or a full drift split for you
-(`aci_model_from_affine()`); the advanced vignette describes all three routes.
-Learning the model from data is reserved for a later release.
+* the **filter** $p(y_t \mid x_{\le t})$, what the past of $x$ says.
+* the **smoother** $p(y_t \mid x_{\le T})$, what the past and the future
+  of $x$ say together.
 
-### The question ACI answers
-Some variables can be observable while others remain hidden, and for a latent
-process $y$ (the cause) influencing observed variables 
-(the effect) in a time series: **is a causal influence detected, and if so, how 
-strongly at each moment, and for how long?**
+If the future sharpens the reconstruction, $y$ influenced $x$. The ACI
+metric is the relative entropy between the two,
 
-To answer this question, we can compare two reconstructions of $y_t$:
+$$\mathrm{ACI}(t) = D_{\mathrm{KL}}\!\big(p^{\text{smoother}}_t \,\big\|\,
+p^{\text{filter}}_t\big) \ge 0,$$
 
-* the **filter** $p(y_t \mid x_{\le t})$: what past observations say;
-* the **smoother** $p(y_t \mid x_{\le T})$: what past *and future* observations say.
+and it splits into a **signal** part, from disagreement between the two
+means, and a **dispersion** part, from disagreement between the two
+spreads.
 
-If the future of $x$ sharpens our knowledge of $y_t$, then it confirms the existence
-of a causal influence. 
+## 3. A worked example
 
-The **ACI metric** is the relative entropy between the two posteriors,
-
-$$\mathrm{ACI}(t) \;=\; D_{\mathrm{KL}}\!\big(p^{\text{smoother}}_t \,\big\|\,
-p^{\text{filter}}_t\big) \;\ge\; 0,$$
-
-computed *along one trajectory* (causality as it happened, not on average).
-
-
-### Simulating example data
-
-Since the model comes first, we can simulate from it and hold the hidden
-truth aside to check the reconstruction against.
+The model comes first, so the example simulates from it and holds the
+hidden path aside to check the reconstruction against.
 
 ```{r quickstart-data}
 truth <- aci_dyad_model(params = list(d_x = 1, gamma = 2, f_x = 1.5, s_x = 0.7,
-                                  d_y = 1, f_y = 0.5, s_y = 2))
-sim <- simulate(truth, seed = 8, T = 5, dt = 5e-3, burn_in = 1)
+                                      d_y = 1, f_y = 0.5, s_y = 2))
+sim <- simulate(truth, seed = 8, t_end = 5, dt = 5e-3, burn_in = 1)
 dat <- data.frame(t = sim$obs$t, x1 = sim$obs$x[, 1], y = sim$hidden[, 1])
 head(dat, 3)
 ```
 
 The engine takes an observation object rather than a data frame, so the
-observed column goes through `observed_trajectory()` first. For your own data
-that same call is the way in; it derives `dt` from the supplied times and
-refuses a non-uniform grid.
+observed column goes through `observed_trajectory()`. That call is also
+the way in for your own data: it derives the time step from the supplied
+times and refuses a non-uniform grid.
 
 ```{r quickstart-obs}
 ob <- observed_trajectory(dat$t, dat$x1, names = "x1")
 ob
 ```
 
-## 3. Run the engine
-
 Supply the model, the observations and a prior on the hidden state.
-`aci_filter()` and `aci_smoother()` return the two reconstructions of Section 2,
-and `aci()` runs the pair and scores each time by the relative entropy between
-them.
+`aci_filter()` and `aci_smoother()` return the two reconstructions, and
+`aci()` runs the pair and scores every time point.
 
 ```{r quickstart-engine}
 init <- list(mean = 0, cov = matrix(1, 1, 1))
@@ -115,25 +98,19 @@ smoo <- aci_smoother(truth, ob, filter = filt)
 res  <- aci(truth, ob, init = init)
 ```
 
-Name the prior explicitly. Omitting `cov` falls back to a diffuse prior, with a
-warning, and the opening steps of such a run report the prior washing out
+Name the prior. Omitting `cov` falls back to a diffuse prior with a
+warning, and the opening steps of such a run show the prior washing out
 rather than anything causal.
 
-`aci()` also names the two parts of the metric: a **signal** term, from
-disagreement between the posterior means, and a **dispersion** term, from
-disagreement between the posterior spreads.
+## 4. Read the result
 
-## 4. Plot and print the results
-
-`plot()` visualises the reconstruction and the metric:
-
-```{r quickstart-latent}
+```{r quickstart-latent, fig.cap = "The smoother's reconstruction of the hidden path with a band of two standard deviations, against the path that was withheld.", fig.alt = "Line plot of the smoothed mean and its band over time, with the true hidden path overlaid."}
 plot(smoo, truth = dat$y)
-legend("topright", c("reconstruction ± 2 sd", "withheld truth"),
+legend("topright", c("reconstruction, two standard deviations", "withheld truth"),
        col = c(1, 2), lty = 1, bty = "n")
 ```
 
-```{r quickstart-metric}
+```{r quickstart-metric, fig.cap = "The ACI metric along the record, with its signal and dispersion parts.", fig.alt = "Line plot of the metric over time with two dashed component curves."}
 plot(res)
 ```
 
@@ -143,52 +120,60 @@ plot(res)
 res
 ```
 
-## 5. Obtain the CIR
+## 5. The influence range
 
-The causal influence range (CIR) (*for how long does $y$ influence $x_1$?*) 
-is obtained using `aci_range()`:
+For how long does $y$ influence $x_1$? `aci_range()` answers per anchor
+time:
 
-```{r quickstart-cir}
+```{r quickstart-cir, fig.cap = "The forward causal influence range at the reported anchor times.", fig.alt = "Line plot of the range against anchor time."}
 fc <- aci_range(res, anchors = seq(1L, length(ob$t), by = 25L))
 fc
 head(data.frame(t = fc$t, tau = fc$tau, M = fc$M, status = fc$status), 4)
 plot(fc)
 ```
 
-Each row is one anchor time `t`: `tau` is the range in the model's time units
-and `M` is the peak finite-lag divergence there. `anchors` chooses which anchor
-times are reported, and only those rows are formed, which matters because
-forming every row of a long record is quadratic work. This release reports the
-forward direction; the backward question of Section 1 is reserved for a later
-release.
+Each row is one anchor time `t`. `tau` is the range in the model's time
+units and `M` is the peak finite-lag divergence there. `anchors` chooses
+which anchor times are reported, and only those rows are formed, which
+matters because forming every row of a long record is quadratic work.
 
-Anchors whose peak divergence is too small to divide by are masked rather than
-reported as inflated lengths, and the warning above says how many. `status`
-carries that reading and three others, one per anchor:
+An anchor whose peak divergence is too small to divide by is masked rather
+than reported as an inflated length, and the warning above says how many.
+`status` carries that reading and three others:
 
 ```{r quickstart-status}
 table(fc$status)
 ```
 
-Half of these anchors come back `censored`, which is a property of a short
-record rather than of the model: after an anchor late in a five-unit series
-there is not always enough future left to resolve the influence it planted,
-and a censored range should be read as a lower bound. That is also what the
-decline in $\tau_f$ at the end of the plot is.
-`vignette("vignette-2-advanced")` gives the full status vocabulary and the
-conventions each number is computed under.
+Here `r sum(fc$status == "censored")` of the `r length(fc$status)` anchors
+come back `censored`, a property of a short record rather than of the
+model: after an anchor late in a five-unit series there is not always
+enough future left to resolve the influence it planted, and a censored
+range is a lower bound. The decline of the range at the end of the plot is
+the same finite-record effect. *The closed-form ACI engine* gives the full
+status vocabulary and the conventions each number is computed under.
 
-## 6. What this release does not cover
+## 6. Scope of this release
 
-The model here was written down and the hidden path was reconstructed from it.
-Learning the dynamics from data instead, when the cause was never measured, is
-the partial-observation problem, and it is not in this release. Neither is the
-backward CIR, nor the significance machinery, nor the ensemble engine for
-systems outside the CGNS class. What is here is the closed-form engine: models
-in the conditional Gaussian nonlinear system (CGNS) class, for which the
-filter, the smoother and the metric all have exact solutions.
+What is here is the closed-form engine: models in the conditional Gaussian
+nonlinear system (CGNS) class, for which the filter, the smoother and the
+metric have exact solutions, and the forward influence range. Learning the
+dynamics from data, the backward range, significance testing and the
+ensemble engine for systems outside the class are not in this release.
 
-We're well on our way to seeing what ACI can do. The underlying machinery is
-covered in `vignette("vignette-2-advanced")`, and
-`vignette("vignette-3-matlab")` covers the conventions under which the package
-reproduces its reference MATLAB codebase.
+*The closed-form ACI engine* (`vignette("vignette-2-advanced")`) documents
+the machinery and its arguments. *Reproducing the reference MATLAB
+codebase* (`vignette("vignette-3-matlab")`) states which numbers of the
+authors' implementation this package reproduces, and under which
+conventions. `?aci_references` lists the sources.
+
+## References
+
+Andreou, M., Chen, N. and Bollt, E. (2026). Assimilative causal inference.
+*Nature Communications*, 17, 1854.
+[doi:10.1038/s41467-026-68568-0](https://doi.org/10.1038/s41467-026-68568-0)
+
+Andreou, M. and Chen, N. (2026). Bridging prediction and attribution:
+identifying forward and backward causal influence ranges using
+assimilative causal inference. arXiv:2510.21889.
+[doi:10.48550/arXiv.2510.21889](https://doi.org/10.48550/arXiv.2510.21889)

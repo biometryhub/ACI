@@ -18,11 +18,11 @@ Useful links:
 
 }
 \author{
-\strong{Maintainer}: Aidan Moller \email{aj.moller97@gmail.com} (Interim maintainer for the development branch; author roles, order and the maintainer field are under joint review) [copyright holder]
+\strong{Maintainer}: Aidan Moller \email{aidan.moller@adelaide.edu.au} [copyright holder]
 
 Authors:
 \itemize{
-  \item Max Moldovan (Author; roles under joint review) [copyright holder]
+  \item Max Moldovan (\href{https://orcid.org/0000-0001-9680-8474}{ORCID}) [copyright holder]
 }
 
 Other contributors:

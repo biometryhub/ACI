@@ -9,7 +9,7 @@ aci_simulate(object, ...)
 \arguments{
 \item{object}{A \code{stochastic_model} or \code{cgns_model} object.}
 
-\item{...}{Passed to the \code{simulate()} method: \code{nsim}, \code{seed}, \code{T}, \code{dt},
+\item{...}{Passed to the \code{simulate()} method: \code{nsim}, \code{seed}, \code{t_end}, \code{dt},
 \code{ic}, \code{burn_in}, \code{keep_hidden}, \code{keep_noise}.}
 }
 \value{
@@ -25,7 +25,7 @@ method stays registered on the \code{stats::simulate()} generic, so
 }
 \examples{
 m <- aci_dyad_model()
-aci_simulate(m, seed = 1, T = 2, dt = 0.01)
+aci_simulate(m, seed = 1, t_end = 2, dt = 0.01)
 
 }
 \seealso{

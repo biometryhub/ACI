@@ -1,0 +1,2 @@
+/* KaTeX sits with the body text rather than oversized (recipe 54). */
+.katex { font-size: 0.88em !important; }
