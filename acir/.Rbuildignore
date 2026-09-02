@@ -5,7 +5,7 @@
 ^\.github($|/)
 ^\.gitignore$
 ^LICENSE\.md$
-^vignettes/.*\.html$
+^vignettes/vignette-.*\.html$
 ^benchmarks($|/)
 ^tools($|/)
 ^\.gitattributes$
@@ -14,3 +14,4 @@
 ^\.Rproj\.user$
 ^API_STABILITY\.md$
 ^inst/validation/README\.md$
+^pkgdown($|/)

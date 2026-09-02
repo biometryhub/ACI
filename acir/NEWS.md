@@ -18,7 +18,7 @@ performance table is inside its budget.
 * **The built package carries its vignette index.** The build-ignore rule
   `^build($|/)`, inherited from aci, removed the `build/` directory that
   `R CMD build` creates, so an installed package listed no vignettes under
-  `vignette()` or `browseVignettes()` and CRAN's incoming check reported a
+  `vignette()` or `browseVignettes()` and the CRAN incoming check reported a
   missing vignette index. The rule is gone.
 
 ## Performance
