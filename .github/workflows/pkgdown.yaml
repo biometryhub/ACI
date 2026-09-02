@@ -48,7 +48,7 @@ jobs:
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: JamesIves/github-pages-deploy-action@v4.5.0
         with:
-          clean: false
+          clean: true
           branch: gh-pages
           # Repo-root relative: the defaults.run block above applies only to
           # `run:` steps, not to an action's inputs, and pkgdown builds into
