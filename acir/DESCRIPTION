@@ -2,7 +2,7 @@ Package: acir
 Type: Package
 Title: Closed-Form Assimilative Causal Inference for Conditional
     Gaussian Nonlinear Systems
-Version: 0.1.0
+Version: 0.1.0.9000
 Authors@R: c(
     person("Aidan", "Moller", role = c("aut", "cre", "cph"),
            email = "aidan.moller@adelaide.edu.au"),
