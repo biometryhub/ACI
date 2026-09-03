@@ -1134,9 +1134,9 @@ aci_conditional_reduce <- function(model, obs, spec) {
   }, logical(1)))
   if (bad_cross)
     aci_abort("aci_error_nontarget_crossnoise",
-      paste("gxx has a nonzero A-B cross-block; use",
-            "aci_conditional(method = 'mask') (SPEC-01 s6, pending SI",
-            "equivalence transcription)."))
+      paste("The observation-noise Gram gxx couples the target and",
+            "non-target channels; method = 'reduce' needs a vanishing",
+            "cross-block, so use aci_conditional(method = 'mask')."))
   t0 <- obs$t[1]; dt <- obs$dt; XB <- obs$x[, B, drop = FALSE]; Nrow <- nrow(XB)
   lookupB <- function(t) {
     j <- as.integer(round((t - t0) / dt)) + 1L

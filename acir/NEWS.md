@@ -1,3 +1,13 @@
+# acir 0.1.0.9000
+
+* The vignettes show the package's refusals as the classed condition and its
+  message, printed as ordinary output, instead of a halted chunk. A genuine
+  error in those chunks now fails the vignette build.
+* Five condition messages no longer cite internal specification sections or
+  development notes: the singular observation-noise Gram, the non-uniform
+  time grid, the noise-free observation contract, and the inadmissible
+  `method = "reduce"` reduction.
+
 # acir 0.1.0
 
 The parity release: every quantity the reference MATLAB implementation

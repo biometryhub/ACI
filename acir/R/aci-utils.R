@@ -580,10 +580,11 @@ observed_trajectory <- function(t, x, noise_free = TRUE, names = NULL) {
     aci_abort("aci_error_obs_contract", "t must be strictly increasing.")
   if (max(abs(dtv - dtv[1])) > 1e-8 * max(abs(dtv[1]), 1e-12))
     aci_abort("aci_error_obs_contract",
-      "v0 requires a uniform time grid (invariant #11); resample first.")
+      "Observations must lie on a uniform time grid; resample first.")
   if (!isTRUE(noise_free))
     aci_abort("aci_error_obs_contract",
-      "v0 assumes effectively noise-free observations (invariant #11); noisy obs are a roadmap item.")
+      paste("This release takes the observed path as noise-free",
+            "(noise_free = TRUE); observation error is outside its scope."))
   if (!is.null(names)) {
     if (!is.character(names) || length(names) != ncol(x) || anyNA(names) ||
         any(!nzchar(names)) || anyDuplicated(names))
