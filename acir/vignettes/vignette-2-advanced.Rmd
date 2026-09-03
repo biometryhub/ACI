@@ -229,7 +229,7 @@ something that was never a covariance:
 ```{r spd-utilities}
 spd_floor(matrix(c(1, 0, 0, -1e-14), 2, 2))
 safe_chol(matrix(c(2, 1, 1, 2), 2, 2))
-try(safe_chol(matrix(-1, 1, 1)))
+refused(safe_chol(matrix(-1, 1, 1)))
 ```
 
 ### Steppers
