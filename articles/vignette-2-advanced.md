@@ -58,6 +58,22 @@ m2
 #> <cgns_model> 'correlated observation noise': k = 2 observed, l = 1 hidden
 ```
 
+Refusals below are shown through a small helper that catches the classed
+condition and prints its class and message, so the reader sees what the
+package says rather than a halted chunk:
+
+``` r
+
+refused <- function(expr) {
+  tryCatch({
+    force(expr)
+    cat("no condition was signalled\n")
+  }, error = function(e) {
+    cat(class(e)[1L], ": ", conditionMessage(e), "\n", sep = "")
+  })
+}
+```
+
 [`aci_model_from_affine()`](https://biometryhub.github.io/ACI/reference/aci_model_from_affine.md)
 takes the full drift instead and does the split for you, after checking
 that the split exists. A drift that is not affine in the hidden state is
@@ -65,14 +81,13 @@ rejected rather than silently linearised:
 
 ``` r
 
-aci_model_from_affine(
+refused(aci_model_from_affine(
   f_full    = function(t, x, y) -0.5 * x + y^2,
   g_full    = function(t, x, y) -0.5 * y,
   Sx        = function(t, x) matrix(0.5, 1, 1),
   Sy_hidden = function(t, x) matrix(1, 1, 1),
-  k = 1, l = 1)
-#> Error in `aci_model_from_affine()`:
-#> ! Observed drift is not affine in the hidden state.
+  k = 1, l = 1))
+#> aci_error_model_contract: Observed drift is not affine in the hidden state.
 ```
 
 ``` r
@@ -157,9 +172,8 @@ desynchronised time column is an error, not a wrong answer:
 
 ``` r
 
-observed_trajectory(c(0, 0.01, 0.03), matrix(c(1, 2, 3), ncol = 1))
-#> Error in `observed_trajectory()`:
-#> ! v0 requires a uniform time grid (invariant #11); resample first.
+refused(observed_trajectory(c(0, 0.01, 0.03), matrix(c(1, 2, 3), ncol = 1)))
+#> aci_error_obs_contract: Observations must lie on a uniform time grid; resample first.
 ```
 
 Naming the columns is what makes the conditional questions of section 4
@@ -195,9 +209,8 @@ explicit Riccati step overshoots:
 idx    <- seq.int(1L, length(ob$t), by = 20L)
 ob_bad <- observed_trajectory(ob$t[idx], ob$x[idx, , drop = FALSE],
                               names = "x")
-aci_filter(m, ob_bad, init = init)
-#> Error in `.aci_stop_cov()`:
-#> ! The filter covariance must stay finite and positive definite; it reached -0.1336333 at index 37 (time 7.2), in the explicit Riccati step. Reduce dt, raise nsub, or use stepper = "implicit", which preserves positivity. To keep the previous behaviour, call with regularize = "floor"; every floored step is then recorded in the result's meta$regularization.
+refused(aci_filter(m, ob_bad, init = init))
+#> aci_error_covariance_not_spd: The filter covariance must stay finite and positive definite; it reached -0.1336333 at index 37 (time 7.2), in the explicit Riccati step. Reduce dt, raise nsub, or use stepper = "implicit", which preserves positivity. To keep the previous behaviour, call with regularize = "floor"; every floored step is then recorded in the result's meta$regularization.
 ```
 
 `regularize = "floor"` is the previous behaviour, available on
@@ -273,9 +286,8 @@ safe_chol(matrix(c(2, 1, 1, 2), 2, 2))
 #>          [,1]      [,2]
 #> [1,] 1.414214 0.7071068
 #> [2,] 0.000000 1.2247449
-try(safe_chol(matrix(-1, 1, 1)))
-#> Error in safe_chol(matrix(-1, 1, 1)) : 
-#>   Matrix (covariance) is not positive definite even after jitter ladder; min eig = -1.000e+00.
+refused(safe_chol(matrix(-1, 1, 1)))
+#> aci_error_spd: Matrix (covariance) is not positive definite even after jitter ladder; min eig = -1.000e+00.
 ```
 
 ### Steppers
@@ -308,9 +320,8 @@ for no other:
 
 ``` r
 
-lag_table(m, ob, mode = "forward", init = init, stepper = "implicit")
-#> Error in `lag_table()`:
-#> ! lag_table requires stepper = 'explicit' and nsub = 1.
+refused(lag_table(m, ob, mode = "forward", init = init, stepper = "implicit"))
+#> aci_error_stepper: lag_table requires stepper = 'explicit' and nsub = 1.
 ```
 
 ### The predictive likelihood
@@ -434,7 +445,7 @@ t_w15 <- system.time(f_w15 <- aci_range(a_w, anchors = w15))[["elapsed"]]
 
 c(all_401_anchors = t_all, fifteen_anchors = t_w15, ratio = t_all / t_w15)
 #> all_401_anchors fifteen_anchors           ratio 
-#>           0.077           0.007          11.000
+#>         0.06100         0.00600        10.16667
 identical(f_all$tau[w15], f_w15$tau)    # the same values, not a resample
 #> [1] TRUE
 ```
@@ -688,9 +699,8 @@ the package refuses the combination outright:
 
 ``` r
 
-aci_range(a, anchors = anchors, epsilon_grid = c(1e-3, 1e-2))
-#> Error in `.cir_compat_grid()`:
-#> ! epsilon_grid supplies quadrature nodes for quadrature = 'matlab_eps_grid' only; use epsilon for reporting thresholds.
+refused(aci_range(a, anchors = anchors, epsilon_grid = c(1e-3, 1e-2)))
+#> aci_error_dims: epsilon_grid supplies quadrature nodes for quadrature = 'matlab_eps_grid' only; use epsilon for reporting thresholds.
 ```
 
 ### Statuses and masking
@@ -772,9 +782,8 @@ checks that along the whole path rather than at its first point:
 
 s2 <- simulate(m2, seed = 1, t_end = 1, dt = 0.01)
 o2 <- observed_trajectory(s2$obs$t, s2$obs$x, names = c("xA", "xB"))
-aci_conditional_reduce(m2, o2, aci_conditional("xB", "reduce"))
-#> Error in `aci_conditional_reduce()`:
-#> ! gxx has a nonzero A-B cross-block; use aci_conditional(method = 'mask') (SPEC-01 s6, pending SI equivalence transcription).
+refused(aci_conditional_reduce(m2, o2, aci_conditional("xB", "reduce")))
+#> aci_error_nontarget_crossnoise: The observation-noise Gram gxx couples the target and non-target channels; method = 'reduce' needs a vanishing cross-block, so use aci_conditional(method = 'mask').
 ```
 
 `method = "mask"` carries no such restriction and works on the same
@@ -1053,7 +1062,7 @@ setNames(sapply(lags, function(L)
   system.time(aci_online(m, ob, lag = L, init = init))[["elapsed"]]),
   paste0("lag_", lags))
 #>   lag_1  lag_20 lag_400 lag_800 
-#>   0.013   0.025   0.023   0.002
+#>   0.010   0.019   0.018   0.001
 ```
 
 An online path carries `kind = "online"`, and that is what keeps it out
@@ -1062,10 +1071,9 @@ rejects it rather than treating a truncated lag as the whole record.
 
 ``` r
 
-lag_table(m, ob, mode = "forward", init = init,
-          filter = filt, smoother = on)
-#> Error in `.validate_gaussian_path()`:
-#> ! smoother has kind 'online', not 'smoother'.
+refused(lag_table(m, ob, mode = "forward", init = init,
+                  filter = filt, smoother = on))
+#> aci_error_dims: smoother has kind 'online', not 'smoother'.
 ```
 
 ## Evidence

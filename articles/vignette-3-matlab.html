@@ -185,14 +185,25 @@ looked up by index on their own grid:</p>
 <span>  approximation <span class="op">=</span> <span class="va">mtc</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">approximation</span><span class="op">)</span></span>
 <span><span class="co">#&gt;          observed        prescribed     approximation </span></span>
 <span><span class="co">#&gt;           "TE, I"      "u, hW, tau" "zeroth_order_c1"</span></span></code></pre></div>
+<p>The refusal is shown through a small helper that catches the classed
+condition and prints its class and message, so the reader sees what the
+package says rather than a halted chunk:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">refused</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">expr</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="kw"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">tryCatch</a></span><span class="op">(</span><span class="op">{</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/force.html" class="external-link">force</a></span><span class="op">(</span><span class="va">expr</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="st">"no condition was signalled\n"</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>, error <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">e</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">e</span><span class="op">)</span><span class="op">[</span><span class="fl">1L</span><span class="op">]</span>, <span class="st">": "</span>, <span class="fu"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">conditionMessage</a></span><span class="op">(</span><span class="va">e</span><span class="op">)</span>, <span class="st">"\n"</span>, sep <span class="op">=</span> <span class="st">""</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
 <p>What the filter and smoother return are the moments of that
 <em>approximating</em> model, not of the six-state system, so the model
 refuses to generate a path of its own and names the constructor that
 can:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">mtc</span>, seed <span class="op">=</span> <span class="fl">1</span>, t_end <span class="op">=</span> <span class="fl">1</span>, dt <span class="op">=</span> <span class="fl">5e-3</span><span class="op">)</span></span>
-<span><span class="co">#&gt; <span style="color: #BBBB00; font-weight: bold;">Error</span><span style="font-weight: bold;"> in `simulate.cgns_model()`:</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BBBB00;">!</span> 'ENSO6[aci_code] (TC hidden, zeroth-order c1)' is an inference-only model: its coefficients approximate a larger system that it cannot itself generate. L_y is the time-only series r_C - c1(t, 0), a zeroth-order Taylor expansion of the cubic damping about the climatology TC = 0 (ENSO_model_cond_ACI_T_C_unobs.m:1052, :1150). The filter and smoother moments are those of this approximating model, not of the six-state system, whose simulator keeps the full nonlinear c1(t, TC) (:1105-1106, :1124). Simulate the full system with aci_enso_model(hidden = c("u", "hW", "tau"), variant = "aci_code") and build this model from that path.</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">refused</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">mtc</span>, seed <span class="op">=</span> <span class="fl">1</span>, t_end <span class="op">=</span> <span class="fl">1</span>, dt <span class="op">=</span> <span class="fl">5e-3</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; aci_error_model_contract: 'ENSO6[aci_code] (TC hidden, zeroth-order c1)' is an inference-only model: its coefficients approximate a larger system that it cannot itself generate. L_y is the time-only series r_C - c1(t, 0), a zeroth-order Taylor expansion of the cubic damping about the climatology TC = 0 (ENSO_model_cond_ACI_T_C_unobs.m:1052, :1150). The filter and smoother moments are those of this approximating model, not of the six-state system, whose simulator keeps the full nonlinear c1(t, TC) (:1105-1106, :1124). Simulate the full system with aci_enso_model(hidden = c("u", "hW", "tau"), variant = "aci_code") and build this model from that path.</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="matlab_defect_compat-and-the-defect-it-names">3. <code>matlab_defect_compat</code>, and the defect it names<a class="anchor" aria-label="anchor" href="#matlab_defect_compat-and-the-defect-it-names"></a>
@@ -202,7 +213,7 @@ departure: the script’s assimilation forcing omits a thermocline term
 its own simulator drift carries. The omission moves the means and leaves
 both covariance sequences untouched, because the term enters only the
 mean equations:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">obc</span>    <span class="op">&lt;-</span> <span class="fu"><a href="../reference/observed_trajectory.html">observed_trajectory</a></span><span class="op">(</span><span class="va">sj</span><span class="op">$</span><span class="va">obs</span><span class="op">$</span><span class="va">t</span>,</span>
 <span>                              <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span>TE <span class="op">=</span> <span class="va">sj</span><span class="op">$</span><span class="va">obs</span><span class="op">$</span><span class="va">x</span><span class="op">[</span>, <span class="st">"TE"</span><span class="op">]</span>, I <span class="op">=</span> <span class="va">sj</span><span class="op">$</span><span class="va">obs</span><span class="op">$</span><span class="va">x</span><span class="op">[</span>, <span class="st">"I"</span><span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">init_c</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mean <span class="op">=</span> <span class="va">sj</span><span class="op">$</span><span class="va">obs</span><span class="op">$</span><span class="va">x</span><span class="op">[</span><span class="fl">1</span>, <span class="st">"TC"</span><span class="op">]</span>, cov <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
@@ -238,7 +249,7 @@ and mask only the later slices. That is a convention, not a kernel
 failure, and <code>first_step</code> names both sides of it.
 <code>"uniform"</code> masks every slice and is the default, and
 <code>"matlab"</code> reproduces the asymmetry:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">me</span>     <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_enso_model.html">aci_enso_model</a></span><span class="op">(</span>hidden <span class="op">=</span> <span class="st">"hW"</span><span class="op">)</span></span>
 <span><span class="va">se</span>     <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">me</span>, seed <span class="op">=</span> <span class="fl">12</span>, t_end <span class="op">=</span> <span class="fl">4</span>, dt <span class="op">=</span> <span class="fl">5e-3</span>, burn_in <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">obe</span>    <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_obs.html">as_obs</a></span><span class="op">(</span><span class="va">se</span><span class="op">)</span></span>
@@ -286,7 +297,7 @@ caller’s option. <code>observations = "reduced"</code> is the script’s
 estimand and the default for this partition, carried as a specification
 the assimilation runs whenever the caller supplies none, and
 <code>"full"</code> is the five-channel construction:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mt_red</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_enso_model.html">aci_enso_model</a></span><span class="op">(</span>hidden <span class="op">=</span> <span class="st">"tau"</span><span class="op">)</span></span>
 <span><span class="va">mt_full</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_enso_model.html">aci_enso_model</a></span><span class="op">(</span>hidden <span class="op">=</span> <span class="st">"tau"</span>, observations <span class="op">=</span> <span class="st">"full"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>default <span class="op">=</span> <span class="va">mt_red</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">observations</span>, alternative <span class="op">=</span> <span class="va">mt_full</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">observations</span><span class="op">)</span></span>
@@ -339,7 +350,7 @@ default.</p>
 number was computed under, and the package’s position is that those
 conventions belong on the result object rather than in a reader’s
 memory. The fields to check, and where each is explained:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">m</span>    <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_dyad_model.html">aci_dyad_model</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">sim</span>  <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">m</span>, seed <span class="op">=</span> <span class="fl">7</span>, t_end <span class="op">=</span> <span class="fl">4</span>, dt <span class="op">=</span> <span class="fl">0.01</span>, burn_in <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">ob</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_obs.html">as_obs</a></span><span class="op">(</span><span class="va">sim</span><span class="op">)</span></span>

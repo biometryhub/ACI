@@ -126,15 +126,30 @@ c(observed = paste(mtc$meta$vars$observed, collapse = ", "),
 #>           "TE, I"      "u, hW, tau" "zeroth_order_c1"
 ```
 
+The refusal is shown through a small helper that catches the classed
+condition and prints its class and message, so the reader sees what the
+package says rather than a halted chunk:
+
+``` r
+
+refused <- function(expr) {
+  tryCatch({
+    force(expr)
+    cat("no condition was signalled\n")
+  }, error = function(e) {
+    cat(class(e)[1L], ": ", conditionMessage(e), "\n", sep = "")
+  })
+}
+```
+
 What the filter and smoother return are the moments of that
 *approximating* model, not of the six-state system, so the model refuses
 to generate a path of its own and names the constructor that can:
 
 ``` r
 
-simulate(mtc, seed = 1, t_end = 1, dt = 5e-3)
-#> Error in `simulate.cgns_model()`:
-#> ! 'ENSO6[aci_code] (TC hidden, zeroth-order c1)' is an inference-only model: its coefficients approximate a larger system that it cannot itself generate. L_y is the time-only series r_C - c1(t, 0), a zeroth-order Taylor expansion of the cubic damping about the climatology TC = 0 (ENSO_model_cond_ACI_T_C_unobs.m:1052, :1150). The filter and smoother moments are those of this approximating model, not of the six-state system, whose simulator keeps the full nonlinear c1(t, TC) (:1105-1106, :1124). Simulate the full system with aci_enso_model(hidden = c("u", "hW", "tau"), variant = "aci_code") and build this model from that path.
+refused(simulate(mtc, seed = 1, t_end = 1, dt = 5e-3))
+#> aci_error_model_contract: 'ENSO6[aci_code] (TC hidden, zeroth-order c1)' is an inference-only model: its coefficients approximate a larger system that it cannot itself generate. L_y is the time-only series r_C - c1(t, 0), a zeroth-order Taylor expansion of the cubic damping about the climatology TC = 0 (ENSO_model_cond_ACI_T_C_unobs.m:1052, :1150). The filter and smoother moments are those of this approximating model, not of the six-state system, whose simulator keeps the full nonlinear c1(t, TC) (:1105-1106, :1124). Simulate the full system with aci_enso_model(hidden = c("u", "hW", "tau"), variant = "aci_code") and build this model from that path.
 ```
 
 ## 3. `matlab_defect_compat`, and the defect it names
