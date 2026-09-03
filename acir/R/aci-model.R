@@ -407,7 +407,8 @@ validate_cgns <- function(m, n_probe = 5) {
       aci_abort("aci_error_model_contract", "Non-finite CGNS coefficient values at a probe point.")
     if (rcond(co$gxx) < 1e-12)
       aci_abort("aci_error_gram",
-        "gxx degenerate at probe point (SPEC-01 s5.0).")
+        paste("The observation-noise Gram gxx is singular at a probe point;",
+              "every observed channel needs a non-zero noise level."))
     now_widths <- c(ncol(Sx1), ncol(Sx2))
     if (is.null(widths)) widths <- now_widths else if (!identical(now_widths, widths))
       aci_abort("aci_error_model_contract",

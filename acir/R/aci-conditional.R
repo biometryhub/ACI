@@ -635,9 +635,9 @@
         aci_abort(
           "aci_error_nontarget_crossnoise",
           paste(
-            "gxx has a nonzero A-B cross-block; use",
-            "aci_conditional(method = 'mask') (SPEC-01 s6, pending SI",
-            "equivalence transcription)."
+            "The observation-noise Gram gxx couples the target and",
+            "non-target channels; method = 'reduce' needs a vanishing",
+            "cross-block, so use aci_conditional(method = 'mask')."
           )
         )
 

@@ -71,17 +71,32 @@ m2 <- aci_model(
 m2
 ```
 
+Refusals below are shown through a small helper that catches the classed
+condition and prints its class and message, so the reader sees what the
+package says rather than a halted chunk:
+
+```{r refused}
+refused <- function(expr) {
+  tryCatch({
+    force(expr)
+    cat("no condition was signalled\n")
+  }, error = function(e) {
+    cat(class(e)[1L], ": ", conditionMessage(e), "\n", sep = "")
+  })
+}
+```
+
 `aci_model_from_affine()` takes the full drift instead and does the split for
 you, after checking that the split exists. A drift that is not affine in
 the hidden state is rejected rather than silently linearised:
 
-```{r affine-reject, error = TRUE}
-aci_model_from_affine(
+```{r affine-reject}
+refused(aci_model_from_affine(
   f_full    = function(t, x, y) -0.5 * x + y^2,
   g_full    = function(t, x, y) -0.5 * y,
   Sx        = function(t, x) matrix(0.5, 1, 1),
   Sy_hidden = function(t, x) matrix(1, 1, 1),
-  k = 1, l = 1)
+  k = 1, l = 1))
 ```
 
 ```{r affine-accept}
@@ -147,8 +162,8 @@ records where the reference does something else.
 non-uniform grid. A desynchronised time column is an error, not a wrong
 answer:
 
-```{r obs-contract, error = TRUE}
-observed_trajectory(c(0, 0.01, 0.03), matrix(c(1, 2, 3), ncol = 1))
+```{r obs-contract}
+refused(observed_trajectory(c(0, 0.01, 0.03), matrix(c(1, 2, 3), ncol = 1)))
 ```
 
 Naming the columns is what makes the conditional questions of section 4
@@ -177,11 +192,11 @@ value, rather than reporting a number the recursion did not produce. Take
 the same record on a twentyfold coarser grid, where the explicit Riccati
 step overshoots:
 
-```{r strict-cov, error = TRUE}
+```{r strict-cov}
 idx    <- seq.int(1L, length(ob$t), by = 20L)
 ob_bad <- observed_trajectory(ob$t[idx], ob$x[idx, , drop = FALSE],
                               names = "x")
-aci_filter(m, ob_bad, init = init)
+refused(aci_filter(m, ob_bad, init = init))
 ```
 
 `regularize = "floor"` is the previous behaviour, available on `aci()`,
@@ -214,7 +229,7 @@ something that was never a covariance:
 ```{r spd-utilities}
 spd_floor(matrix(c(1, 0, 0, -1e-14), 2, 2))
 safe_chol(matrix(c(2, 1, 1, 2), 2, 2))
-try(safe_chol(matrix(-1, 1, 1)))
+refused(safe_chol(matrix(-1, 1, 1)))
 ```
 
 ### Steppers
@@ -241,8 +256,8 @@ metric itself. Pick one deliberately and record which.
 recursions it accumulates are exact for the explicit single-step
 discretisation and for no other:
 
-```{r stepper-reject, error = TRUE}
-lag_table(m, ob, mode = "forward", init = init, stepper = "implicit")
+```{r stepper-reject}
+refused(lag_table(m, ob, mode = "forward", init = init, stepper = "implicit"))
 ```
 
 ### The predictive likelihood
@@ -531,8 +546,8 @@ compatibility mode. Asking one vector to do both jobs drove a predecessor
 implementation's objective negative on a sparse grid, so the package refuses
 the combination outright:
 
-```{r epsilon-roles, error = TRUE}
-aci_range(a, anchors = anchors, epsilon_grid = c(1e-3, 1e-2))
+```{r epsilon-roles}
+refused(aci_range(a, anchors = anchors, epsilon_grid = c(1e-3, 1e-2)))
 ```
 
 ### Statuses and masking
@@ -602,10 +617,10 @@ These are different operators. `method = "reduce"` is admissible only
 when the observation-noise Gram has no $A$-$B$ cross-block, and the
 package checks that along the whole path rather than at its first point:
 
-```{r cross-noise, error = TRUE}
+```{r cross-noise}
 s2 <- simulate(m2, seed = 1, t_end = 1, dt = 0.01)
 o2 <- observed_trajectory(s2$obs$t, s2$obs$x, names = c("xA", "xB"))
-aci_conditional_reduce(m2, o2, aci_conditional("xB", "reduce"))
+refused(aci_conditional_reduce(m2, o2, aci_conditional("xB", "reduce")))
 ```
 
 `method = "mask"` carries no such restriction and works on the same model:
@@ -829,9 +844,9 @@ An online path carries `kind = "online"`, and that is what keeps it out of
 the places a complete smoother is required: `lag_table(smoother = )` rejects
 it rather than treating a truncated lag as the whole record.
 
-```{r online-kind, error = TRUE}
-lag_table(m, ob, mode = "forward", init = init,
-          filter = filt, smoother = on)
+```{r online-kind}
+refused(lag_table(m, ob, mode = "forward", init = init,
+                  filter = filt, smoother = on))
 ```
 
 

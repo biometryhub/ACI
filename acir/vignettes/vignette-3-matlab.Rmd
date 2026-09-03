@@ -122,12 +122,27 @@ c(observed = paste(mtc$meta$vars$observed, collapse = ", "),
   approximation = mtc$meta$approximation)
 ```
 
+The refusal is shown through a small helper that catches the classed
+condition and prints its class and message, so the reader sees what the
+package says rather than a halted chunk:
+
+```{r refused}
+refused <- function(expr) {
+  tryCatch({
+    force(expr)
+    cat("no condition was signalled\n")
+  }, error = function(e) {
+    cat(class(e)[1L], ": ", conditionMessage(e), "\n", sep = "")
+  })
+}
+```
+
 What the filter and smoother return are the moments of that *approximating*
 model, not of the six-state system, so the model refuses to generate a path
 of its own and names the constructor that can:
 
-```{r tc-simulate, error = TRUE}
-simulate(mtc, seed = 1, t_end = 1, dt = 5e-3)
+```{r tc-simulate}
+refused(simulate(mtc, seed = 1, t_end = 1, dt = 5e-3))
 ```
 
 
