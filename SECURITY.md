@@ -33,6 +33,6 @@ report that identifies something outside that expectation is valuable
 precisely because it contradicts it.
 
 Reports of numerical error are handled as defects rather than as
-vulnerabilities. See [`aciR/SUPPORT.md`](aciR/SUPPORT.md), which explains what
+vulnerabilities. See [`acir/SUPPORT.md`](acir/SUPPORT.md), which explains what
 to include and why those reports are the most useful ones this project
 receives.
