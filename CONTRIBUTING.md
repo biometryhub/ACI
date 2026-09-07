@@ -26,8 +26,8 @@ source this repository did not author.
 ## Review
 
 Every pull request is reviewed under `REVIEW.md` and needs one approving
-review from an author who did not write it. Branch protection on
-`acir-package` and `main` enforces this and the required checks.
+review from an author who did not write it. Branch protection on `main`
+enforces this and the required checks.
 
 ## Reporting
 

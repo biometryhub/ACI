@@ -27,7 +27,7 @@ this process applies from 2026-09-02.
 
 ## The four gates
 
-Every pull request into `acir-package` carries these, and CI runs them again.
+Every pull request into `main` carries these, and CI runs them again.
 
 1. **Numbers.** Every fixture in `acir/inst/evidence/register.csv` at its
    tolerance class, and the package's stored outputs on the reference records
@@ -71,7 +71,7 @@ and is a review finding in its own right.
 | Feedback loop before reporting done | the four gates, run locally and in CI | in use |
 | Continuous evaluation of agent configuration | not applicable to the repository | not used |
 | Review loop under a written policy | `REVIEW.md`; approval by a human author is required | in use |
-| Hooks as approval gates | branch protection on `acir-package` and `main`: pull request required, one approving review, nine required checks, no force push | in use, enforced by the host |
+| Hooks as approval gates | branch protection on `main`: pull request required, one approving review, ten required checks, no force push | in use, enforced by the host |
 | An agent inside CI/CD | not used; CI is deterministic | not used |
 | Control bands in maintenance | `bench.yaml` compares every run with `baseline.csv`; a breach is triaged by the authors and re-enters as an intent | in use, with a manual response |
 | Recurring security scans | not used; the package opens no network connection (`SECURITY.md`) | not used |
