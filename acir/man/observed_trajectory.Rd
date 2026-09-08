@@ -25,14 +25,19 @@ observation matrix \code{x}, the step \code{dt}, the observed dimension \code{k}
 flag \code{noise_free}.
 }
 \description{
-Constructs the observation object consumed throughout the package. The grid
-must be strictly increasing and uniformly spaced, and the observations must
-be finite; version 0 additionally assumes the observations are effectively
-noise-free. The noise-free restriction follows the method's current
-published scope: andreou2026cir Section 2.1 leaves noise-contaminated
-observations to future work, and its Discussion lists them as an open
-direction, so this is a limitation of the framework as published, not a
-modelling assumption added by the package.
+This release assimilates a complete record of the observed state on a
+uniform grid, taken as noise-free. Every observed channel must be present at
+every time, the times must be strictly increasing and uniformly spaced, and
+the values must be finite; independent sensor error is refused rather than
+absorbed. \code{observed_trajectory()} constructs the observation object consumed
+throughout the package and enforces those requirements.
+}
+\details{
+The noise-free restriction follows the method's current published scope:
+andreou2026cir Section 2.1 leaves noise-contaminated observations to future
+work, and its Discussion lists them as an open direction, so this is a
+limitation of the framework as published, not a modelling assumption added
+by the package.
 }
 \examples{
 observed_trajectory(t = seq(0, 1, by = 0.1),

@@ -52,7 +52,10 @@ it is frozen.}
 \item{regularize}{Covariance policy for this call; see \code{\link[=aci_filter]{aci_filter()}}. One
 record covers the filter, the Theorem 3 reference smoother and every
 relative-entropy denominator the table forms, and is returned in
-\code{meta$regularization}.}
+\code{meta$regularization}; a call in which a floor fires also raises one
+\code{aci_warn_regularized}. Flooring changes the numerical covariance so that
+the recursion can continue; it establishes nothing about the accuracy of
+the divergences the table stores or of anything reduced from them.}
 
 \item{...}{Must be empty; unused arguments are an error.}
 }

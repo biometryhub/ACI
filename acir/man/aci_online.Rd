@@ -36,7 +36,7 @@ full-lag result to be mistaken for \code{\link[=aci_smoother]{aci_smoother()}}.}
 
 \item{filter}{Optional precomputed filter path; recomputed when \code{NULL}. It
 must be the explicit single-step filter, which is the discretization the
-Theorem 3 recursions are exact for.}
+Theorem 3 recursions are derived for.}
 
 \item{conditional}{Optional \code{aci_conditional_spec} selecting a
 conditional ACI
@@ -45,7 +45,11 @@ reduction; see \code{\link[=aci_conditional]{aci_conditional()}}.}
 \item{init}{Optional list with the initial hidden \code{mean} and \code{cov}.}
 
 \item{regularize}{Covariance policy for this call; see \code{\link[=aci_filter]{aci_filter()}}. One
-record covers the whole call, and is returned in \code{meta$regularization}.}
+record covers the whole call, and is returned in \code{meta$regularization}; a
+call in which a floor fires also raises one \code{aci_warn_regularized}.
+Flooring changes the numerical covariance so that the recursion can
+continue; it establishes nothing about the accuracy of the resulting
+reconstruction.}
 
 \item{force_validate}{\code{FALSE} (the default) lets a \code{filter} that
 \code{\link[=aci_filter]{aci_filter()}} produced for this same run, unaltered since, skip per-step
@@ -67,8 +71,8 @@ this release.
 \code{lag} is the number of future observations each estimate may condition on:
 the estimate at index \code{j} uses the observed record through index \code{j + lag},
 and saturates at the end of the record. \code{lag = 0} returns the filter
-moments unchanged. \code{lag = Inf} returns the complete Theorem 3 posterior
-given the whole record.
+moments unchanged. \code{lag = Inf} composes the Theorem 3 updates over the whole
+record.
 }
 \section{Methods (by class)}{
 \itemize{
@@ -81,9 +85,15 @@ conditional-Gaussian model.
 }}
 \section{Scheme}{
 
-\code{aci_online()} computes the \strong{discrete} Theorem 3 posterior: the exact
-conditional law of the hidden state given the observed increments on the
-sampling grid under the explicit single-step discretization. \code{\link[=aci_smoother]{aci_smoother()}}
+\code{aci_online()} composes the published \strong{discrete} Theorem 3 updates, which
+retain the leading-order terms of the continuous-time conditional equations
+under the explicit single-step discretization. Its finite-step output
+approximates the continuous-time conditional distribution and is not
+generally the exact posterior for an Euler-sampled record: for
+\verb{dx = y dt + dW1}, \code{dy = dW2}, \code{y0 ~ N(0, 1)}, \code{dt = 0.1} and one observed
+increment 0.2 it returns mean 0.2 and variance 0.9, where exact conditioning
+on that Euler-sampled increment gives 0.1818 and 0.9091. The gap falls with
+the step. \code{\link[=aci_smoother]{aci_smoother()}}
 integrates the \strong{continuous} backward smoothing equations with an Euler
 step of the same size. These are two discretizations of the same
 continuous-time object and they agree only to first order in the step, so at

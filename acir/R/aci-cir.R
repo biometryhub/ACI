@@ -174,6 +174,10 @@
 
         if (tol > 0) {
           Dn <- if (l == 1L) abs(D[1L, 1L]) else sqrt(sum(D^2))
+          ## Heuristic tail estimate, in the recursion's arithmetic order:
+          ## a norm-based suffix accumulation with a 1.5 multiplier.  It is
+          ## not the spectral-radius condition of andreou2026smoother
+          ## eq. 3.19 and does not certify the discarded tail.
           future <- 1.5 * (
             Dn^2 * prim$T2[n] / (2 * lam[i]) +
               Dn^2 * prim$Ub[n] * sqrt(l) / (2 * lam[i])
@@ -287,7 +291,7 @@
       "aci_warn_stepper",
       paste(
         "lag_table requires the explicit single-step filter/smoother (the",
-        "Theorem 3 recursions are exact for that discretization);",
+        "Theorem 3 recursions are derived for that discretization);",
         "recomputing both internally."
       )
     )
@@ -341,7 +345,7 @@
       table_conditional = bundle$conditional,
       anchors = idx,
       structurally_truncated = reduced$structurally_truncated,
-      regularization = .aci_reg_freeze(rec)
+      regularization = .aci_reg_report(rec)
     ),
     bound = .cir_bound(method, quadrature, reduced$structurally_truncated)
   )

@@ -46,8 +46,26 @@ and the value of \code{getOption("aci.regularize")} when it is unset) stops
 with a classed \code{aci_error_covariance_not_spd} naming the site, grid index
 and time as soon as a covariance leaves the positive-definite cone.
 \code{"floor"} is the previous behaviour: the covariance is projected back by
-\code{\link[=spd_floor]{spd_floor()}} and every such event is recorded in the result's
-\code{meta$regularization}.}
+\code{\link[=spd_floor]{spd_floor()}}, every such event is recorded in the result's
+\code{meta$regularization}, and a call in which at least one floor fires raises
+one \code{aci_warn_regularized} naming the first floored site, its grid index
+and its time. Flooring changes the numerical covariance so that the
+recursion can continue; it establishes nothing about the accuracy of the
+reconstruction or of the resulting information score, and a large finite
+ACI obtained after a floor is a diagnostic, not a result. A realised
+observation-noise Gram whose reciprocal condition number falls below
+1e-12 at an interval start raises \code{aci_error_gram_path}, a subclass of
+\code{aci_error_gram}, naming the grid index, the time and the \code{rcond}; that
+check runs before any covariance policy, so \code{regularize = "floor"} does
+not bypass it. It is a conditioning test, not a noise-floor test:
+\code{rcond()} is invariant under a uniform rescaling of the Gram, so for a
+one-dimensional observed state, where the reciprocal condition number of
+every non-zero Gram is exactly 1, only an exactly zero Gram is refused.
+An observation noise that collapses towards zero without reaching it
+passes this test and fails later as integration instability.
+A mean or predictive log-likelihood that overflows to
+\code{Inf} or \code{NaN} raises \code{aci_error_nonfinite} naming the quantity, the grid
+index and the time.}
 
 \item{loglik}{\code{TRUE} (the default) accumulates the predictive
 log-likelihood into \code{meta$loglik}. \code{FALSE} skips that work; the filter

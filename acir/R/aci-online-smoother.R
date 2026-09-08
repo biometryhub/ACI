@@ -5,6 +5,11 @@
 
 #' Theorem-3 auxiliaries from one compiled coefficient record (internal)
 #'
+#' These are the leading-order expressions of andreou2026smoother eqs. (3.5),
+#' (3.6) and (3.8): terms of order `dt^2` are dropped, so the composed update
+#' approximates the continuous-time conditional distribution rather than
+#' exactly conditioning the Euler-sampled record.
+#'
 #' @param bundle A validated `compiled_cgns` object.
 #' @param j One-based interval index.
 #' @param Rf Filtered covariance at the interval start.
@@ -24,6 +29,7 @@
   Gy <- co$Ly + co$gyy %*% Rfi
   K <- Gi %*% Gx
   H <- Rfi %*% (co$Ly %*% Rf + Rf %*% t(co$Ly) + co$gyy)
+  ## Leading order in `dt`; the O(dt^2) terms noted above are dropped here.
   E <- diag(l) + (co$gyx %*% Gi %*% Gx - Gy) * dt
   KR <- K %*% Rf
   F_ <- -Rf %*% (
@@ -102,7 +108,7 @@
   p$meta$conditional <- bundle$conditional
   p$meta$engine <- "cgns"
   p$meta$source_model <- bundle$source_model
-  p$meta$regularization <- .aci_reg_freeze(rec)
+  p$meta$regularization <- .aci_reg_report(rec)
   p
 }
 
@@ -369,7 +375,7 @@
   p$meta$conditional <- bundle$conditional
   p$meta$engine <- "cgns"
   p$meta$source_model <- bundle$source_model
-  p$meta$regularization <- .aci_reg_freeze(rec)
+  p$meta$regularization <- .aci_reg_report(rec)
   p
 }
 
@@ -448,6 +454,11 @@
     r_n[n] <- sqrt(sum(DRl[[n]]^2))
     e_n[n] <- if (l == 1L) abs(aux$E[1, 1]) else norm(aux$E, "2")
   }
+  ## Norm-based suffix accumulation feeding the heuristic tail estimate
+  ## below.  andreou2026smoother eq. 3.19 is a spectral-radius condition and
+  ## is not what this computes: individual spectral radii do not establish
+  ## contraction of an arbitrary ordered product, so the accumulated value
+  ## and the 1.5 multiplier applied to it are a heuristic, not a certificate.
   T2 <- Ub <- numeric(N + 1L)
   for (n in N:1) {
     eh2 <- max(1, e_n[n])^2
@@ -639,7 +650,7 @@
       "aci_warn_stepper",
       paste(
         "lag_table requires the explicit single-step filter/smoother (the",
-        "Theorem 3 recursions are exact for that discretization);",
+        "Theorem 3 recursions are derived for that discretization);",
         "recomputing both internally."
       )
     )
@@ -720,7 +731,7 @@
         reference_smoother = "thmD1_online_complete",
         scheme = "theorem3_discrete",
         stop_index = res$stop_index,
-        regularization = .aci_reg_freeze(rec)
+        regularization = .aci_reg_report(rec)
       )
     ),
     class = "lag_table"

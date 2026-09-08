@@ -300,6 +300,9 @@ test_that("scalar proof preserves warnings and covariance policy", {
   expect_identical(scalar_stiff$classes, public_stiff$classes)
   expect_identical(scalar_stiff$messages, public_stiff$messages)
   expect_true("aci_warn_riccati_stiff" %in% scalar_stiff$classes)
+  ## the floor that this case takes is reported once, on both routes
+  expect_true("aci_warn_regularized" %in% scalar_stiff$classes)
+  expect_identical(sum(scalar_stiff$classes == "aci_warn_regularized"), 1L)
   expect_scalar_paths_equal(scalar_stiff$value, public_stiff$value)
   expect_identical(scalar_stiff$value$meta$regularization,
                    public_stiff$value$meta$regularization)
@@ -341,6 +344,8 @@ test_that("scalar proof preserves warnings and covariance policy", {
     .cgns_filter_scalar(floor_bundle, floor_init, regularize = "floor"))
   expect_identical(scalar_floor$classes, public_floor$classes)
   expect_identical(scalar_floor$messages, public_floor$messages)
+  expect_true("aci_warn_regularized" %in% scalar_floor$classes)
+  expect_identical(sum(scalar_floor$classes == "aci_warn_regularized"), 1L)
   expect_equal(scalar_floor$value$cov, public_floor$value$cov, tolerance = 0)
   expect_gt(scalar_floor$value$cov[1, 1, 2], 0)
   expect_equal(scalar_floor$value$cov[1, 1, 2], 1e-12, tolerance = 0)

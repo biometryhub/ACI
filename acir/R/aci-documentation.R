@@ -40,9 +40,11 @@ NULL
 #' use, and `meta$scheme` on a path says which one produced it.
 #' `"backward_ode_euler"` is [aci_smoother()]: the continuous backward smoothing
 #' equations integrated with an Euler step. `"theorem3_discrete"` is
-#' [aci_online()] and the lag table's reference smoother: the exact conditional
-#' law of the hidden state given the observed increments on the sampling grid,
-#' under the explicit single-step discretization. They agree only to first
+#' [aci_online()] and the lag table's reference smoother: the published
+#' leading-order Theorem 3 updates composed on the sampling grid, under the
+#' explicit single-step discretization. Neither scheme returns the exact
+#' posterior of an Euler-sampled record at a finite step; both approximate the
+#' same continuous-time conditional distribution. They agree only to first
 #' order in the step, so [aci_online()] at `lag = Inf` does not reproduce
 #' [aci_smoother()], and the gap grows with the length of the record rather than
 #' settling to a constant. See the Scheme section of [aci_online()] for the
@@ -66,17 +68,31 @@ NULL
 
 #' Assimilative causal metrics and influence ranges
 #'
-#' Gaussian relative entropy is oriented as smoother relative to filter. A
-#' normal `aci()` call uses the supplied-code backward-ODE headline smoother,
-#' including its correlated-noise correction, independently of `keep`.
-#' `lag_table()` and `aci(table = ...)` instead use the complete online
-#' Theorem 3 smoother; their finite-grid diagonal can therefore differ from
-#' headline ACI. `aci_range()` summarizes the duration of influence on the
-#' discrete time grid. A finite adaptive table is labelled
-#' `objective_on_truncated_table`; its `tail_bound` field is a heuristic tail
-#' estimate and must not be interpreted as a certified error bound. The
-#' `l1_linf` estimator is a ratio: the forward ratio and the exact form are
-#' integrated with composite Simpson, following the ACI reference code.
+#' Every quantity on this page is conditional on the supplied model, prior and
+#' observed record. The model supplies the likelihood and is not estimated
+#' from the record, so a positive value is influence under the dynamics that
+#' were supplied: it is not an empirically identified causal effect, an
+#' intervention effect or a significance statement. Gaussian relative entropy
+#' is oriented as smoother relative to filter, and its per-time value is a
+#' pointwise information gain in nats; summed over the record with the step it
+#' is a time-integrated value in nats times model time. The value carries the
+#' prior and the integration step as well as the model; [aci()] gives the
+#' structurally independent null's return at two steps and at a step coarse
+#' against the prior, each with the prior variance, horizon, scheme and
+#' regularization status it was measured under. A normal `aci()` call
+#' uses the supplied-code backward-ODE headline smoother, including its
+#' correlated-noise correction, independently of `keep`. `lag_table()` and
+#' `aci(table = ...)` instead use the complete online Theorem 3 smoother;
+#' their finite-grid diagonal can therefore differ from headline ACI.
+#' `aci_range()` summarizes the duration of influence on the discrete time
+#' grid. A finite adaptive table is labelled `objective_on_truncated_table`;
+#' its `tail_bound` field is a heuristic tail estimate and must not be
+#' interpreted as a certified error bound. It is a diagnostic under the
+#' retained record, not a guarantee about the cells the truncation dropped. The
+#' `l1_linf` estimator is a ratio, integrated with composite Simpson by
+#' default, following the ACI reference code; `quadrature = "sum"` uses the L1
+#' grid-function sum instead. The `exact` objective is a finite threshold sum
+#' with no time-axis quadrature, so it is unaffected by that choice.
 #'
 #' @references
 #' Andreou, M. and Chen, N. (2026). Bridging prediction and attribution:

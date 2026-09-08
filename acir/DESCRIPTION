@@ -29,7 +29,7 @@ License: MIT + file LICENSE
 URL: https://github.com/biometryhub/ACI,
     https://biometryhub.github.io/ACI/
 BugReports: https://github.com/biometryhub/ACI/issues
-Depends: R (>= 4.0.0)
+Depends: R (>= 4.1.0)
 Encoding: UTF-8
 Language: en-GB
 Imports: stats, graphics, utils

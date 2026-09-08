@@ -1,8 +1,14 @@
 # Performance tracking (PR-4 of the performance series): times the Section 8
 # stages of the core-engine specification on the reference records and
 # compares them with the committed baseline, relative to an R-loop
-# calibration so the runner's speed divides out. Warnings only until PR-10,
-# when --gate turns drift into a failure.
+# calibration so the runner's speed divides out. Warnings only for the initial
+# release: the step below runs without --gate, so drift is reported and the job
+# passes. dev/PROCESS.md records the Time gate with the same status. Turning
+# --gate on (PR-10 of the performance series) follows a reviewed change to the
+# harness's measurement and a re-recorded baseline: the present three-call
+# median on a 1 ms clock reports a cold call for stages costing under a
+# millisecond, which is what the standing warning on "online smoother, all
+# lags" measures. See dev/work/2026-09-08-bench-harness-resolution/intent.md.
 on:
   push:
     branches: [main]

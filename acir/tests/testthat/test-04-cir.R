@@ -44,6 +44,31 @@ test_that("C4/C5: l1_linf bound directions and equality under monotonicity", {
                  .fwd_lengths(p_mono, dt, "exact")["tau"]
   expect_gt(abs(unname(gap_simpson)), 1e-12)
 })
+
+# Pins the row quoted in the aci_range() `method` documentation: on a row
+# that decreases with lag the suffix maximum is the row itself, so the
+# objective and the L1 grid-sum ratio agree term by term while the default
+# Simpson ratio does not.  Simpson on c(1, .5, 0) is exactly 1 and the
+# suffix-maximum sum is exactly 1.5, so both sides are representable and the
+# comparison is made at tolerance 0, as line 17 of this file already does.
+test_that("the documented c(1, .5, 0) row separates the two functionals", {
+  dt <- 0.01
+  p  <- c(1, 0.5, 0)
+  expect_true(all(diff(p) <= 0))
+  expect_equal(unname(.fwd_lengths(p, dt, "exact")["tau"]),
+               1.5 * dt, tolerance = 0)
+  expect_equal(unname(.fwd_lengths(p, dt, "l1_linf",
+                                   quadrature = "sum")["tau"]),
+               1.5 * dt, tolerance = 0)
+  expect_equal(unname(.fwd_lengths(p, dt, "l1_linf")["tau"]),
+               1 * dt, tolerance = 0)
+  expect_identical(unname(.fwd_lengths(p, dt, "exact")["M"]), 1)
+  # the subjective read-outs on the same row, one grid interval apart
+  hit <- which(p > 0.25)
+  expect_equal(dt * max(hit), 2 * dt, tolerance = 0)
+  expect_equal(dt * (max(hit) - 1L), 1 * dt, tolerance = 0)
+})
+
 test_that("C6-lite: dyad CIR pipeline runs and produces sane windows", {
   m <- aci_dyad_model()
   s <- simulate(m, seed = 21, t_end = 3, dt = 5e-3)

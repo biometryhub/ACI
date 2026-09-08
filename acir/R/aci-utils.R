@@ -214,6 +214,10 @@ spd_floor <- function(R, eps = 1e-12) {
   e$j <- NA_integer_
   e$n <- 0L
   e$sites <- list()
+  ## Latch for `.aci_reg_report()`. One public call shares one recorder across
+  ## its filter, smoother, table and metric work, so the latch is what makes
+  ## the report once per call rather than once per kernel.
+  e$warned <- FALSE
   e
 }
 
@@ -269,6 +273,61 @@ spd_floor <- function(R, eps = 1e-12) {
   rownames(sites) <- NULL
   list(policy = rec$policy, fired = rec$n > 0L, n_events = rec$n,
        eps = 1e-12, sites = sites)
+}
+
+
+#' Report a fired recorder once, then freeze it (internal)
+#'
+#' Attaching the record to a returned object is what makes a floor
+#' inspectable; this is what makes it audible. A floor can be taken with no
+#' other diagnostic at all - the stiffness warning exists only in the explicit
+#' filter kernel, so a floor taken in the backward smoother is otherwise
+#' silent. The latch lives on the recorder, so a public call that runs a
+#' filter, a smoother and a table reports once and names the first event. The
+#' message carries no count: it is raised at the first freeze of the call,
+#' which can precede later events on the same recorder, so any count stated
+#' there would understate the call. `meta$regularization` on the returned
+#' object carries every event.
+#'
+#' `.aci_reg_freeze()` itself stays silent, so a caller that only wants the
+#' frozen record can take it without signalling.
+#'
+#' @param rec A recorder from `.aci_reg_new()`.
+#' @returns The value of `.aci_reg_freeze(rec)`.
+#' @noRd
+.aci_reg_report <- function(rec) {
+  if (rec$n > 0L && !isTRUE(rec$warned)) {
+    rec$warned <- TRUE
+    first <- rec$sites[[1L]]
+    aci_warn(
+      "aci_warn_regularized",
+      sprintf(paste(
+        "regularize = \"floor\" projected a covariance update back into the",
+        "positive-definite cone (first at %s, index %d, time %g). The",
+        "returned moments and every quantity derived from them are",
+        "regularized, not validated; meta$regularization records every event",
+        "of this call."),
+        first$site, first$first_index, first$first_time))
+  }
+  .aci_reg_freeze(rec)
+}
+
+
+#' The regularization line a fired result prints (internal)
+#'
+#' Printed only when a floor actually fired, so the output of a run that took
+#' none is unchanged. One helper keeps the four print methods reporting the
+#' same fact in the same words.
+#'
+#' @param reg A frozen record from `.aci_reg_freeze()`, or `NULL`.
+#' @returns Invisibly `NULL`; called for the line it prints.
+#' @noRd
+.aci_reg_cat <- function(reg) {
+  if (isTRUE(reg$fired))
+    cat(sprintf(paste0("  regularized: %d floor event(s) under ",
+                       "regularize = \"floor\"; see meta$regularization\n"),
+                reg$n_events))
+  invisible(NULL)
 }
 
 
@@ -348,10 +407,16 @@ spd_floor <- function(R, eps = 1e-12) {
     c("aci_error_covariance_not_spd", "aci_error_spd"),
     sprintf(paste0(
       "The %s must stay finite and positive definite; it reached %s at ",
-      "index %d (time %g), in the %s. Reduce dt, raise nsub, or use ",
-      "stepper = \"implicit\", which preserves positivity. To keep the ",
-      "previous behaviour, call with regularize = \"floor\"; every floored ",
-      "step is then recorded in the result's meta$regularization."),
+      "index %d (time %g), in the %s. The realised observation-noise Gram ",
+      "was accepted against the constructor's relative-conditioning contract ",
+      "at every step of this record, so this is ",
+      "integration instability on a valid observation model: reduce dt, ",
+      "raise nsub, or use stepper = \"implicit\", which preserves ",
+      "positivity. To keep the previous behaviour, call with ",
+      "regularize = \"floor\"; every floored step is then recorded in the ",
+      "result's meta$regularization. Flooring changes the numerical ",
+      "covariance; it does not establish that the step resolves the ",
+      "dynamics."),
       info$role, format(value), index, time, info$where),
     site = site, role = info$role, index = index, time = time, value = value)
 }
@@ -424,8 +489,13 @@ spd_floor <- function(R, eps = 1e-12) {
   if (!is.finite(value))
     aci_abort(c("aci_error_covariance_not_spd", "aci_error_spd"),
               sprintf(paste0("The %s became %s at index %d (time %g). ",
-                             "This is not recoverable by regularisation; ",
-                             "reduce dt or raise nsub."),
+                             "The realised observation-noise Gram was ",
+                             "accepted against the constructor's ",
+                             "relative-conditioning contract at every step ",
+                             "of this record, so this is integration ",
+                             "instability on a valid observation model; it ",
+                             "is not recoverable by regularisation. Reduce ",
+                             "dt or raise nsub."),
                       .ACI_COV_SITES[[site]]$role, format(value), rec$j, tt),
               site = site, role = .ACI_COV_SITES[[site]]$role,
               index = rec$j, time = tt, value = value)
@@ -537,14 +607,18 @@ masked_ginv <- function(gxx, idxA) {
 
 #' Observed trajectory on a uniform time grid
 #'
-#' Constructs the observation object consumed throughout the package. The grid
-#' must be strictly increasing and uniformly spaced, and the observations must
-#' be finite; version 0 additionally assumes the observations are effectively
-#' noise-free. The noise-free restriction follows the method's current
-#' published scope: andreou2026cir Section 2.1 leaves noise-contaminated
-#' observations to future work, and its Discussion lists them as an open
-#' direction, so this is a limitation of the framework as published, not a
-#' modelling assumption added by the package.
+#' This release assimilates a complete record of the observed state on a
+#' uniform grid, taken as noise-free. Every observed channel must be present at
+#' every time, the times must be strictly increasing and uniformly spaced, and
+#' the values must be finite; independent sensor error is refused rather than
+#' absorbed. `observed_trajectory()` constructs the observation object consumed
+#' throughout the package and enforces those requirements.
+#'
+#' The noise-free restriction follows the method's current published scope:
+#' andreou2026cir Section 2.1 leaves noise-contaminated observations to future
+#' work, and its Discussion lists them as an open direction, so this is a
+#' limitation of the framework as published, not a modelling assumption added
+#' by the package.
 #'
 #' @param t Numeric vector of observation times, strictly increasing and
 #'   uniformly spaced.
@@ -580,11 +654,16 @@ observed_trajectory <- function(t, x, noise_free = TRUE, names = NULL) {
     aci_abort("aci_error_obs_contract", "t must be strictly increasing.")
   if (max(abs(dtv - dtv[1])) > 1e-8 * max(abs(dtv[1]), 1e-12))
     aci_abort("aci_error_obs_contract",
-      "Observations must lie on a uniform time grid; resample first.")
+      paste("Observations must lie on a uniform time grid. Resample or subset",
+            "the record onto one before constructing the trajectory;",
+            "interpolation onto a uniform grid does not create independent",
+            "observations and does not remove observation error."))
   if (!isTRUE(noise_free))
     aci_abort("aci_error_obs_contract",
       paste("This release takes the observed path as noise-free",
-            "(noise_free = TRUE); observation error is outside its scope."))
+            "(noise_free = TRUE); observation error is outside its scope.",
+            "The model's process diffusion is not sensor variance and cannot",
+            "stand in for it."))
   if (!is.null(names)) {
     if (!is.character(names) || length(names) != ncol(x) || anyNA(names) ||
         any(!nzchar(names)) || anyDuplicated(names))
@@ -619,7 +698,11 @@ observed_trajectory <- function(t, x, noise_free = TRUE, names = NULL) {
 as_obs <- function(x, ...) UseMethod("as_obs")
 
 
-#' @describeIn as_obs Returns the trajectory unchanged.
+#' @describeIn as_obs Returns an existing `obs_traj` unchanged. It is not
+#'   re-validated, so an object whose fields were assigned into after
+#'   construction keeps whatever `dt`, `k` or `noise_free` it was left with.
+#'   Observation objects are immutable through the supported workflow: build a
+#'   changed record with [observed_trajectory()] rather than modifying one.
 #' @export
 as_obs.obs_traj <- function(x, ...) x
 

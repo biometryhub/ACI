@@ -130,8 +130,11 @@ test_that("a variance the policy must see sends both routes the same way", {
   ## floor policy: one recorded event at that interval, the floored value
   ## carried through the recursion
   rec <- .aci_reg_for("floor", bundle$t)
-  sm <- .smoother_thmD1_compiled(bundle, bad, validate = FALSE,
-                                 warn_cost = FALSE, regularize = rec)
+  sm <- expect_warning(
+    .smoother_thmD1_compiled(bundle, bad, validate = FALSE,
+                             warn_cost = FALSE, regularize = rec),
+    class = "aci_warn_regularized"
+  )
   frozen <- .aci_reg_freeze(rec)
   expect_identical(frozen$n_events, 1L)
   expect_true(all(is.finite(sm$cov)))

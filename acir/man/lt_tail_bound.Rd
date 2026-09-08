@@ -18,6 +18,11 @@ Numeric vector of heuristic tail estimates.
 \description{
 The historical \code{lt_tail_bound()} name is retained for compatibility, but its
 value is a heuristic tail estimate, not a certified mathematical error bound.
+What the package computes is a norm-based suffix accumulation with a
+multiplier of 1.5; andreou2026smoother eq. 3.19 is a spectral-radius
+condition, and individual spectral radii do not establish contraction of an
+arbitrary ordered product. The value is therefore a diagnostic on the
+retained record, not a guarantee about the cells the truncation dropped.
 }
 \examples{
 m <- aci_dyad_model()

@@ -130,8 +130,10 @@
   below <- 0L
   chp <- sqrt(R_s)
   log_chp <- log(chp)
-  ## The recursion's tail bound, in its arithmetic order, for a scalar state
-  ## (`sqrt(l)` is exactly one).
+  ## The recursion's heuristic tail estimate, in its arithmetic order, for a
+  ## scalar state (`sqrt(l)` is exactly one).  The 1.5 multiplier and the
+  ## norm-based suffix accumulation are the shipped heuristic, not the
+  ## spectral-radius condition of andreou2026smoother eq. 3.19.
   bound <- function(Dn2, k) {
     1.5 * (Dn2 * T2[k] / (2 * lam) + Dn2 * Ub[k] / (2 * lam))
   }

@@ -34,7 +34,11 @@ Generic converting the supported observation representations to an
 }
 \section{Methods (by class)}{
 \itemize{
-\item \code{as_obs(obs_traj)}: Returns the trajectory unchanged.
+\item \code{as_obs(obs_traj)}: Returns an existing \code{obs_traj} unchanged. It is not
+re-validated, so an object whose fields were assigned into after
+construction keeps whatever \code{dt}, \code{k} or \code{noise_free} it was left with.
+Observation objects are immutable through the supported workflow: build a
+changed record with \code{\link[=observed_trajectory]{observed_trajectory()}} rather than modifying one.
 
 \item \code{as_obs(matrix)}: Builds a uniform grid from \code{dt} and \code{t0} for a matrix of
 observations.

@@ -1,9 +1,14 @@
 # Numerical validation of acir
 
-acir's numerical validation does not use a scenario registry. Every graded
-quantity is checked against outputs of the method authors' own MATLAB
-programs, hoisted into callable form as byte-exact extracts and pinned by
-hash, so the oracle is a source this package's authors did not write.
+acir's numerical validation does not use a scenario registry. Each graded
+quantity is checked against a hash-pinned reference record whose class its
+register row names. Where the method authors' own MATLAB programs compute the
+quantity, that program's output is the comparator, hoisted into callable form
+as a byte-exact extract. Where no upstream counterpart exists (the noise
+cross-covariance terms, the matrix online smoother, the general auxiliary
+matrices), the comparator is an independent MATLAB or R transcription of the
+published equations, or an analytic identity solved in the test file. The
+register separates the two, and a reader must not read one as the other.
 
 The evidence is in three places in this package:
 

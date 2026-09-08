@@ -18,9 +18,12 @@
 ##   aci-methods.R          base-graphics methods for the engine result classes
 ##
 ## Things to know before editing:
-##   * The Theorem 3 lag table is exact for the EXPLICIT single-step
-##     filter/smoother discretization; paths carry meta$stepper / meta$nsub
-##     and lag_table() recomputes (with aci_warn_stepper) on mismatch.
+##   * The Theorem 3 lag table is derived for the EXPLICIT single-step
+##     filter/smoother discretization, and the leading-order updates it
+##     composes approximate the continuous-time conditional law rather than
+##     exactly conditioning the Euler-sampled record; paths carry
+##     meta$stepper / meta$nsub and lag_table() recomputes (with
+##     aci_warn_stepper) on mismatch.
 ##   * All errors/warnings are classed ("aci_error_*", "aci_warn_*").
 ##   * Golden alignment vs the published reference code lives in
 ##     tests/testthat/test-10-golden.R + helper-golden-p1.R.

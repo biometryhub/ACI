@@ -288,15 +288,20 @@ fixtures:
     exists_because: >
       The four reference files are sampled every twentieth step.  This file is
       not: each of its 108 rows reduces one series over all 4001 steps, so a
-      per-step output defect at an unsampled index moves at least one of min,
-      max, mean or sum_abs and cannot pass.  It costs 7 KB and removes the
-      only real objection to sampling.
+      per-step output defect at an unsampled index that changes the series'
+      minimum, maximum, mean or sum of absolute values cannot pass.  It costs
+      7 KB and bounds magnitude over the whole record.  It does not fix
+      position: the four reductions are order-insensitive, so a rearrangement
+      confined to unsampled indices is invisible to them and to the sampled
+      files.
     grades: >
-      Every coefficient column and every reference series of all four
-      partitions, over the full record rather than the sampled indices.
+      The magnitude of every coefficient column and every reference series of
+      all four partitions, over the full record rather than the sampled
+      indices, through four order-insensitive reductions.
     does_not_grade: >
-      Anything the sampled files do not already grade.  It is a completeness
-      device, not a second oracle: the same producer computed both.
+      Position at the unsampled indices, and anything the sampled files do not
+      already grade.  It is a magnitude-completeness device, not a second
+      oracle: the same producer computed both.
 
 # Structural facts measured during generation and asserted by the test rather
 # than assumed.  Each is a precondition of the fixture LAYOUT, so a change in
@@ -452,6 +457,14 @@ refresh:
     This proof is pinned to that run and is not re-run by the shipped tests;
     what the shipped tests re-run is the signal's regeneration from its seed
     and the four partitions' agreement with the pinned bytes.
+
+    Qualification, 2026-09-08.  The paragraph above describes the script as it
+    ran on 2026-08-27.  The producer script shipped at
+    tools/fixtures/make-partition-fixtures.R names verbs the aci 0.0.30
+    namespace does not export, so the script as shipped has not been
+    demonstrated to reproduce these bytes, and the regeneration has not been
+    repeated.  These fixtures are retained as pinned regression evidence, not
+    as a reproduced result.
 
 
 # =========================================================================

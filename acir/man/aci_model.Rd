@@ -68,6 +68,13 @@ diffusion-channel counts. Random-number generation or result-changing
 mutable state inside a coefficient function is outside the model contract.
 Closed-form execution may realise each coefficient once on the observation
 grid and reuse that realised path.
+
+A model is fixed once constructed. Its derived drifts capture the
+coefficient functions supplied to the constructor, so assigning a new
+coefficient into an existing model changes only the field assigned and
+leaves simulation, filtering and every realised path on the original
+coefficients. Change a parameter by rebuilding the model with
+\code{\link[=aci_model]{aci_model()}}, not by modifying one.
 }
 \examples{
 aci_model(
@@ -78,6 +85,19 @@ aci_model(
   Sx1 = function(t, x) matrix(0.5, 1, 1),
   Sy2 = function(t, x) matrix(1, 1, 1),
   k = 1, l = 1)
+
+# Coefficients are fixed for the model's lifetime: change a parameter by
+# rebuilding, not by assigning into an existing model.
+make_dyadish <- function(lambda)
+  aci_model(Lx = function(t, x) matrix(1, 1, 1),
+            fx = function(t, x) lambda * x,
+            Ly = function(t, x) matrix(-0.5, 1, 1),
+            fy = function(t, x) 0,
+            Sx1 = function(t, x) matrix(0.5, 1, 1),
+            Sy2 = function(t, x) matrix(1, 1, 1),
+            k = 1, l = 1)
+m_a <- make_dyadish(-0.5)
+m_b <- make_dyadish(-1)
 
 }
 \seealso{

@@ -127,7 +127,7 @@ validate_stochastic <- function(m, n_probe = 5) {
     # SPEC-04 contract: Gx SPD; Sx has no y argument by signature already.
     Gx <- Sx1 %*% t(Sx1)
     rc <- rcond(Gx)
-    if (!is.finite(rc) || rc < 1e-12)
+    if (!is.finite(rc) || rc < .ACI_GRAM_RCOND_MIN)
       aci_abort("aci_error_gram",
         "Gx = Sx Sx' is degenerate; the engines require nondegenerate observation noise (jiang2026enkbs eq. 1b / andreou2026aci SI regularity).")
   }
@@ -257,6 +257,13 @@ print.stochastic_model <- function(x, ...) {
 #'   Closed-form execution may realise each coefficient once on the observation
 #'   grid and reuse that realised path.
 #'
+#'   A model is fixed once constructed. Its derived drifts capture the
+#'   coefficient functions supplied to the constructor, so assigning a new
+#'   coefficient into an existing model changes only the field assigned and
+#'   leaves simulation, filtering and every realised path on the original
+#'   coefficients. Change a parameter by rebuilding the model with
+#'   [aci_model()], not by modifying one.
+#'
 #' @seealso [aci_model_from_affine()], [aci_filter()], [aci()]
 #'
 #' @examples
@@ -268,6 +275,19 @@ print.stochastic_model <- function(x, ...) {
 #'   Sx1 = function(t, x) matrix(0.5, 1, 1),
 #'   Sy2 = function(t, x) matrix(1, 1, 1),
 #'   k = 1, l = 1)
+#'
+#' # Coefficients are fixed for the model's lifetime: change a parameter by
+#' # rebuilding, not by assigning into an existing model.
+#' make_dyadish <- function(lambda)
+#'   aci_model(Lx = function(t, x) matrix(1, 1, 1),
+#'             fx = function(t, x) lambda * x,
+#'             Ly = function(t, x) matrix(-0.5, 1, 1),
+#'             fy = function(t, x) 0,
+#'             Sx1 = function(t, x) matrix(0.5, 1, 1),
+#'             Sy2 = function(t, x) matrix(1, 1, 1),
+#'             k = 1, l = 1)
+#' m_a <- make_dyadish(-0.5)
+#' m_b <- make_dyadish(-1)
 #'
 #' @export
 aci_model <- function(Lx, fx, Ly, fy, Sx1, Sx2 = NULL, Sy1 = NULL, Sy2,
@@ -367,6 +387,11 @@ eval_coefs <- function(m, t, x) {
 }
 
 
+## The constructor's Gram nondegeneracy threshold, shared by the realised-path
+## check so that the two cannot disagree about what is singular.
+.ACI_GRAM_RCOND_MIN <- 1e-12
+
+
 #' Validate a conditional-Gaussian model (internal)
 #'
 #' Probes the coefficient functions, checks that the observed drift is affine
@@ -388,13 +413,10 @@ validate_cgns <- function(m, n_probe = 5) {
   for (i in seq_len(n_probe)) {
     t <- (i - 1) * sqrt(2)
     x <- sin(seq_len(m$k) * (i + 0.25))
-    co <- eval_coefs(m, t, x)
-    if (!all(dim(co$Lx) == c(m$k, m$l)))
-      aci_abort("aci_error_model_contract", "Lx(t,x) must be k x l.")
-    if (!all(dim(co$Ly) == c(m$l, m$l)))
-      aci_abort("aci_error_model_contract", "Ly(t,x) must be l x l.")
-    if (length(co$fx) != m$k || length(co$fy) != m$l)
-      aci_abort("aci_error_model_contract", "fx / fy dims wrong.")
+    ## The diffusion shapes are a precondition of the Gram products inside
+    ## `eval_coefs()`, so they are tested before it runs: a mismatched shared
+    ## channel pair otherwise reaches `Sy1 %*% t(Sx1)` and fails with the base
+    ## "non-conformable arguments" instead of the contract message below.
     Sx1 <- as.matrix(m$Sx1(t, x)); Sx2 <- as.matrix(m$Sx2(t, x))
     Sy1 <- as.matrix(m$Sy1(t, x)); Sy2 <- as.matrix(m$Sy2(t, x))
     if (nrow(Sx1) != m$k || nrow(Sx2) != m$k ||
@@ -403,9 +425,16 @@ validate_cgns <- function(m, n_probe = 5) {
     if (ncol(Sx1) != ncol(Sy1) || ncol(Sx2) != ncol(Sy2))
       aci_abort("aci_error_model_contract",
                 "Shared CGNS channel pairs Sx1/Sy1 and Sx2/Sy2 must have matching column counts.")
+    co <- eval_coefs(m, t, x)
+    if (!all(dim(co$Lx) == c(m$k, m$l)))
+      aci_abort("aci_error_model_contract", "Lx(t,x) must be k x l.")
+    if (!all(dim(co$Ly) == c(m$l, m$l)))
+      aci_abort("aci_error_model_contract", "Ly(t,x) must be l x l.")
+    if (length(co$fx) != m$k || length(co$fy) != m$l)
+      aci_abort("aci_error_model_contract", "fx / fy dims wrong.")
     if (any(!is.finite(c(co$Lx, co$fx, co$Ly, co$fy, Sx1, Sx2, Sy1, Sy2))))
       aci_abort("aci_error_model_contract", "Non-finite CGNS coefficient values at a probe point.")
-    if (rcond(co$gxx) < 1e-12)
+    if (rcond(co$gxx) < .ACI_GRAM_RCOND_MIN)
       aci_abort("aci_error_gram",
         paste("The observation-noise Gram gxx is singular at a probe point;",
               "every observed channel needs a non-zero noise level."))
@@ -602,8 +631,12 @@ aci_model_from_affine <- function(f_full, g_full, Sx, Sy_hidden, k, l,
 #' @param object A `stochastic_model` or `cgns_model` object.
 #' @param nsim Positive whole number of realisations to generate.
 #' @param seed Optional non-negative whole number seeding the generator. Seeding
-#'   is contained: the caller's `.Random.seed` is restored when the call
-#'   returns, so a reproducible path leaves the caller's stream where it was.
+#'   is contained: an existing `.Random.seed` is restored bit for bit when the
+#'   call returns, so a reproducible path leaves the caller's stream where it
+#'   was and the next draw is the draw that would have followed no call at all.
+#'   When no `.Random.seed` exists, one is created before the seeded draw so
+#'   that there is a state to restore, and the caller is left holding it. An
+#'   unseeded call draws from, and advances, the caller's stream as usual.
 #' @param t_end Positive 1-length numeric total simulated time, excluding
 #'   burn-in. Called `T` before 0.1.0; that name is accepted with a warning
 #'   until 0.2.0.

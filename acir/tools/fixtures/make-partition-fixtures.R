@@ -31,9 +31,21 @@
 ##
 ##   ACIR_FIXTURE_C3_DIR=/path/to/comparison/c3 Rscript ... <outdir>
 ##
-## Without it the step is skipped and reported as skipped.  The proof is
-## recorded under `refresh: regeneration_proof:` in the manifest and does not
-## need to re-run to reproduce the shipped bytes.
+## Without it the step is skipped and reported as skipped.  What the original
+## run established is recorded under `refresh: regeneration_proof:` in the
+## manifest, with the dated qualification that the script as shipped has not
+## been demonstrated to reproduce the pinned bytes, for the reason below.
+##
+## PRODUCER API ADAPTER, STATIC AND UNEXERCISED.  `aci` 0.0.30 exports the
+## verbs this script calls under different names, and takes different argument
+## names in three places.  The mapping below was written by reading that
+## package's NAMESPACE and R sources; the producer has NOT been executed and
+## the adapter has NOT been run against it.  Nothing in this file therefore
+## establishes that `aci` 0.0.30 reproduces the shipped bytes: only an
+## authorised run of the pinned producer, followed by comparison of the six
+## regenerated outputs with the shipped fixtures, would.  Under
+## PRODUCER = "acir" every mapping is the identity and the script behaves as
+## it did before the adapter was added.
 ## =========================================================================
 
 args <- commandArgs(trailingOnly = TRUE)
@@ -51,7 +63,78 @@ dir.create(VER, showWarnings = FALSE, recursive = TRUE)
 
 suppressMessages(requireNamespace(PRODUCER, quietly = TRUE))
 P  <- asNamespace(PRODUCER)
-gg <- function(nm) get(nm, envir = P)
+
+## -------------------------------------------------------------------------
+## Producer API adapter (static; see the header note).
+## -------------------------------------------------------------------------
+## The version gate.  A producer this script has no mapping for, or a build of
+## `aci` other than the one that made the pinned bytes, is refused rather than
+## silently adapted: the fixtures are evidence about a named build.
+PRODUCER_VERSION <- as.character(utils::packageVersion(PRODUCER))
+PINNED <- list(aci = "0.0.30", acir = NULL)   ## NULL: any acir accepted
+if( !PRODUCER %in% names(PINNED) )
+  stop("unknown producer: ", PRODUCER, ". This script knows aci and acir.")
+if( !is.null(PINNED[[PRODUCER]]) &&
+    !identical(PRODUCER_VERSION, PINNED[[PRODUCER]]) )
+  stop(sprintf(paste(
+    "the pinned fixtures were produced by %s %s; the installed %s is %s.",
+    "Point the third argument at a library holding the pinned build",
+    "rather than adapting this script to a different producer."),
+    PRODUCER, PINNED[[PRODUCER]], PRODUCER, PRODUCER_VERSION))
+
+## Function-name mapping, each read off the parent's NAMESPACE and R source:
+##   aci_enso_model  -> model_enso6  NAMESPACE:100  R/benchmark_models.R:513
+##   aci_filter      -> da_filter    NAMESPACE:72   R/assimilation.R:217
+##   aci_smoother    -> da_smooth    NAMESPACE:73   R/assimilation.R:242
+##   aci_conditional -> nontarget    NAMESPACE:112  R/assimilation.R:740
+## `aci` (NAMESPACE:52) and `observed_trajectory` (NAMESPACE:113) carry the
+## same name in both packages, and the internal `.compile_cgns_run()` takes the
+## conditional specification as its third positional argument in both
+## (R/compiled_scalar.R:75 there, R/aci-kernels-scalar.R:104 here), so the two
+## calls to it below need no adapter.
+VERB <- if( identical(PRODUCER, "aci") ) {
+  c(aci_enso_model = "model_enso6", aci_filter = "da_filter",
+    aci_smoother = "da_smooth", aci_conditional = "nontarget",
+    aci = "aci", observed_trajectory = "observed_trajectory")
+} else {
+  stats::setNames(nm = c("aci_enso_model", "aci_filter", "aci_smoother",
+                         "aci_conditional", "aci", "observed_trajectory"))
+}
+gg <- function(nm) get(VERB[[nm]], envir = P)
+
+## Argument-name mapping 1: the simulation horizon.  acir's
+## simulate.stochastic_model() takes t_end and accepts a deprecated T until
+## 0.2.0; aci 0.0.30 takes T (R/model_classes.R:601-603).  Naming the horizon
+## through this constant keeps the acir branch off the deprecated spelling
+## while leaving the pinned generator settings unchanged.
+HORIZON <- if( identical(PRODUCER, "aci") ) "T" else "t_end"
+
+## Argument-name mapping 2: the conditional specification constructor.  acir's
+## aci_conditional(given =, method =) is aci 0.0.30's
+## nontarget(blocks =, strategy =).  The two strategy names are read from the
+## parent's own documentation (R/assimilation.R:727-731) against acir's
+## (R/aci-assimilation.R:923-926): method = "reduce" substitutes the channels
+## as known forcing, which is strategy = "prescribed_forcing"; method = "mask"
+## gives their innovations zero weight, which is strategy = "inflate".
+make_spec <- function(given, method, first_step = "uniform") {
+  if( !identical(first_step, "uniform") )
+    stop("aci 0.0.30 has no first_step convention; only 'uniform' is ",
+         "reproducible here.")
+  if( identical(PRODUCER, "aci") ) {
+    strategy <- switch(method, reduce = "prescribed_forcing", mask = "inflate",
+                       stop("no aci 0.0.30 strategy for method = ", method))
+    return(gg("aci_conditional")(blocks = given, strategy = strategy))
+  }
+  return(gg("aci_conditional")(given = given, method = method))
+}
+
+## Argument-name mapping 3: the specification's argument name on the three
+## consumers.  acir takes conditional =; aci 0.0.30's da_filter.cgns_model(),
+## da_smooth.cgns_model() and aci() all take nontarget =.
+COND <- if( identical(PRODUCER, "aci") ) "nontarget" else "conditional"
+with_cond <- function(f, spec, ...) {
+  return(do.call(f, c(list(...), stats::setNames(list(spec), COND))))
+}
 
 sha256 <- function(f) {
   z <- system2("shasum", c("-a", "256", shQuote(f)), stdout = TRUE)
@@ -60,7 +143,7 @@ sha256 <- function(f) {
 md5 <- function(f) unname(tools::md5sum(f))
 
 cat(sprintf("producer: %s %s   out: %s\n", PRODUCER,
-            as.character(utils::packageVersion(PRODUCER)), OUTDIR))
+            PRODUCER_VERSION, OUTDIR))
 cat(sprintf("regeneration proof against C3: %s\n\n",
             if( nzchar(C3) ) C3 else "SKIPPED (ACIR_FIXTURE_C3_DIR unset)"))
 
@@ -73,7 +156,9 @@ SIGNAL_SHA <- "77412008549a2980af8bc843c3548a673a4c2df952a40aea12ef2d30d8dec250"
 
 sig_file <- file.path(FIX, "enso6_partition_signal.csv")
 em <- gg("aci_enso_model")(variant = "aci_code", hidden = c("u", "hW", "tau"))
-es <- simulate(em, seed = 42, T = 20, dt = 0.005)
+es <- do.call(stats::simulate,
+              c(list(em, seed = 42, dt = 0.005),
+                stats::setNames(list(20), HORIZON)))
 sx <- as.matrix(es$obs$x); sy <- as.matrix(es$hidden)
 colnames(sx) <- c("TC", "TE", "I"); colnames(sy) <- c("u", "hW", "tau")
 utils::write.csv(cbind(t = es$obs$t, sx, sy), sig_file, row.names = FALSE)
@@ -265,14 +350,14 @@ ov   <- m$meta$vars$observed
 ob   <- gg("observed_trajectory")(path$t, as.matrix(path[, ov, drop = FALSE]))
 init <- list(mean = path$tau[1L], cov = matrix(0.1, 1L, 1L))
 
-spec  <- gg("aci_conditional")(given = c("u", "hW"), method = "reduce")
-specI <- gg("aci_conditional")(given = c("u", "hW"), method = "mask")
-fB <- gg("aci_filter")(m, ob, init = init, conditional = spec)
-sB <- gg("aci_smoother")(m, ob, filter = fB, init = init, conditional = spec)
-rB <- gg("aci")(m, ob, init = init, conditional = spec)
-fC <- gg("aci_filter")(m, ob, init = init, conditional = specI)
-sC <- gg("aci_smoother")(m, ob, filter = fC, init = init, conditional = specI)
-rC <- gg("aci")(m, ob, init = init, conditional = specI)
+spec  <- make_spec(c("u", "hW"), "reduce")
+specI <- make_spec(c("u", "hW"), "mask")
+fB <- with_cond(gg("aci_filter"), spec, m, ob, init = init)
+sB <- with_cond(gg("aci_smoother"), spec, m, ob, filter = fB, init = init)
+rB <- with_cond(gg("aci"), spec, m, ob, init = init)
+fC <- with_cond(gg("aci_filter"), specI, m, ob, init = init)
+sC <- with_cond(gg("aci_smoother"), specI, m, ob, filter = fC, init = init)
+rC <- with_cond(gg("aci"), specI, m, ob, init = init)
 
 bB  <- get(".compile_cgns_run", envir = P)(m, ob, spec)
 ovr <- colnames(bB$x)

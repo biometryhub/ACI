@@ -65,8 +65,35 @@ A \code{cgns_model} for the chosen ENSO partition, ready for
 Constructs the six-variable ENSO system split into an observed and a hidden
 component at \code{hidden}. \code{I} must remain observed, and so must \code{TC} unless the
 zeroth-order approximation below is requested. The coefficients are the
-fixed-state ones of the ACI_code conditional ENSO scripts.
+fixed-state ones of the ACI_code conditional ENSO scripts. The
+constructor's own default partition is \code{hidden = c("hW", "tau")}; a
+partition whose hidden components differ widely in stationary variance
+needs a stated prior, as the next section and the examples show.
 }
+\section{Prior for a multi-state partition}{
+When \code{init} is omitted the assimilation verbs supply one scalar times the
+identity, derived from the mean over hidden components of the hidden-noise
+Gram and of the hidden damping. On \code{hidden = c("u", "hW", "tau")} that
+mean is dominated by \code{tau}: the componentwise Ornstein-Uhlenbeck
+stationary scales \verb{gyy_ii / (2 |Ly_ii|)} are
+\verb{(0.0032, 0.0008, 0.283697)} while the automatic scalar is \code{1.221602},
+about 380 times too wide on \code{u} and \code{h_W}. The explicit single-step
+Riccati update then leaves the positive-definite cone at the first update:
+on the record of the examples below, \code{aci(m, ob)} aborts
+\code{aci_error_covariance_not_spd} at index 2, time 0.005, smallest eigenvalue
+-7.149360359. The bare constructor's two-state default refuses the same
+way on its own record, at -8.265707365.
+
+That refusal is hidden-covariance integration instability on a valid
+observation model, not a rank-deficient observation Gram: on the same 801
+points the observation Gram has smallest eigenvalue 0.000325 and smallest
+reciprocal condition number 0.00244 throughout. Because the failure is at
+the first update there is no opening window whose discarding would repair
+it. State a prior instead - the examples compute the componentwise
+stationary scale from the model's own coefficients - or refine the
+integration.
+}
+
 \section{T_C hidden (zeroth-order)}{
 The six-state ENSO system is not conditionally Gaussian with \code{T_C} hidden:
 the damping \verb{c_1(t, T_C) T_C} is cubic in \code{T_C}. \code{ACI_code}'s
@@ -119,6 +146,50 @@ path <- data.frame(t = sim$obs$t, u = sim$hidden[, 1],
                    hW = sim$hidden[, 2], tau = sim$hidden[, 3])
 aci_enso_model(hidden = "TC", approximation = "zeroth_order_c1",
             prescribed = path)
+
+# Assimilating the three hidden states u, h_W and tau, with the prior
+# stated componentwise: gyy_ii / (2 |Ly_ii|) is the Ornstein-Uhlenbeck
+# stationary variance of hidden component i, read off the model's own
+# coefficients at the first observation. Default explicit stepper,
+# nsub = 1.
+m   <- aci_enso_model(hidden = c("u", "hW", "tau"))
+ob  <- as_obs(simulate(m, seed = 12, t_end = 4, dt = 0.005, burn_in = 0))
+d0  <- function(f) diag(as.matrix(f(ob$t[1], ob$x[1, ])))
+gyy <- d0(function(t, x) tcrossprod(m$Sy1(t, x)) + tcrossprod(m$Sy2(t, x)))
+Ly  <- d0(m$Ly)
+ini <- list(mean = m$meta$ic_default$y0, cov = diag(gyy / (2 * abs(Ly))))
+diag(ini$cov)                      # 0.0032, 0.0008, 0.283697
+a <- aci(m, ob, init = ini)
+max(a$aci)                         # 1.830865
+a$meta$regularization[c("policy", "fired", "n_events")]
+
+# Omitting init supplies the scalar automatic prior, which is far too wide
+# on u and h_W, and the recursion is refused at the first update.
+e <- tryCatch(suppressWarnings(aci(m, ob)), error = function(e) e)
+class(e)[1]
+c(index = e$index, time = e$time, value = e$value)
+
+\donttest{
+# Checks on the configuration above, not alternatives to it. Refining the
+# step under the stated prior stays event-free and settles near 1.81. The
+# explicit and implicit schemes are not required to agree at a finite
+# step; this is a self-consistency check on one record, not an accuracy
+# guarantee.
+max(aci(m, ob, init = ini, nsub = 20)$aci)                    # 1.813052
+max(aci(m, ob, init = ini, stepper = "implicit", nsub = 20)$aci)
+
+# Refining enough to make the automatic-prior record run at all does not
+# recover the same number, which is why the prior is stated rather than
+# worked around.
+max(suppressWarnings(aci(m, ob, nsub = 20))$aci)              # 4.821106
+max(suppressWarnings(aci(m, ob, stepper = "implicit"))$aci)   # 4.821235
+
+# Sensitivity of the stated prior: 0.5x to 4x run event-free, 8x is
+# refused at index 2, and the automatic prior is about 380x.
+vapply(c(0.5, 1, 2, 4), function(s) {
+  max(aci(m, ob, init = list(mean = ini$mean, cov = s * ini$cov))$aci)
+}, numeric(1))
+}
 
 }
 \references{

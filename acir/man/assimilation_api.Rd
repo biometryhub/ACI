@@ -26,9 +26,11 @@ Two discretizations of the same continuous-time smoothing problem are in
 use, and \code{meta$scheme} on a path says which one produced it.
 \code{"backward_ode_euler"} is \code{\link[=aci_smoother]{aci_smoother()}}: the continuous backward smoothing
 equations integrated with an Euler step. \code{"theorem3_discrete"} is
-\code{\link[=aci_online]{aci_online()}} and the lag table's reference smoother: the exact conditional
-law of the hidden state given the observed increments on the sampling grid,
-under the explicit single-step discretization. They agree only to first
+\code{\link[=aci_online]{aci_online()}} and the lag table's reference smoother: the published
+leading-order Theorem 3 updates composed on the sampling grid, under the
+explicit single-step discretization. Neither scheme returns the exact
+posterior of an Euler-sampled record at a finite step; both approximate the
+same continuous-time conditional distribution. They agree only to first
 order in the step, so \code{\link[=aci_online]{aci_online()}} at \code{lag = Inf} does not reproduce
 \code{\link[=aci_smoother]{aci_smoother()}}, and the gap grows with the length of the record rather than
 settling to a constant. See the Scheme section of \code{\link[=aci_online]{aci_online()}} for the

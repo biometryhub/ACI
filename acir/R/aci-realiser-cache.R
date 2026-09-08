@@ -19,9 +19,12 @@
 # points, the first, the middle and the last, and comparing bit for bit with
 # the stored arrays there. Storing an entry evaluates no closure, so the
 # generic route keeps its contract of one evaluation per grid point. A
-# captured value that changed everywhere fails the probe; one that changed
-# only away from all three points would not, and the option below switches
-# the cache off for a model of that kind.
+# captured value that changed everywhere fails the probe; a change that is
+# visible only away from all three points is not detected, and the option
+# below switches the cache off for a model of that kind. Model coefficients
+# are fixed deterministic functions for the model's lifetime, so within the
+# supported workflow there is nothing for the probe to miss: rebuild the model
+# after changing a parameter rather than assigning into an existing one.
 
 .realise_cache <- new.env(parent = emptyenv())
 .realise_cache$entries <- list()
@@ -91,6 +94,15 @@
 #' recently used entry once `.realise_cache_size` are held. The option
 #' `aci.realiser_cache` set to `FALSE` bypasses the cache entirely.
 #'
+#' The probe is the first, middle and last grid point, compared bit for bit.
+#' It detects a captured parameter whose change shows at any of those three
+#' points; a change visible only away from all three is not detected. That
+#' limit is outside the model contract rather than inside it, because
+#' coefficients are fixed deterministic functions for the model's lifetime:
+#' rebuild the model with [aci_model()] after changing a parameter, or set
+#' `aci.realiser_cache = FALSE` for a model whose coefficients read state that
+#' moves.
+#'
 #' @param model A `cgns_model`.
 #' @param obs An `obs_traj` with the model's observed dimension.
 #' @returns Realised coefficient arrays, as from `.realise_cgns_grid_once()`,
@@ -117,7 +129,7 @@
   ## The unconditioned precision path is a pure function of these arrays, so
   ## it is realised once with them; the conditioned routes derive their own.
   attr(full, "gxx_weight") <- .compiled_precision_path(
-    full$gxx, length(obs$t) - 1L
+    full$gxx, length(obs$t) - 1L, tgrid = obs$t
   )
   entry <- list(model = model, t = obs$t, x = obs$x,
                 probes = .realise_probe_stored(full, length(obs$t)),

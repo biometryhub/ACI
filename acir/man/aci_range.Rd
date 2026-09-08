@@ -35,9 +35,16 @@ aci_range(x, direction = c("forward", "backward"), ...)
 \item{method}{The objective functional. \code{"exact"} is the definitional
 objective range, the subjective range averaged over every threshold;
 reading the range off the running maximum makes that average a finite
-sum, \verb{dt * sum(suffix max) / M}, with no quadrature error. \code{"l1_linf"} is
-the efficient ratio the ACI reference script computes, \code{dt * integral(row) / M}. They are different functionals, not two quadratures of one: they
-coincide only where the divergence decreases with lag.}
+sum, \verb{dt * sum(suffix max) / M}, with no quadrature error. That is exact
+for its discrete counting functional on the retained grid; it is not exact
+continuous-time inference. \code{"l1_linf"} is the efficient ratio the ACI
+reference script computes, \code{dt * integral(row) / M}. They are different
+functionals, not two quadratures of one. On a row that decreases with lag
+the suffix maximum is the row itself, so the two agree term by term and
+coincide when the ratio is reduced with \code{quadrature = "sum"}; under the
+default \code{quadrature = "simpson"} they still differ. On \code{c(1, 0.5, 0)} with
+\code{M = 1} the objective is \code{1.5 * dt}, the summed ratio \code{1.5 * dt} and the
+Simpson ratio \code{1 * dt}.}
 
 \item{epsilon}{Optional numeric vector of finite non-negative
 thresholds at which
@@ -107,9 +114,11 @@ An object of class \code{cir_result} with \code{direction} \code{"forward"}.
 Summarizes the duration of influence on the discrete time grid, forward from
 each anchor time. A finite adaptive table is labelled
 \code{objective_on_truncated_table}; its \code{tail_bound} field is a heuristic tail
-estimate and must not be interpreted as a certified error bound. The
-\code{l1_linf} estimators are ratios, integrated with composite Simpson over the
-whole span, following the ACI reference code.
+estimate and must not be interpreted as a certified error bound. It is a
+diagnostic under the retained record, not a guarantee about the cells the
+truncation dropped. The \code{l1_linf} estimators are ratios, integrated with
+composite Simpson over the whole span by default, following the ACI
+reference code; \code{quadrature = "sum"} uses the L1 grid sum instead.
 }
 \details{
 Only \code{direction = "forward"} is in this release. The backward range is a

@@ -139,8 +139,15 @@
 # The fixtures sample every twentieth step.  A defect at one of the 3800
 # unsampled steps propagates forward through a sequential recursion and would
 # be caught anyway, but a per-step output defect need not.  The full-record
-# summary closes that gap: every series is reduced over all 4001 steps and
-# graded against pinned scalars.
+# summary narrows that gap without closing it: every series is reduced over all
+# 4001 steps and graded against pinned scalars, so a defect that moves a
+# series' minimum, maximum, mean or sum of absolute values is caught wherever
+# in the record it sits.  Four order-insensitive reductions cannot see a
+# rearrangement among the unsampled steps.  Swapping the u partition's ACI
+# values at one-based indices 2 and 3, both unsampled, leaves all four
+# reductions and all 201 sampled values unchanged while moving the series by
+# 0.0395.  This file therefore grades magnitude over the whole record and
+# position only at the sampled indices.
 #
 # These reductions are scored against max(1, |pinned|) rather than absolutely.
 # A sum of absolute values over 4001 steps reaches 8002 here, and fifteen

@@ -6,12 +6,12 @@ bibentry(
                 "Conditional Gaussian Nonlinear Systems"),
   author = c(person("Aidan", "Moller"), person("Max", "Moldovan")),
   year = "2026",
-  note = "R package version 0.1.0",
+  note = paste("R package version", meta$Version),
   url = "https://github.com/biometryhub/ACI",
-  textVersion = paste(
-    "Moller, A. and Moldovan, M. (2026). acir: Closed-Form Assimilative",
-    "Causal Inference for Conditional Gaussian Nonlinear Systems.",
-    "R package version 0.1.0. https://github.com/biometryhub/ACI"
+  textVersion = paste0(
+    "Moller, A. and Moldovan, M. (2026). acir: Closed-Form Assimilative ",
+    "Causal Inference for Conditional Gaussian Nonlinear Systems. ",
+    "R package version ", meta$Version, ". https://github.com/biometryhub/ACI"
   )
 )
 

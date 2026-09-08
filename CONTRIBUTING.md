@@ -19,15 +19,19 @@ commit.
 ## Before opening a pull request
 
 Run the four gates in `dev/PROCESS.md` and quote their output in the pull
-request under *How it was checked*. A change to the numerical core needs the
-oracle tests, not only a green suite, because those are graded against a
-source this repository did not author.
+request under *How it was checked*. Two of them, the timing comparison and
+lint, report rather than fail, and their output is read rather than assumed
+green. A change to the numerical core needs the oracle tests, not only a green
+suite, because those are graded against a source this repository did not
+author.
 
 ## Review
 
 Every pull request is reviewed under `REVIEW.md` and needs one approving
-review from an author who did not write it. Branch protection on
-`acir-package` and `main` enforces this and the required checks.
+review from an author who did not write it. Branch protection is the intended
+enforcement mechanism for that rule and for the required checks; this
+repository does not record the host configuration, so confirm it on the
+repository before relying on it.
 
 ## Reporting
 
