@@ -23,8 +23,12 @@
 \item{nsim}{Positive whole number of realisations to generate.}
 
 \item{seed}{Optional non-negative whole number seeding the generator. Seeding
-is contained: the caller's \code{.Random.seed} is restored when the call
-returns, so a reproducible path leaves the caller's stream where it was.}
+is contained: an existing \code{.Random.seed} is restored bit for bit when the
+call returns, so a reproducible path leaves the caller's stream where it
+was and the next draw is the draw that would have followed no call at all.
+When no \code{.Random.seed} exists, one is created before the seeded draw so
+that there is a state to restore, and the caller is left holding it. An
+unseeded call draws from, and advances, the caller's stream as usual.}
 
 \item{t_end}{Positive 1-length numeric total simulated time, excluding
 burn-in. Called \code{T} before 0.1.0; that name is accepted with a warning

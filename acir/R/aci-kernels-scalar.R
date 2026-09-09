@@ -3,6 +3,33 @@
 ################################################################################
 
 
+#' Refuse a recursion whose result is not finite (internal)
+#'
+#' The covariance policy owns positivity and finiteness of the second moment.
+#' This is the corresponding invariant on the first moment and on the
+#' likelihood accumulator, which no policy covers: a mean or a log-likelihood
+#' that has overflowed to `Inf` or `NaN` is invalid arithmetic, not a
+#' covariance that left the positive-definite cone, so the class is
+#' deliberately distinct from `aci_error_covariance_not_spd`. Used by both the
+#' scalar and the matrix kernels.
+#'
+#' @param quantity Name of the quantity, as it appears in the message.
+#' @param index One-based grid index at which it is first not finite.
+#' @param time Observation time at that index.
+#' @param value The offending value.
+#' @returns Never returns; raises `aci_error_nonfinite`.
+#' @noRd
+.aci_stop_nonfinite <- function(quantity, index, time, value) {
+  aci_abort("aci_error_nonfinite", sprintf(paste(
+    "The %s is not finite: it reached %s at index %d (time %g). This is a",
+    "floating-point overflow in the recursion, not a covariance that left the",
+    "positive-definite cone, and no regularisation policy recovers it; reduce",
+    "the drift magnitude or the horizon."),
+    quantity, format(value), index, time),
+    quantity = quantity, index = index, time = time, value = value)
+}
+
+
 #' Construct the private compiled-CGNS representation (internal)
 #'
 #' Both generic and directed realisers terminate at this constructor so kernels
@@ -125,7 +152,17 @@
   N1 <- length(source_obs$t); N <- N1 - 1L; x <- source_obs$x[, 1L]
   gxx_value <- p$s_x * p$s_x
   gyy_value <- p$s_y * p$s_y
-  Gi <- as.matrix(rs$ginv(matrix(gxx_value, 1L, 1L)))
+  ## This realiser is the one route that never reaches
+  ## `.compiled_precision_path()`, so it carries the same model-contract test
+  ## on its own Gram.  The Gram is constant over the record, so one test
+  ## covers every interval start and the index it names is the first.
+  gxx_matrix <- matrix(gxx_value, 1L, 1L)
+  if (all(is.finite(gxx_matrix))) {
+    gxx_rcond <- rcond(gxx_matrix)
+    if (gxx_rcond < .ACI_GRAM_RCOND_MIN)
+      .aci_stop_gram_path(1L, source_obs$t[1L], gxx_rcond)
+  }
+  Gi <- as.matrix(rs$ginv(gxx_matrix))
   if (!is.numeric(Gi) || !identical(dim(Gi), c(1L, 1L)) ||
       any(!is.finite(Gi)))
     aci_abort("aci_error_gram",
@@ -267,7 +304,10 @@
     di <- .default_init(bundle$model, co0)
     if (is.null(init)) init <- di else init$cov <- di$cov
     aci_warn("aci_warn_diffuse_init",
-      "No init$cov supplied; using a diffuse prior. Discard an initial burn-in window when interpreting results.")
+      paste("No init$cov supplied; using a diffuse prior. Its opening steps",
+            "are prior-dominated; a prior far wider than the hidden state's",
+            "own scale can also destabilise the explicit step, which is a",
+            "refusal rather than a window to discard."))
   }
   mu <- as.numeric(init$mean %||% 0)
   R <- as.matrix(init$cov)
@@ -346,6 +386,13 @@
       MU[j + 1L] <- mu; CV[j + 1L] <- R
     }
   }
+  ## One vector test after the recursion rather than one scalar test per step:
+  ## this is the shortest kernel in the package, and the whole-path form costs
+  ## about a fortieth of the in-loop form while naming the same first index.
+  if (!all(is.finite(MU))) {
+    bad <- which(!is.finite(MU))[1L]
+    .aci_stop_nonfinite("filter mean", bad, bundle$t[bad], MU[bad])
+  }
   list(mean = MU, cov = CV, stability = stab)
 }
 
@@ -376,6 +423,18 @@
     w <- iota0 / ch
     ll <- ll - 0.5 * w * w - log(ch) - 0.5 * log(2 * pi)
   }
+  ## Defence in depth: a finite mean and a positive finite innovation variance
+  ## give a finite term, so with the filter guard in place this is a
+  ## post-condition.  The index reported is the first scored interval whose
+  ## input moments are not finite, and the last scored interval when the
+  ## accumulation itself overflowed on finite inputs.
+  if (!is.finite(ll)) {
+    n <- bundle$N
+    bad <- which(!is.finite(filter_mean[seq_len(n)]) |
+                   !is.finite(filter_cov[seq_len(n)]))[1L]
+    if (is.na(bad)) bad <- n
+    .aci_stop_nonfinite("predictive log-likelihood", bad, bundle$t[bad], ll)
+  }
   ll
 }
 
@@ -399,8 +458,13 @@
   if (isTRUE(validate))
     .validate_compiled_cgns(bundle, conditional = bundle$conditional,
                             scalar = TRUE)
+  ## The range test precedes the integrality test, and the integrality test is
+  ## `%% 1` rather than `as.integer()`: coercing above the integer range
+  ## returns NA with a base warning, which is the coercion this check exists
+  ## to protect.  `%%` also leaves nsub = TRUE accepted, which trunc() and
+  ## floor() would not.
   if (length(nsub) != 1L || !is.finite(nsub) || nsub < 1 ||
-      nsub != as.integer(nsub))
+      nsub > .Machine$integer.max || nsub %% 1 != 0)
     aci_abort("aci_error_dims", "nsub must be a positive integer.")
   nsub <- as.integer(nsub)
   ini <- .scalar_filter_init(bundle, init)
@@ -429,7 +493,7 @@
   p$meta$obs_x <- bundle$x; p$meta$model <- bundle$model
   p$meta$conditional <- bundle$conditional; p$meta$engine <- "cgns"
   p$meta$source_model <- bundle$source_model
-  p$meta$regularization <- .aci_reg_freeze(rec)
+  p$meta$regularization <- .aci_reg_report(rec)
   p
 }
 
@@ -483,6 +547,10 @@
       MU[j] <- mus; CV[j] <- Rs
     }
   }
+  if (!all(is.finite(MU))) {
+    bad <- which(!is.finite(MU))[1L]
+    .aci_stop_nonfinite("smoother mean", bad, bundle$t[bad], MU[bad])
+  }
   list(mean = MU, cov = CV)
 }
 
@@ -518,7 +586,7 @@
   p$meta$obs_x <- bundle$x; p$meta$model <- bundle$model
   p$meta$conditional <- bundle$conditional; p$meta$engine <- "cgns"
   p$meta$source_model <- bundle$source_model
-  p$meta$regularization <- .aci_reg_freeze(rec)
+  p$meta$regularization <- .aci_reg_report(rec)
   stopifnot(max(abs(p$mean[bundle$N1, ] -
                         filter$mean[bundle$N1, ])) < 1e-12)
   p
@@ -629,6 +697,6 @@
     meta = list(engine = "cgns", conditional = bundle$conditional, m = NULL,
                 smoother_scheme = smoo$meta$scheme,
                 table_reference = NULL,
-                regularization = .aci_reg_freeze(rec))),
+                regularization = .aci_reg_report(rec))),
     class = "aci_result")
 }

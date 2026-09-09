@@ -334,6 +334,72 @@
 }
 
 
+#' Refuse a realised observation Gram that violates the model contract
+#' (internal)
+#'
+#' @param index One-based interval start at which the Gram is degenerate.
+#' @param time Observation time of that interval start.
+#' @param value Reciprocal condition number measured there.
+#' @returns Never returns; raises `aci_error_gram_path`.
+#' @noRd
+.aci_stop_gram_path <- function(index, time, value) {
+  aci_abort(
+    c("aci_error_gram_path", "aci_error_gram"),
+    sprintf(paste(
+      "The observation-noise Gram gxx is singular at index %d (time %g):",
+      "rcond = %.3e, below the %g the model contract requires and the",
+      "constructor's probe points passed. This is an observation-model",
+      "violation, not integration instability: every observed channel needs a",
+      "non-zero noise level throughout the record. Substeps, the implicit",
+      "stepper and regularize = \"floor\" do not repair it, because none of",
+      "them changes the observation model."),
+      index, time, value, .ACI_GRAM_RCOND_MIN),
+    index = index, time = time, rcond = value)
+}
+
+
+#' Test the realised observation Gram at every interval start (internal)
+#'
+#' The constructor probes `rcond(gxx) >= .ACI_GRAM_RCOND_MIN` at five points,
+#' in `validate_cgns()`. This is the same function and the same threshold
+#' applied to the realised path, so a model refused at construction and the
+#' same model refused mid-record are refused by one rule. `rcond()` is the
+#' 1-norm reciprocal condition number and is invariant under a uniform
+#' rescaling of the Gram, so the routing does not move when a model's physical
+#' units change.
+#'
+#' The whole realised Gram is tested at every interval start, whatever the
+#' route and whether or not the realisation cache is in use. The constructor's
+#' contract is on the whole Gram, and a principal sub-block of a
+#' well-conditioned symmetric positive-definite matrix is itself
+#' well-conditioned, so testing the whole slice is both sufficient for every
+#' block a route inverts and independent of which blocks that route selects.
+#' Interval starts 1..N are tested and the terminal slice is not, because it is
+#' never inverted and never scored.
+#'
+#' @param gxx Realised observation Gram arrays.
+#' @param N Number of observation intervals.
+#' @param tgrid Observation times, indexed by interval start.
+#' @returns `NULL`, invisibly.
+#' @noRd
+.check_gram_path <- function(gxx, N, tgrid) {
+  if (N < 1L) return(invisible(NULL))
+  ## rcond() raises a LAPACK condition rather than a classed one on non-finite
+  ## input. A poisoned realisation is a different failure and keeps its
+  ## existing route through the guarded solver pair.
+  if (!all(is.finite(gxx))) return(invisible(NULL))
+  k <- dim(gxx)[1L]
+  for (j in seq_len(N)) {
+    gram <- gxx[, , j]
+    dim(gram) <- c(k, k)
+    value <- rcond(gram)
+    if (value < .ACI_GRAM_RCOND_MIN)
+      .aci_stop_gram_path(j, tgrid[j], value)
+  }
+  invisible(NULL)
+}
+
+
 #' Build a realised observation-precision path (internal)
 #'
 #' This is the single point at which conditional ACI's masked observation
@@ -346,10 +412,17 @@
 #' @param target Optional target indices for masked-innovation conditioning.
 #' @param first_step First-slice convention for the masked branch, `"uniform"`
 #'   or `"matlab"`; ignored when `target` is `NULL`, which has no mask.
+#' @param tgrid Observation times of the realised grid. Supplying it runs the
+#'   model-contract test on the whole realised Gram at every interval start,
+#'   and names the index and time of a violation; all four compile-time call
+#'   sites supply it. Left `NULL` the arrays are inverted without that test,
+#'   which is the form the solver-equivalence checks use on hand-built Gram
+#'   arrays.
 #' @returns An array with one precision matrix per interval start.
 #' @noRd
 .compiled_precision_path <- function(gxx, N, target = NULL,
-                                     first_step = c("uniform", "matlab")) {
+                                     first_step = c("uniform", "matlab"),
+                                     tgrid = NULL) {
   first_step <- match.arg(first_step)
   k <- dim(gxx)[1L]
   kk <- k * k
@@ -363,6 +436,14 @@
       aci_abort("aci_error_dims", "idxA contains invalid Gram-matrix indices.")
     target <- as.integer(target)
   }
+
+  ## The model contract on gxx, on the realised path rather than at five
+  ## constructor probe points, and on the whole slice whatever this route goes
+  ## on to invert.  It runs before either solver pair, so a degenerate
+  ## observation model cannot reach the guarded pair's jitter ladder, and
+  ## before any covariance recorder exists, so the hidden-state flooring
+  ## policy cannot bypass it.
+  if (!is.null(tgrid)) .check_gram_path(gxx, N, tgrid)
 
   ## Two solver pairs computing the same thing.  The guarded pair IS the
   ## definition.  The fast pair is `chol_solve()` and `masked_ginv()` with
@@ -614,7 +695,7 @@
     coefficients <- full
     weight <- attr(full, "gxx_weight", exact = TRUE)
     coefficients$gxx_weight <- if (is.null(weight))
-      .compiled_precision_path(full$gxx, N) else weight
+      .compiled_precision_path(full$gxx, N, tgrid = source_obs$t) else weight
     rs <- list(
       model = model,
       obs = source_obs,
@@ -626,6 +707,15 @@
   } else {
     ix <- .nt_indices(conditional, source_obs)
     if (identical(conditional$method, "reduce")) {
+      ## The reduction drops the non-target channels, so the later test on the
+      ## reduced arrays cannot see a degeneracy outside the target block. The
+      ## model contract is on the whole Gram, so it is tested here, on the full
+      ## realised path, before anything is dropped and before the cross-block
+      ## ratio below, whose denominator is the same slice. This is what the
+      ## realisation cache does eagerly when it is in use, so the record is
+      ## refused with the same class at the same index either way.
+      .check_gram_path(full$gxx, N, source_obs$t)
+
       bad_cross <- any(vapply(seq_len(N1), function(j) {
         gram <- full$gxx[, , j]
         max(abs(gram[ix$A, ix$B, drop = FALSE])) >
@@ -645,7 +735,7 @@
         full, ix$A, N1, model$l
       )
       coefficients$gxx_weight <- .compiled_precision_path(
-        coefficients$gxx, N
+        coefficients$gxx, N, tgrid = source_obs$t
       )
       correlated <- .compiled_path_has_cross_noise(coefficients)
       reduced_model <- .compiled_prescribed_model(
@@ -664,7 +754,8 @@
       coefficients <- full
       coefficients$gxx_weight <- .compiled_precision_path(
         full$gxx, N, target = ix$A,
-        first_step = conditional$first_step %||% "uniform"
+        first_step = conditional$first_step %||% "uniform",
+        tgrid = source_obs$t
       )
       rs <- list(
         model = model,

@@ -1,4 +1,4 @@
-# Always-on source-derived grades for the T_C-hidden zeroth-order partition ----
+# Always-on independent-transcription grades, T_C-hidden zeroth-order ----
 #
 # ACI_code-main/ENSO_model_cond_ACI_T_C_unobs.m is the fifth and last ENSO
 # script, and the only one whose partition is not an exact split of the
@@ -349,7 +349,8 @@ test_that("the TC coefficients are the six-state drift split about TC = 0", {
 
 # 3. Fixture regression --------------------------------------------------------
 
-test_that("[source-derived] the TC coefficients match the pinned transcription", {
+test_that(paste0("[independent transcription] the TC coefficients match ",
+                 "the pinned transcription"), {
   path <- .tc_signal()
   ref <- read.csv(.tc_oracle_file("tc_coefficients_caseA.csv"))
   expect_identical(nrow(ref), nrow(path))
@@ -399,7 +400,8 @@ test_that("[source-derived] the TC coefficients match the pinned transcription",
   expect_gt(max(abs(ref$f_x_TE_state_time - ref$f_x_TE_matlab_phase)), 1e-6)
 })
 
-test_that("[source-derived] the TC case A moments match the pinned transcription", {
+test_that(paste0("[independent transcription] the TC case A moments match ",
+                 "the pinned transcription"), {
   path <- .tc_signal()
   for (defect in c(FALSE, TRUE)) {
     ref <- read.csv(.tc_oracle_file(sprintf(
@@ -416,7 +418,8 @@ test_that("[source-derived] the TC case A moments match the pinned transcription
   }
 })
 
-test_that("[source-derived] the TC case B window matches the pinned transcription", {
+test_that(paste0("[independent transcription] the TC case B window matches ",
+                 "the pinned transcription"), {
   b <- .tc_case_b()
   # The 22001-point record regenerates from its seed; the manifest pins the
   # SHA-256 of the window it produces, and the window arithmetic is the
@@ -449,7 +452,8 @@ test_that("[source-derived] the TC case B window matches the pinned transcriptio
 
 # 4. The D1 divergence, pinned as a measurement --------------------------------
 
-test_that("[source-derived] the omitted gamma_C h_W term moves only the mean channel", {
+test_that(paste0("[independent transcription] the omitted gamma_C h_W term ",
+                 "moves only the mean channel"), {
   # The reference script's f_y omits gamma_C * h_W (:1053, :1151).  The same
   # script's simulator drift includes it (:1124), h_W is prescribed and
   # observed here, and the sibling scripts carry the term in the corresponding

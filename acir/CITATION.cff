@@ -1,6 +1,9 @@
 # ------------------------------------------------
 # CITATION.cff file created with {cffr} R package
 # See also: https://docs.ropensci.org/cffr/
+# The version and the R floor below describe the 0.1.0 release. This file and
+# codemeta.json are regenerated at release, so between releases they can trail
+# DESCRIPTION.
 # ------------------------------------------------
  
 cff-version: 1.2.0

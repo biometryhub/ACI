@@ -85,13 +85,19 @@ aci_smoother <- function(model, obs, ...) UseMethod("aci_smoother")
 #' `lag` is the number of future observations each estimate may condition on:
 #' the estimate at index `j` uses the observed record through index `j + lag`,
 #' and saturates at the end of the record. `lag = 0` returns the filter
-#' moments unchanged. `lag = Inf` returns the complete Theorem 3 posterior
-#' given the whole record.
+#' moments unchanged. `lag = Inf` composes the Theorem 3 updates over the whole
+#' record.
 #'
 #' @section Scheme:
-#' `aci_online()` computes the **discrete** Theorem 3 posterior: the exact
-#' conditional law of the hidden state given the observed increments on the
-#' sampling grid under the explicit single-step discretization. [aci_smoother()]
+#' `aci_online()` composes the published **discrete** Theorem 3 updates, which
+#' retain the leading-order terms of the continuous-time conditional equations
+#' under the explicit single-step discretization. Its finite-step output
+#' approximates the continuous-time conditional distribution and is not
+#' generally the exact posterior for an Euler-sampled record: for
+#' `dx = y dt + dW1`, `dy = dW2`, `y0 ~ N(0, 1)`, `dt = 0.1` and one observed
+#' increment 0.2 it returns mean 0.2 and variance 0.9, where exact conditioning
+#' on that Euler-sampled increment gives 0.1818 and 0.9091. The gap falls with
+#' the step. [aci_smoother()]
 #' integrates the **continuous** backward smoothing equations with an Euler
 #' step of the same size. These are two discretizations of the same
 #' continuous-time object and they agree only to first order in the step, so at
@@ -164,7 +170,9 @@ new_da_path <- function(t, mean, cov, kind, meta = list()) {
 #' @export
 print.da_path_gaussian <- function(x, ...) {
   cat(sprintf("<da_path_gaussian> kind = %s, l = %d, N+1 = %d\n",
-              x$kind, ncol(x$mean), length(x$t))); invisible(x)
+              x$kind, ncol(x$mean), length(x$t)))
+  .aci_reg_cat(x$meta$regularization)
+  invisible(x)
 }
 
 
@@ -400,8 +408,34 @@ as.data.frame.da_path_gaussian <- function(x, ...) {
 #'   with a classed `aci_error_covariance_not_spd` naming the site, grid index
 #'   and time as soon as a covariance leaves the positive-definite cone.
 #'   `"floor"` is the previous behaviour: the covariance is projected back by
-#'   [spd_floor()] and every such event is recorded in the result's
-#'   `meta$regularization`.
+#'   [spd_floor()], every such event is recorded in the result's
+#'   `meta$regularization`, and a call in which at least one floor fires raises
+#'   one `aci_warn_regularized` naming the first floored site, its grid index
+#'   and its time. Flooring changes the numerical covariance so that the
+#'   recursion can continue; it establishes nothing about the accuracy of the
+#'   reconstruction or of the resulting information score, and a large finite
+#'   ACI obtained after a floor is a diagnostic, not a result. A realised
+#'   observation-noise Gram whose reciprocal condition number falls below
+#'   1e-12 at an interval start raises `aci_error_gram_path`, a subclass of
+#'   `aci_error_gram`, naming the grid index, the time and the `rcond`; that
+#'   check runs before any covariance policy, so `regularize = "floor"` does
+#'   not bypass it. It is a conditioning test, not a noise-floor test:
+#'   `rcond()` is invariant under a uniform rescaling of the Gram, so for a
+#'   one-dimensional observed state the mathematical reciprocal condition number
+#'   of every positive Gram is 1. Small positive noise can therefore pass;
+#'   condition estimation can also fail at extreme floating-point scales.
+#'   Depending on the coupling and time step, explicit integration may fail,
+#'   while implicit integration can return finite positive covariances without
+#'   a warning or regularization event. Such a return does not establish that
+#'   the step resolves the covariance dynamics. Assess sensitivity to time
+#'   resolution when observation noise is small relative to the coupling.
+#'   Regularization events record applied covariance corrections, not all
+#'   sources of numerical error. A large reduction in uncertainty can also be
+#'   valid for a sufficiently informative observation model; no additional
+#'   noise-scale or variance-drop threshold is imposed.
+#'   A mean or predictive log-likelihood that overflows to
+#'   `Inf` or `NaN` raises `aci_error_nonfinite` naming the quantity, the grid
+#'   index and the time.
 #' @param loglik `TRUE` (the default) accumulates the predictive
 #'   log-likelihood into `meta$loglik`. `FALSE` skips that work; the filter
 #'   moments are unchanged and `meta$loglik` is `NULL`. The likelihood is not
@@ -447,7 +481,9 @@ aci_filter.cgns_model <- function(model, obs, init = NULL, conditional = NULL,
 #' @param regularize Covariance policy for this call; see [aci_filter()]. One
 #'   record covers the whole call, so a filter recomputed here and the backward
 #'   recursion that consumes it share the `meta$regularization` on the returned
-#'   smoother.
+#'   smoother, and one `aci_warn_regularized` covers both. Flooring changes the
+#'   numerical covariance so that the recursion can continue; it establishes
+#'   nothing about the accuracy of the resulting reconstruction.
 #' @export
 aci_smoother.cgns_model <- function(model, obs, filter = NULL,
                                     conditional = NULL,
@@ -503,13 +539,17 @@ aci_smoother.cgns_model <- function(model, obs, filter = NULL,
 #'   conditional-Gaussian model.
 #' @param filter Optional precomputed filter path; recomputed when `NULL`. It
 #'   must be the explicit single-step filter, which is the discretization the
-#'   Theorem 3 recursions are exact for.
+#'   Theorem 3 recursions are derived for.
 #' @param conditional Optional `aci_conditional_spec` selecting a
 #'   conditional ACI
 #'   reduction; see [aci_conditional()].
 #' @param init Optional list with the initial hidden `mean` and `cov`.
 #' @param regularize Covariance policy for this call; see [aci_filter()]. One
-#'   record covers the whole call, and is returned in `meta$regularization`.
+#'   record covers the whole call, and is returned in `meta$regularization`; a
+#'   call in which a floor fires also raises one `aci_warn_regularized`.
+#'   Flooring changes the numerical covariance so that the recursion can
+#'   continue; it establishes nothing about the accuracy of the resulting
+#'   reconstruction.
 #' @param force_validate `FALSE` (the default) lets a `filter` that
 #'   [aci_filter()] produced for this same run, unaltered since, skip per-step
 #'   re-validation, as in [aci_smoother()].
@@ -654,7 +694,10 @@ aci_online.stochastic_model <- function(model, obs, lag, ...)
 #' @param regularize Covariance policy for this call; see [aci_filter()]. One
 #'   record covers the filter, the Theorem 3 reference smoother and every
 #'   relative-entropy denominator the table forms, and is returned in
-#'   `meta$regularization`.
+#'   `meta$regularization`; a call in which a floor fires also raises one
+#'   `aci_warn_regularized`. Flooring changes the numerical covariance so that
+#'   the recursion can continue; it establishes nothing about the accuracy of
+#'   the divergences the table stores or of anything reduced from them.
 #' @param ... Must be empty; unused arguments are an error.
 #' @returns An object of class `lag_table`.
 #'
@@ -820,6 +863,11 @@ lt_row <- function(x, j, pad = c("zero", "na")) {
 #'
 #' The historical `lt_tail_bound()` name is retained for compatibility, but its
 #' value is a heuristic tail estimate, not a certified mathematical error bound.
+#' What the package computes is a norm-based suffix accumulation with a
+#' multiplier of 1.5; andreou2026smoother eq. 3.19 is a spectral-radius
+#' condition, and individual spectral radii do not establish contraction of an
+#' arbitrary ordered product. The value is therefore a diagnostic on the
+#' retained record, not a guarantee about the cells the truncation dropped.
 #'
 #' @param x A `lag_table` object.
 #' @param j Optional integer index of a single anchor time; `NULL` returns the
@@ -858,6 +906,7 @@ print.lag_table <- function(x, ...) {
               length(x$t), x$meta$tol))
   if (!is.null(x$L)) cat(sprintf("  mean retained lag: %.1f steps; max heuristic tail estimate: %.2e\n",
                                  mean(x$L, na.rm = TRUE), max(x$tailbnd)))
+  .aci_reg_cat(x$meta$regularization)
   invisible(x)
 }
 

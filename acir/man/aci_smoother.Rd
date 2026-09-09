@@ -45,7 +45,9 @@ reduction; see \code{\link[=aci_conditional]{aci_conditional()}}.}
 \item{regularize}{Covariance policy for this call; see \code{\link[=aci_filter]{aci_filter()}}. One
 record covers the whole call, so a filter recomputed here and the backward
 recursion that consumes it share the \code{meta$regularization} on the returned
-smoother.}
+smoother, and one \code{aci_warn_regularized} covers both. Flooring changes the
+numerical covariance so that the recursion can continue; it establishes
+nothing about the accuracy of the resulting reconstruction.}
 
 \item{force_validate}{\code{FALSE} (the default) lets a \code{filter} that
 \code{\link[=aci_filter]{aci_filter()}} produced for this same model, observations and conditional

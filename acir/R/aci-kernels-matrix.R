@@ -49,8 +49,10 @@
     aci_warn(
       "aci_warn_diffuse_init",
       paste(
-        "No init$cov supplied; using a diffuse prior. Discard an initial",
-        "burn-in window when interpreting results."
+        "No init$cov supplied; using a diffuse prior. Its opening steps",
+        "are prior-dominated; a prior far wider than the hidden state's",
+        "own scale can also destabilise the explicit step, which is a",
+        "refusal rather than a window to discard."
       )
     )
   }
@@ -113,8 +115,13 @@
     .validate_compiled_cgns(
       bundle, conditional = bundle$conditional, scalar = FALSE
     )
+  ## The range test precedes the integrality test, and the integrality test is
+  ## `%% 1` rather than `as.integer()`: coercing above the integer range
+  ## returns NA with a base warning, which is the coercion this check exists
+  ## to protect.  `%%` also leaves nsub = TRUE accepted, which trunc() and
+  ## floor() would not.
   if (length(nsub) != 1L || !is.finite(nsub) || nsub < 1 ||
-      nsub != as.integer(nsub))
+      nsub > .Machine$integer.max || nsub %% 1 != 0)
     aci_abort("aci_error_dims", "nsub must be a positive integer.")
   nsub <- as.integer(nsub)
 
@@ -258,6 +265,22 @@
     CV[, , j + 1L] <- R
   }
 
+  ## One whole-path test after the recursion rather than one per component per
+  ## step; the row sum is only used to locate the first offending grid index,
+  ## the test itself is componentwise.
+  if (!all(is.finite(MU))) {
+    bad <- which(!is.finite(rowSums(MU)))[1L]
+    .aci_stop_nonfinite("filter mean", bad, bundle$t[bad],
+                        MU[bad, ][!is.finite(MU[bad, ])][1L])
+  }
+  if (do_ll && !is.finite(ll)) {
+    ## Defence in depth, as on the scalar route: with finite means and a
+    ## positive finite innovation covariance every term is finite.
+    bad <- which(!is.finite(rowSums(MU[seq_len(N), , drop = FALSE])))[1L]
+    if (is.na(bad)) bad <- N
+    .aci_stop_nonfinite("predictive log-likelihood", bad, bundle$t[bad], ll)
+  }
+
   if (stepper == "explicit" && stab > 1)
     aci_warn(
       "aci_warn_riccati_stiff",
@@ -284,7 +307,7 @@
   p$meta$conditional <- bundle$conditional
   p$meta$engine <- "cgns"
   p$meta$source_model <- bundle$source_model
-  p$meta$regularization <- .aci_reg_freeze(rec)
+  p$meta$regularization <- .aci_reg_report(rec)
   p
 }
 
@@ -409,6 +432,12 @@
     CV[, , j] <- Rs
   }
 
+  if (!all(is.finite(MU))) {
+    bad <- which(!is.finite(rowSums(MU)))[1L]
+    .aci_stop_nonfinite("smoother mean", bad, bundle$t[bad],
+                        MU[bad, ][!is.finite(MU[bad, ])][1L])
+  }
+
   p <- new_da_path(bundle$t, MU, CV, "smoother")
   p$meta$route <- if (bundle$correlated_noise)
     "backward_ode_correlated" else "backward_ode"
@@ -420,7 +449,7 @@
   p$meta$conditional <- bundle$conditional
   p$meta$engine <- "cgns"
   p$meta$source_model <- bundle$source_model
-  p$meta$regularization <- .aci_reg_freeze(rec)
+  p$meta$regularization <- .aci_reg_report(rec)
   stopifnot(
     max(abs(p$mean[N1, ] - filter$mean[N1, ])) < 1e-12
   )
@@ -521,7 +550,7 @@
         m = NULL,
         smoother_scheme = smoo$meta$scheme,
         table_reference = NULL,
-        regularization = .aci_reg_freeze(rec)
+        regularization = .aci_reg_report(rec)
       )
     ),
     class = "aci_result"

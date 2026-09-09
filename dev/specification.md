@@ -69,6 +69,11 @@ reported until it is.
 | `aciR` 0.2.3 | the checked implementation of the first row; the fixtures, manifest and checking tools; the ledgers; the interface style | the second implementation, pinned from a tag |
 | `aci` 0.0.30 | the model contract, one-time evaluation, backward range, sampling, lag diagnostics, example systems, typed conditions; the merge itself | the second implementation, pinned from a tag |
 
+*Annotation, September 2026 (not part of the specification as consolidated):
+the tail bound listed in the Andreou, Chen and Li row is annotated after the
+capability table below; the shipped value is a heuristic estimate, not a
+certified error bound.*
+
 ## The scope rule
 
 Everything the authors compute in closed form inside the conditional
@@ -108,6 +113,30 @@ with.
 | formula front end | n/a | 1.1 | interface only |
 | closed-form model fitting in the class | yes | 1.1 | identity to maximum likelihood on a linear model |
 | ensemble family; discovery; extremes; surrogates; twins | no | sockets and callers, staged reserve | their own registers |
+
+**Annotation, September 2026 (not part of the specification as
+consolidated).** The "tail bound" row above attributes the shipped estimate
+to Andreou, Chen and Li eq. 3.19, and the capability line in *What each
+source contributes* lists the same item among the paper's exact relations.
+Equation 3.19 is a spectral-radius condition; the implementation uses a
+norm-based suffix accumulation with a multiplier of 1.5
+(`R/aci-online-smoother.R`, `R/aci-cir.R`, `R/aci-cir-rows.R`). Individual
+matrix spectral radii do not establish contraction of an arbitrary ordered
+product, so the shipped value is a heuristic tail estimate, as the public
+help has said since 0.1.0, and not a certified error bound. Both lines are
+retained as the historical record of what was specified.
+
+**Annotation, September 2026 (not part of the specification as
+consolidated).** The forward-range row above lists the objective range as
+computed "by the approximation, by the exact closed form, and by the
+reference quadrature", which reads as though all three routes were
+quadratures over the same grid. As shipped, `method = "exact"` is a finite
+sum over the threshold grid with no time-axis quadrature and is therefore
+unaffected by the `quadrature` argument; `method = "reference"` is the
+reference's Simpson rule over that grid; and the `l1_linf` functional, which
+is a ratio, is integrated with composite Simpson by default, with
+`quadrature = "sum"` selecting the L1 grid-function sum instead. The row is
+retained verbatim as the historical record.
 
 # Public interface
 
@@ -199,6 +228,12 @@ constant-coefficient shortcut. The compiled inner loop stays out.
   `method = "approximation"`. The exact value and the reference
   quadrature differ by about 5e-4 on the objective-bridge comparison, a
   discretisation gap, recorded.
+  *Annotation, September 2026 (not part of the specification as
+  consolidated): as shipped, `method = "exact"` is a finite threshold sum
+  and takes no time-axis quadrature at all, so the `quadrature` argument
+  does not reach it; the argument selects composite Simpson (the default) or
+  the L1 grid-function sum for the `l1_linf` ratio. The bullet is retained
+  verbatim.*
 - **Covariance policy, revised.** The default is strict: a covariance
   that fails the positive-definiteness check stops with `aci_error_spd`
   naming the step. An eigenvalue floor is opt-in, explicit and counted.

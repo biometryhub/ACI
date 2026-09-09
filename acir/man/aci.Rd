@@ -46,7 +46,11 @@ are retained on the result. It does not select a smoother.}
 
 \item{regularize}{Covariance policy for this call; see \code{\link[=aci_filter]{aci_filter()}}. One
 record covers the filter, the smoother and any table this call builds, and
-is returned in \code{meta$regularization}.}
+is returned in \code{meta$regularization}. Flooring changes the numerical
+covariance so that the recursion can continue; it establishes nothing
+about the accuracy of the reconstruction or of the resulting information
+score, and a large finite ACI obtained after a floor is a diagnostic, not
+a result.}
 
 \item{loglik}{\code{TRUE} (the default) accumulates the predictive
 log-likelihood on the internal filter, where \code{keep = "paths"} exposes it as
@@ -66,6 +70,25 @@ time by the relative entropy of the smoother from the filter. A normal
 its correlated-noise correction, independently of \code{keep}. \code{\link[=lag_table]{lag_table()}} and
 \code{aci(table = ...)} instead use the complete online Theorem 3 smoother;
 their finite-grid diagonal can therefore differ from headline ACI.
+}
+\details{
+ACI is measured under the model, prior and observation record supplied to
+it: it scores how much the later observed record sharpens the hidden-state
+reconstruction those inputs imply, and does not test whether they are
+correct. The per-time value is in nats; a record-length total is in nats
+times model time. A positive value alone is not an empirically identified
+causal effect, an intervention effect or a significance statement, and it
+carries the discretisation. On a structurally independent Brownian null
+(\code{dx = dW1}, \code{dy = dW2}, uncoupled in both directions) with prior variance
+1, one observed interval of length \code{dt}, the observed path \verb{x(t) = 2t}, the
+explicit stepper at \code{nsub = 1} and \code{regularize = "none"}, the headline
+backward smoother returns 1.0135e-4 nats at \code{dt = 0.1} and 2.4419e-8 at
+\code{dt = 0.0125}. The same null returns much larger values at a step that is
+coarse against the prior and process variance scales: at prior variance 0.1
+and \code{dt = 0.07} it returns 1.4660115 nats, which \code{nsub = 20} reduces to
+0.0140779. Every one of those runs is positive definite and finite and
+records zero floor events, so positive-definite, finite output with no
+floor event does not certify that the step resolved the problem.
 }
 \examples{
 m <- aci_dyad_model()

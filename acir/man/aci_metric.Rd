@@ -16,12 +16,25 @@ the total.}
 }
 \value{
 A data frame with the time column \code{t} and either \code{total} alone or
-\code{total}, \code{signal} and \code{dispersion}.
+\code{total}, \code{signal} and \code{dispersion}. \code{aci_metric()} keeps no regularization
+record of its own: it scores the paths it is given, so a score computed
+from floored moments is itself regularized without saying so. Read
+\code{p$meta$regularization} and \code{q$meta$regularization} for the record the
+input paths were computed under.
 }
 \description{
 Evaluates the relative entropy at every time of two assimilation paths on a
 common grid. Gaussian relative entropy is oriented as smoother relative to
 filter.
+}
+\details{
+A one-dimensional hidden state is evaluated with the cancellation-resistant
+\code{log1p} form \code{0.5 * (delta - log1p(delta))}, \code{delta = R_p / R_q - 1}; two or
+more hidden components use the trace and log-difference form, whose relative
+precision on the dispersion degrades as the two covariances approach each
+other. \code{\link[=aci_metric_pair]{aci_metric_pair()}} documents that boundary with the measured
+figures, and uses the trace form at every dimension, so it and this function
+need not agree in the last digits on one-dimensional inputs.
 }
 \examples{
 m <- aci_dyad_model()

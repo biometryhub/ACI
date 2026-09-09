@@ -209,10 +209,14 @@ test_that("T1b(floor): the documented explicit collapse is still available", {
   big <- list(mean = 0, cov = diag(100, 1))
   # The explicit scheme is expected to report its own instability here; that
   # warning is part of the documented behaviour this test pins down.
+  ## the floor this case takes is itself reported, so both conditions are
+  ## asserted rather than one being left to re-signal unmatched
   expect_warning(
-    fe <- aci_filter(m, s$obs, init = big, stepper = "explicit",
-                     regularize = "floor"),
-    class = "aci_warn_riccati_stiff")
+    expect_warning(
+      fe <- aci_filter(m, s$obs, init = big, stepper = "explicit",
+                       regularize = "floor"),
+      class = "aci_warn_riccati_stiff"),
+    class = "aci_warn_regularized")
   expect_lt(min(fe$cov[1, 1, ]), 1e-6)     # documented explicit-scheme collapse
   expect_gt(min(fe$cov[1, 1, ]), 0)        # and it is floored back into the cone
   rg <- fe$meta$regularization

@@ -33,6 +33,21 @@
 #' regularise only when a call asks for it with `regularize = "floor"`; see
 #' [aci_filter()].
 #'
+#' The dispersion part is `O(delta^2)` in `delta = R_p / R_q - 1`, and this
+#' function evaluates it in the trace and log-difference form
+#' `0.5 * (tr(R_q^-1 R_p) - l + log det R_q - log det R_p)` at every dimension,
+#' including `l = 1`. That form loses relative precision to cancellation as the
+#' two covariances approach each other: measured against the exact series at
+#' `R_q = 1`, `R_p = 1 + delta`, its relative error is 4.5e-05 at
+#' `delta = 1e-06`, 1.2e-02 at 1e-07 and a factor of two from 1e-08 down.
+#' [aci_metric()] instead routes a one-dimensional hidden state through a
+#' cancellation-resistant `log1p` form, so the two public routes disagree on
+#' identical one-dimensional inputs in that regime. The absolute error stays
+#' below 3e-17 nats across that sweep, because the quantity itself is quadratic
+#' in `delta`, so this is a precision boundary and not a demonstrated accuracy
+#' failure on ordinary inputs. Positivity is imposed by `max(., 0)` on each
+#' part; that is a guard, not an accuracy proof.
+#'
 #' @param mu_p Numeric vector, mean of the first distribution.
 #' @param R_p Covariance matrix of the first distribution.
 #' @param mu_q Numeric vector, mean of the second distribution.
@@ -110,12 +125,24 @@ aci_metric_pair <- function(mu_p, R_p, mu_q, R_q, decompose = TRUE) {
 #' common grid. Gaussian relative entropy is oriented as smoother relative to
 #' filter.
 #'
+#' A one-dimensional hidden state is evaluated with the cancellation-resistant
+#' `log1p` form `0.5 * (delta - log1p(delta))`, `delta = R_p / R_q - 1`; two or
+#' more hidden components use the trace and log-difference form, whose relative
+#' precision on the dispersion degrades as the two covariances approach each
+#' other. [aci_metric_pair()] documents that boundary with the measured
+#' figures, and uses the trace form at every dimension, so it and this function
+#' need not agree in the last digits on one-dimensional inputs.
+#'
 #' @param p A `da_path_gaussian` object, the integrating distribution.
 #' @param q A `da_path_gaussian` object on the same time grid.
 #' @param decompose `TRUE` to return the signal and dispersion parts alongside
 #'   the total.
 #' @returns A data frame with the time column `t` and either `total` alone or
-#'   `total`, `signal` and `dispersion`.
+#'   `total`, `signal` and `dispersion`. `aci_metric()` keeps no regularization
+#'   record of its own: it scores the paths it is given, so a score computed
+#'   from floored moments is itself regularized without saying so. Read
+#'   `p$meta$regularization` and `q$meta$regularization` for the record the
+#'   input paths were computed under.
 #'
 #' @seealso [aci_metric_pair()], [aci()]
 #'
@@ -219,6 +246,24 @@ aci_metric <- function(p, q, decompose = TRUE) {
 #' `aci(table = ...)` instead use the complete online Theorem 3 smoother;
 #' their finite-grid diagonal can therefore differ from headline ACI.
 #'
+#' ACI is measured under the model, prior and observation record supplied to
+#' it: it scores how much the later observed record sharpens the hidden-state
+#' reconstruction those inputs imply, and does not test whether they are
+#' correct. The per-time value is in nats; a record-length total is in nats
+#' times model time. A positive value alone is not an empirically identified
+#' causal effect, an intervention effect or a significance statement, and it
+#' carries the discretisation. On a structurally independent Brownian null
+#' (`dx = dW1`, `dy = dW2`, uncoupled in both directions) with prior variance
+#' 1, one observed interval of length `dt`, the observed path `x(t) = 2t`, the
+#' explicit stepper at `nsub = 1` and `regularize = "none"`, the headline
+#' backward smoother returns 1.0135e-4 nats at `dt = 0.1` and 2.4419e-8 at
+#' `dt = 0.0125`. The same null returns much larger values at a step that is
+#' coarse against the prior and process variance scales: at prior variance 0.1
+#' and `dt = 0.07` it returns 1.4660115 nats, which `nsub = 20` reduces to
+#' 0.0140779. Every one of those runs is positive definite and finite and
+#' records zero floor events, so positive-definite, finite output with no
+#' floor event does not certify that the step resolved the problem.
+#'
 #' @param model A `cgns_model` object.
 #' @param obs An observed trajectory, or anything [as_obs()] accepts.
 #' @param engine One of `"auto"` or `"cgns"`; `"auto"` selects the closed-form
@@ -234,7 +279,11 @@ aci_metric <- function(p, q, decompose = TRUE) {
 #' @param nsub Positive whole number of sub-steps taken per observation.
 #' @param regularize Covariance policy for this call; see [aci_filter()]. One
 #'   record covers the filter, the smoother and any table this call builds, and
-#'   is returned in `meta$regularization`.
+#'   is returned in `meta$regularization`. Flooring changes the numerical
+#'   covariance so that the recursion can continue; it establishes nothing
+#'   about the accuracy of the reconstruction or of the resulting information
+#'   score, and a large finite ACI obtained after a floor is a diagnostic, not
+#'   a result.
 #' @param loglik `TRUE` (the default) accumulates the predictive
 #'   log-likelihood on the internal filter, where `keep = "paths"` exposes it as
 #'   `paths$filter$meta$loglik`. ACI itself never uses it, so `FALSE` skips that
@@ -350,7 +399,7 @@ aci <- function(model, obs, engine = c("auto", "cgns"),
                              smoother_scheme = smoo$meta$scheme %||% "unspecified",
                              table_reference = if (!is.null(tab))
                                tab$meta$reference_smoother else NULL,
-                             regularization = .aci_reg_freeze(rec))),
+                             regularization = .aci_reg_report(rec))),
             class = "aci_result")
 }
 
@@ -367,6 +416,7 @@ print.aci_result <- function(x, ...) {
               x$meta$engine,
               if (!is.null(x$meta$conditional)) " (conditional)" else "",
               x$aci[pk], x$t[pk]))
+  .aci_reg_cat(x$meta$regularization)
   invisible(x)
 }
 
@@ -529,6 +579,15 @@ as.data.frame.aci_result <- function(x, ...) {
 #' @noRd
 .calc_tau <- function(dt, p, method, M, direction, quadrature,
                       simpson_close = "quadratic", epsilon_grid = NULL){
+  ## The token selects between the running maximum and the running minimum, so
+  ## an unrecognised value would silently take the other branch rather than
+  ## fail. Only "fwd" is reachable from an exported entry point today.
+  if (length(direction) != 1L ||
+      !(identical(direction, "fwd") || identical(direction, "bwd")))
+    aci_abort("aci_error_internal",
+              sprintf(paste("Internal direction token must be \"fwd\" or",
+                            "\"bwd\"; got %s."),
+                      paste(format(direction), collapse = ", ")))
   if (method != "l1_linf") {
     ## The definitional objective: the subjective range averaged over every
     ## threshold.  Reading the range off the running extremum makes that
@@ -731,6 +790,7 @@ print.cir_result <- function(x, ...) {
                 paste(sprintf("%s %d", names(tb), as.integer(tb)),
                       collapse = ", ")))
   }
+  .aci_reg_cat(x$meta$regularization)
   invisible(x)
 }
 
@@ -740,9 +800,11 @@ print.cir_result <- function(x, ...) {
 #' Summarizes the duration of influence on the discrete time grid, forward from
 #' each anchor time. A finite adaptive table is labelled
 #' `objective_on_truncated_table`; its `tail_bound` field is a heuristic tail
-#' estimate and must not be interpreted as a certified error bound. The
-#' `l1_linf` estimators are ratios, integrated with composite Simpson over the
-#' whole span, following the ACI reference code.
+#' estimate and must not be interpreted as a certified error bound. It is a
+#' diagnostic under the retained record, not a guarantee about the cells the
+#' truncation dropped. The `l1_linf` estimators are ratios, integrated with
+#' composite Simpson over the whole span by default, following the ACI
+#' reference code; `quadrature = "sum"` uses the L1 grid sum instead.
 #'
 #' Only `direction = "forward"` is in this release. The backward range is a
 #' `FBCIR_code-main` feature: it appears in no ACI_code script, and it is held
@@ -796,10 +858,16 @@ aci_range <- function(x, direction = c("forward", "backward"), ...)
 #' @param method The objective functional. `"exact"` is the definitional
 #'   objective range, the subjective range averaged over every threshold;
 #'   reading the range off the running maximum makes that average a finite
-#'   sum, `dt * sum(suffix max) / M`, with no quadrature error. `"l1_linf"` is
-#'   the efficient ratio the ACI reference script computes, `dt * integral(row)
-#'   / M`. They are different functionals, not two quadratures of one: they
-#'   coincide only where the divergence decreases with lag.
+#'   sum, `dt * sum(suffix max) / M`, with no quadrature error. That is exact
+#'   for its discrete counting functional on the retained grid; it is not exact
+#'   continuous-time inference. `"l1_linf"` is the efficient ratio the ACI
+#'   reference script computes, `dt * integral(row) / M`. They are different
+#'   functionals, not two quadratures of one. On a row that decreases with lag
+#'   the suffix maximum is the row itself, so the two agree term by term and
+#'   coincide when the ratio is reduced with `quadrature = "sum"`; under the
+#'   default `quadrature = "simpson"` they still differ. On `c(1, 0.5, 0)` with
+#'   `M = 1` the objective is `1.5 * dt`, the summed ratio `1.5 * dt` and the
+#'   Simpson ratio `1 * dt`.
 #' @param epsilon Optional numeric vector of finite non-negative
 #'   thresholds at which
 #'   the subjective range is also reported. Its read-out convention is set by

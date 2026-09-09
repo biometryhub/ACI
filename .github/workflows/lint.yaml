@@ -37,10 +37,15 @@ jobs:
         # (tools/design/2026-08-17_air_formatter_decision.md) settles: acir
         # inherits the layout of aci 0.0.30, which the house .lintr does not
         # yet accept. The step still runs and its report is in the log.
+        # dev/PROCESS.md records this arm of the Hygiene gate as advisory for
+        # the same reason; the other three arms of that gate are blocking.
         continue-on-error: true
         # The committed .lintr admits the paper's equation notation by a narrow
-        # rule. Anything it does not admit is an actionable finding, so a new
-        # diagnostic fails the job rather than accumulating as noise.
+        # rule. Anything it does not admit is an actionable finding.
+        # LINTR_ERROR_ON_LINT below makes a finding exit the step non-zero, so
+        # it is visible as a failed step; continue-on-error keeps the job green
+        # until the style pass, which is when the two are read together as a
+        # gate rather than as a report.
         run: lintr::lint_package()
         shell: Rscript {0}
         env:
