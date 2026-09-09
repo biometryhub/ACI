@@ -28,7 +28,7 @@ author.
 ## Review
 
 Every pull request is reviewed under `REVIEW.md` and needs one approving
-review from an author who did not write it. Branch protection is the intended
+review from an author who did not write it. Branch protection on `main` is the intended
 enforcement mechanism for that rule and for the required checks; this
 repository does not record the host configuration, so confirm it on the
 repository before relying on it.

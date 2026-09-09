@@ -27,7 +27,7 @@ this process applies from 2026-09-02.
 
 ## The four gates
 
-Every pull request into `acir-package` carries these, and CI runs them again.
+Every pull request into `main` carries these, and CI runs them again.
 Numbers, the check and coverage arms of Hygiene, and fixture provenance fail
 their jobs; Time and lint report and do not.
 
@@ -90,7 +90,7 @@ and is a review finding in its own right.
 | Feedback loop before reporting done | the four gates, run locally and in CI | in use |
 | Continuous evaluation of agent configuration | not applicable to the repository | not used |
 | Review loop under a written policy | `REVIEW.md`; approval by a human author is required | in use |
-| Hooks as approval gates | intended branch protection on `acir-package` and `main`: pull request required, one approving review, the required checks green, no force push | intended; the host configuration is not recorded in this repository and has not been verified here |
+| Hooks as approval gates | intended branch protection on `main`: pull request required, one approving review, the required checks green, no force push | intended; the host configuration is not recorded in this repository and has not been verified here |
 | An agent inside CI/CD | not used; CI is deterministic | not used |
 | Control bands in maintenance | `bench.yaml` compares every run with `baseline.csv`; a breach is triaged by the authors and re-enters as an intent | in use, with a manual response |
 | Recurring security scans | not used; the package opens no network connection (`SECURITY.md`) | not used |
