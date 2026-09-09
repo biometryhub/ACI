@@ -15,8 +15,8 @@
   `rcond(gxx) >= 1e-12` at the five points it probes. The same test now runs
   on the whole realised Gram at every interval start of the record, whatever
   the route and whether or not the realisation cache is in use, before any
-  precision is formed. A model whose
-  observation noise collapses between probe points previously completed with
+  precision is formed. A model whose observation Gram becomes exactly zero
+  between probe points previously completed with
   a silently jittered precision and no recorded regularisation event; it now
   raises `aci_error_gram_path`, a subclass of `aci_error_gram`, naming the
   grid index, the time and the offending `rcond`. The check runs before the
@@ -66,8 +66,10 @@
   flooring changes the numerical covariance without establishing that the
   step resolves the dynamics. The `regularize` help states what that contract
   is and is not: the Gram test is a conditioning test on `rcond()`, which is
-  scale-invariant, and not a noise-floor test, so for a one-dimensional
-  observed state only an exactly zero Gram is refused. The condition classes,
+  invariant under uniform rescaling, and not a noise-floor test. For a
+  one-dimensional observed state, small positive Grams can pass; extreme
+  floating-point scales can also cause condition estimation to fail.
+  The condition classes,
   their `site`, `role`, `index`, `time` and `value` fields and the
   `regularize = "floor"` instruction are unchanged.
 
@@ -118,6 +120,15 @@
   first version bump.
 
 ## Documentation
+
+* **Small observation noise is not guaranteed to cause a later failure.**
+  `aci_filter()` help now states that implicit integration can return finite
+  positive covariances without a warning or regularization event, even when
+  the time step does not resolve the covariance dynamics. Explicit integration
+  need not fail either; its behaviour depends on the coupling and time step.
+  Regression tests cover these returns, valid large reductions in uncertainty
+  and changes of units. No calculation, default or acceptance threshold changes;
+  a further scale diagnostic remains deferred.
 
 * **A worked ENSO startup, and what a floored covariance is worth.**
   `aci_enso_model()` gains a fully specified worked example for the
