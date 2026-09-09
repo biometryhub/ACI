@@ -445,7 +445,7 @@ t_w15 <- system.time(f_w15 <- aci_range(a_w, anchors = w15))[["elapsed"]]
 
 c(all_401_anchors = t_all, fifteen_anchors = t_w15, ratio = t_all / t_w15)
 #> all_401_anchors fifteen_anchors           ratio 
-#>         0.07500         0.00700        10.71429
+#>           0.081           0.008          10.125
 identical(f_all$tau[w15], f_w15$tau)    # the same values, not a resample
 #> [1] TRUE
 ```
@@ -1062,7 +1062,7 @@ setNames(sapply(lags, function(L)
   system.time(aci_online(m, ob, lag = L, init = init))[["elapsed"]]),
   paste0("lag_", lags))
 #>   lag_1  lag_20 lag_400 lag_800 
-#>   0.014   0.024   0.023   0.002
+#>   0.013   0.025   0.024   0.002
 ```
 
 An online path carries `kind = "online"`, and that is what keeps it out
