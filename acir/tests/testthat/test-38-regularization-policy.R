@@ -9,8 +9,9 @@
 # The contract asserted here is that a call in which a floor fires raises
 # exactly one `aci_warn_regularized`, that the printed object gains one line
 # naming the count, and that a run which takes no floor is silent and prints
-# exactly what it printed before. Every number below was measured on the
-# unmodified 0.1.0 build; none of them changes.
+# exactly what it printed before. The deliberately unstable ENSO case checks
+# reporting and consistency; its downstream values are not portable numerical
+# references after an ill-conditioned covariance has been floored.
 
 reg_capture <- function(expr) {
   warnings <- list()
@@ -26,6 +27,19 @@ reg_capture <- function(expr) {
 }
 
 n_regularized <- function(cap) sum(cap$classes == "aci_warn_regularized")
+
+## A site's only floor must record the value that the strict route refuses.
+## The strict route stops before updating the regularization recorder.
+expect_recorded_refusal <- function(row, error) {
+  expect_identical(row$n, 1L)
+  expect_s3_class(error, "aci_error_covariance_not_spd")
+  expect_identical(row$site, error$site)
+  expect_identical(row$first_index, error$index)
+  expect_identical(row$first_time, error$time)
+  expect_true(is.finite(error$value))
+  expect_lt(error$value, 0)
+  expect_equal(row$worst_value, error$value, tolerance = 1e-9)
+}
 
 ## A legitimate but vanishingly tight scalar prior: the floor is taken in the
 ## backward smoother, which has no stiffness diagnostic, so before this change
@@ -50,7 +64,7 @@ coarse_scalar <- function() {
 
 ## The three-hidden-state ENSO partition under its automatic prior, which is
 ## about 380x too wide on two of its three components. This is the record the
-## policy exists to make visible: it floors twice and scores 6.00057e+21.
+## policy exists to make visible: it floors twice and scores about 6e21.
 enso_record <- function() {
   m <- aci_enso_model(hidden = c("u", "hW", "tau"))
   ob <- as_obs(simulate(m, seed = 12, t_end = 4, dt = 0.005, burn_in = 0))
@@ -145,7 +159,7 @@ test_that("the table and range verbs report and carry the same record", {
 })
 
 
-test_that("the floored ENSO record reports what it is, unchanged", {
+test_that("the floored ENSO record reports each failure and carries its metric", {
   d <- enso_record()
   a <- reg_capture(aci(d$model, d$obs, keep = "paths", regularize = "floor"))
   expect_identical(n_regularized(a), 1L)
@@ -159,12 +173,13 @@ test_that("the floored ENSO record reports what it is, unchanged", {
   expect_identical(r$sites$n, c(1L, 1L))
   expect_identical(r$sites$first_index, c(2L, 2L))
   expect_equal(r$sites$first_time, c(0.005, 0.005))
-  expect_equal(r$sites$worst_value,
-               c(-7.1493603591190933, -30025.984050335392),
-               tolerance = 1e-9)
-  ## the score itself is untouched: it is the diagnostic, not a result
-  expect_equal(max(a$value$aci), 6.0005703336271314e+21,
-               tolerance = 1e-9)
+  expect_equal(r$sites$worst_value[1L], -7.1493603591190933, tolerance = 1e-9)
+  ## The first floor leaves a covariance with condition number about 1.7e11.
+  ## Downstream values amplify rounding differences across BLAS/LAPACK builds.
+  ## This bound identifies the inflated stress result; it is not an accuracy
+  ## tolerance or evidence that flooring resolves the dynamics.
+  expect_true(all(is.finite(a$value$aci)))
+  expect_gt(max(a$value$aci), 1e20)
   expect_match(paste(capture.output(print(a$value)), collapse = "\n"),
                "regularized: 2 floor event(s)", fixed = TRUE)
 
@@ -173,7 +188,10 @@ test_that("the floored ENSO record reports what it is, unchanged", {
   km <- aci_metric(a$value$paths$smoother, a$value$paths$filter)
   expect_s3_class(km, "data.frame")
   expect_identical(names(km), c("t", "total", "signal", "dispersion"))
-  expect_equal(max(km$total), 6.0005703336271314e+21, tolerance = 1e-9)
+  expect_identical(km$t, a$value$t)
+  expect_identical(km$total, a$value$aci)
+  expect_identical(km$signal, a$value$signal)
+  expect_identical(km$dispersion, a$value$dispersion)
 
   f <- reg_capture(aci_filter(d$model, d$obs, regularize = "floor"))
   expect_identical(n_regularized(f), 1L)
@@ -183,6 +201,14 @@ test_that("the floored ENSO record reports what it is, unchanged", {
   s <- reg_capture(aci_smoother(d$model, d$obs, regularize = "floor"))
   expect_identical(n_regularized(s), 1L)
   expect_identical(s$value$meta$regularization$n_events, 2L)
+  expect_identical(s$value$meta$regularization$sites, r$sites)
+
+  ## Reuse the same floored filter so the strict smoother reaches the second
+  ## failure. Recomputing a strict filter would stop at the first one.
+  es <- reg_capture(tryCatch(
+    aci_smoother(d$model, d$obs, filter = f$value, regularize = "none"),
+    error = identity))$value
+  expect_recorded_refusal(r$sites[2L, , drop = FALSE], es)
 
   on <- reg_capture(aci_online(d$model, d$obs, lag = 20,
                                regularize = "floor"))
@@ -190,9 +216,36 @@ test_that("the floored ENSO record reports what it is, unchanged", {
   ro <- on$value$meta$regularization
   expect_identical(ro$n_events, 2L)
   expect_identical(ro$sites$site, c("filter_explicit", "smoother_onelag"))
-  expect_equal(ro$sites$worst_value,
-               c(-7.1493603591190933, -0.083382448614619797),
-               tolerance = 1e-9)
+  expect_identical(ro$sites$n, c(1L, 1L))
+  expect_identical(ro$sites$first_index, c(2L, 2L))
+  expect_equal(ro$sites$first_time, c(0.005, 0.005))
+  expect_equal(ro$sites$worst_value[1L], -7.1493603591190933, tolerance = 1e-9)
+  eo <- reg_capture(tryCatch(
+    aci_online(d$model, d$obs, lag = 20, filter = f$value,
+               regularize = "none"), error = identity))$value
+  expect_recorded_refusal(ro$sites[2L, , drop = FALSE], eo)
+})
+
+
+test_that("matrix floor records retain each site's minimum and first location", {
+  rec <- .aci_reg_new("floor", c(0, 0.25, 0.5, 0.75))
+  rec$j <- 2L
+  ## The eigenvalues are 5 and -7; no measured package output is the reference.
+  .cov_guard(matrix(c(-1, 6, 6, -1), 2, 2), rec, "smoother_backward")
+  rec$j <- 3L
+  .cov_guard(diag(c(2, -3)), rec, "smoother_backward")
+  expect_equal(.aci_reg_freeze(rec)$sites$worst_value, -7, tolerance = 1e-12)
+  rec$j <- 4L
+  .cov_guard(diag(c(4, -5)), rec, "smoother_onelag")
+  .cov_guard(diag(c(2, -9)), rec, "smoother_backward")
+  r <- .aci_reg_freeze(rec)
+  expect_true(r$fired)
+  expect_identical(r$n_events, 4L)
+  expect_identical(r$sites$site, c("smoother_backward", "smoother_onelag"))
+  expect_identical(r$sites$n, c(3L, 1L))
+  expect_identical(r$sites$first_index, c(2L, 4L))
+  expect_identical(r$sites$first_time, c(0.25, 0.75))
+  expect_equal(r$sites$worst_value, c(-9, -5), tolerance = 1e-12)
 })
 
 
