@@ -59,10 +59,18 @@ observation-noise Gram whose reciprocal condition number falls below
 check runs before any covariance policy, so \code{regularize = "floor"} does
 not bypass it. It is a conditioning test, not a noise-floor test:
 \code{rcond()} is invariant under a uniform rescaling of the Gram, so for a
-one-dimensional observed state, where the reciprocal condition number of
-every non-zero Gram is exactly 1, only an exactly zero Gram is refused.
-An observation noise that collapses towards zero without reaching it
-passes this test and fails later as integration instability.
+one-dimensional observed state the mathematical reciprocal condition number
+of every positive Gram is 1. Small positive noise can therefore pass;
+condition estimation can also fail at extreme floating-point scales.
+Depending on the coupling and time step, explicit integration may fail,
+while implicit integration can return finite positive covariances without
+a warning or regularization event. Such a return does not establish that
+the step resolves the covariance dynamics. Assess sensitivity to time
+resolution when observation noise is small relative to the coupling.
+Regularization events record applied covariance corrections, not all
+sources of numerical error. A large reduction in uncertainty can also be
+valid for a sufficiently informative observation model; no additional
+noise-scale or variance-drop threshold is imposed.
 A mean or predictive log-likelihood that overflows to
 \code{Inf} or \code{NaN} raises \code{aci_error_nonfinite} naming the quantity, the grid
 index and the time.}
