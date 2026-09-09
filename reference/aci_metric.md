@@ -27,7 +27,23 @@ aci_metric(p, q, decompose = TRUE)
 ## Value
 
 A data frame with the time column `t` and either `total` alone or
-`total`, `signal` and `dispersion`.
+`total`, `signal` and `dispersion`. `aci_metric()` keeps no
+regularization record of its own: it scores the paths it is given, so a
+score computed from floored moments is itself regularized without saying
+so. Read `p$meta$regularization` and `q$meta$regularization` for the
+record the input paths were computed under.
+
+## Details
+
+A one-dimensional hidden state is evaluated with the
+cancellation-resistant `log1p` form `0.5 * (delta - log1p(delta))`,
+`delta = R_p / R_q - 1`; two or more hidden components use the trace and
+log-difference form, whose relative precision on the dispersion degrades
+as the two covariances approach each other.
+[`aci_metric_pair()`](https://biometryhub.github.io/ACI/reference/aci_metric_pair.md)
+documents that boundary with the measured figures, and uses the trace
+form at every dimension, so it and this function need not agree in the
+last digits on one-dimensional inputs.
 
 ## See also
 
@@ -41,7 +57,7 @@ m <- aci_dyad_model()
 sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
 ob <- as_obs(sim)
 f <- aci_filter(m, ob)
-#> Warning: No init$cov supplied; using a diffuse prior. Discard an initial burn-in window when interpreting results.
+#> Warning: No init$cov supplied; using a diffuse prior. Its opening steps are prior-dominated; a prior far wider than the hidden state's own scale can also destabilise the explicit step, which is a refusal rather than a window to discard.
 s <- aci_smoother(m, ob, filter = f)
 head(aci_metric(s, f))
 #>      t     total    signal dispersion

@@ -71,7 +71,10 @@ aci_smoother(model, obs, ...)
   [`aci_filter()`](https://biometryhub.github.io/ACI/reference/aci_filter.md).
   One record covers the whole call, so a filter recomputed here and the
   backward recursion that consumes it share the `meta$regularization` on
-  the returned smoother.
+  the returned smoother, and one `aci_warn_regularized` covers both.
+  Flooring changes the numerical covariance so that the recursion can
+  continue; it establishes nothing about the accuracy of the resulting
+  reconstruction.
 
 - force_validate:
 
@@ -109,7 +112,7 @@ m <- aci_dyad_model()
 sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
 ob <- as_obs(sim)
 f <- aci_filter(m, ob)
-#> Warning: No init$cov supplied; using a diffuse prior. Discard an initial burn-in window when interpreting results.
+#> Warning: No init$cov supplied; using a diffuse prior. Its opening steps are prior-dominated; a prior far wider than the hidden state's own scale can also destabilise the explicit step, which is a refusal rather than a window to discard.
 aci_smoother(m, ob, filter = f)
 #> <da_path_gaussian> kind = smoother, l = 1, N+1 = 201
 ```

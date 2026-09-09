@@ -3,9 +3,12 @@
 Summarizes the duration of influence on the discrete time grid, forward
 from each anchor time. A finite adaptive table is labelled
 `objective_on_truncated_table`; its `tail_bound` field is a heuristic
-tail estimate and must not be interpreted as a certified error bound.
-The `l1_linf` estimators are ratios, integrated with composite Simpson
-over the whole span, following the ACI reference code.
+tail estimate and must not be interpreted as a certified error bound. It
+is a diagnostic under the retained record, not a guarantee about the
+cells the truncation dropped. The `l1_linf` estimators are ratios,
+integrated with composite Simpson over the whole span by default,
+following the ACI reference code; `quadrature = "sum"` uses the L1 grid
+sum instead.
 
 ## Usage
 
@@ -51,11 +54,17 @@ aci_range(x, direction = c("forward", "backward"), ...)
   The objective functional. `"exact"` is the definitional objective
   range, the subjective range averaged over every threshold; reading the
   range off the running maximum makes that average a finite sum,
-  `dt * sum(suffix max) / M`, with no quadrature error. `"l1_linf"` is
-  the efficient ratio the ACI reference script computes,
-  `dt * integral(row) / M`. They are different functionals, not two
-  quadratures of one: they coincide only where the divergence decreases
-  with lag.
+  `dt * sum(suffix max) / M`, with no quadrature error. That is exact
+  for its discrete counting functional on the retained grid; it is not
+  exact continuous-time inference. `"l1_linf"` is the efficient ratio
+  the ACI reference script computes, `dt * integral(row) / M`. They are
+  different functionals, not two quadratures of one. On a row that
+  decreases with lag the suffix maximum is the row itself, so the two
+  agree term by term and coincide when the ratio is reduced with
+  `quadrature = "sum"`; under the default `quadrature = "simpson"` they
+  still differ. On `c(1, 0.5, 0)` with `M = 1` the objective is
+  `1.5 * dt`, the summed ratio `1.5 * dt` and the Simpson ratio
+  `1 * dt`.
 
 - epsilon:
 
@@ -176,7 +185,7 @@ m <- aci_dyad_model()
 sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
 ob <- as_obs(sim)
 tb <- lag_table(m, ob, mode = "forward")
-#> Warning: No init$cov supplied; using a diffuse prior. Discard an initial burn-in window when interpreting results.
+#> Warning: No init$cov supplied; using a diffuse prior. Its opening steps are prior-dominated; a prior far wider than the hidden state's own scale can also destabilise the explicit step, which is a refusal rather than a window to discard.
 aci_range(tb)
 #> Warning: 1 forward CIR values masked (M < 1e-05); interpret CIRs jointly with the ACI metric (Andreou & Chen 2026, Remark B.4).
 #> <cir_result> forward | method = exact (layer_cake_objective) | masked/NA: 1 of 201

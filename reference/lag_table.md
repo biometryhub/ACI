@@ -88,7 +88,11 @@ lag_table(
   [`aci_filter()`](https://biometryhub.github.io/ACI/reference/aci_filter.md).
   One record covers the filter, the Theorem 3 reference smoother and
   every relative-entropy denominator the table forms, and is returned in
-  `meta$regularization`.
+  `meta$regularization`; a call in which a floor fires also raises one
+  `aci_warn_regularized`. Flooring changes the numerical covariance so
+  that the recursion can continue; it establishes nothing about the
+  accuracy of the divergences the table stores or of anything reduced
+  from them.
 
 - ...:
 
@@ -123,7 +127,7 @@ m <- aci_dyad_model()
 sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
 ob <- as_obs(sim)
 lag_table(m, ob, mode = "forward")
-#> Warning: No init$cov supplied; using a diffuse prior. Discard an initial burn-in window when interpreting results.
+#> Warning: No init$cov supplied; using a diffuse prior. Its opening steps are prior-dominated; a prior far wider than the hidden state's own scale can also destabilise the explicit step, which is a refusal rather than a window to discard.
 #> <lag_table> mode = forward, N+1 = 201, tol = 1e-08
 #>   mean retained lag: 100.0 steps; max heuristic tail estimate: 0.00e+00
 ```

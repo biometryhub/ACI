@@ -210,12 +210,19 @@ does something else.</p>
 <div class="section level3">
 <h3 id="observations">Observations<a class="anchor" aria-label="anchor" href="#observations"></a>
 </h3>
-<p><code><a href="../reference/observed_trajectory.html">observed_trajectory()</a></code> derives <code>dt</code> from the
-supplied times and refuses a non-uniform grid. A desynchronised time
-column is an error, not a wrong answer:</p>
+<p>This release assimilates a complete record of the observed state on a
+uniform grid, taken as noise-free: every observed channel present at
+every time, uniform spacing, and no independent sensor error.
+<code><a href="../reference/observed_trajectory.html">observed_trajectory()</a></code> derives <code>dt</code> from the
+supplied times and refuses anything else. A desynchronised time column
+is an error, not a wrong answer:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">refused</span><span class="op">(</span><span class="fu"><a href="../reference/observed_trajectory.html">observed_trajectory</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.01</span>, <span class="fl">0.03</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">3</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; aci_error_obs_contract: Observations must lie on a uniform time grid; resample first.</span></span></code></pre></div>
+<span><span class="co">#&gt; aci_error_obs_contract: Observations must lie on a uniform time grid. Resample or subset the record onto one before constructing the trajectory; interpolation onto a uniform grid does not create independent observations and does not remove observation error.</span></span></code></pre></div>
+<p>Resampling onto a uniform grid is how you meet the contract, not how
+you remove observation error: interpolation does not create independent
+noise-free observations, and the model’s process diffusion is not sensor
+variance.</p>
 <p>Naming the columns is what makes the conditional questions of section
 4 readable, because <code><a href="../reference/aci_conditional.html">aci_conditional()</a></code> accepts channel
 names.</p>
@@ -247,7 +254,7 @@ explicit Riccati step overshoots:</p>
 <span><span class="va">ob_bad</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/observed_trajectory.html">observed_trajectory</a></span><span class="op">(</span><span class="va">ob</span><span class="op">$</span><span class="va">t</span><span class="op">[</span><span class="va">idx</span><span class="op">]</span>, <span class="va">ob</span><span class="op">$</span><span class="va">x</span><span class="op">[</span><span class="va">idx</span>, , drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span>,</span>
 <span>                              names <span class="op">=</span> <span class="st">"x"</span><span class="op">)</span></span>
 <span><span class="fu">refused</span><span class="op">(</span><span class="fu"><a href="../reference/aci_filter.html">aci_filter</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob_bad</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; aci_error_covariance_not_spd: The filter covariance must stay finite and positive definite; it reached -0.1336333 at index 37 (time 7.2), in the explicit Riccati step. Reduce dt, raise nsub, or use stepper = "implicit", which preserves positivity. To keep the previous behaviour, call with regularize = "floor"; every floored step is then recorded in the result's meta$regularization.</span></span></code></pre></div>
+<span><span class="co">#&gt; aci_error_covariance_not_spd: The filter covariance must stay finite and positive definite; it reached -0.1336333 at index 37 (time 7.2), in the explicit Riccati step. The realised observation-noise Gram was accepted against the constructor's relative-conditioning contract at every step of this record, so this is integration instability on a valid observation model: reduce dt, raise nsub, or use stepper = "implicit", which preserves positivity. To keep the previous behaviour, call with regularize = "floor"; every floored step is then recorded in the result's meta$regularization. Flooring changes the numerical covariance; it does not establish that the step resolves the dynamics.</span></span></code></pre></div>
 <p><code>regularize = "floor"</code> is the previous behaviour,
 available on <code><a href="../reference/aci.html">aci()</a></code>, <code><a href="../reference/aci_filter.html">aci_filter()</a></code>,
 <code><a href="../reference/aci_smoother.html">aci_smoother()</a></code> and <code><a href="../reference/lag_table.html">lag_table()</a></code>, and
@@ -259,6 +266,11 @@ does not make the run correct. It makes what it did visible:</p>
 <span><span class="co">#&gt; Explicit Riccati step is unstable (max ||Lx' gxx^-1 Lx R|| dt = 2.44 &gt; 1): the</span></span>
 <span><span class="co">#&gt; covariance can overshoot, leave the positive-definite cone, and oscillate. Use</span></span>
 <span><span class="co">#&gt; the positivity-preserving implicit stepper, or reduce dt / increase nsub.</span></span>
+<span><span class="co">#&gt; Warning in .aci_reg_report(rec): regularize = "floor" projected a covariance</span></span>
+<span><span class="co">#&gt; update back into the positive-definite cone (first at filter_explicit, index</span></span>
+<span><span class="co">#&gt; 37, time 7.2). The returned moments and every quantity derived from them are</span></span>
+<span><span class="co">#&gt; regularized, not validated; meta$regularization records every event of this</span></span>
+<span><span class="co">#&gt; call.</span></span>
 <span><span class="va">bad</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">regularization</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"policy"</span>, <span class="st">"fired"</span>, <span class="st">"n_events"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt; $policy</span></span>
 <span><span class="co">#&gt; [1] "floor"</span></span>
@@ -285,6 +297,114 @@ rather than by omission:</p>
 <span><span class="co">#&gt; [1] 0</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">a</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">regularization</span><span class="op">$</span><span class="va">sites</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 0</span></span></code></pre></div>
+<p>A floor that actually fires is signalled once per call, as a classed
+warning naming the first floored site, its grid index and its time. The
+condition classes a run raised are what tells a script, rather than a
+reader, that it is holding a regularized result:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">seen_classes</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">withCallingHandlers</a></span><span class="op">(</span></span>
+<span>  <span class="va">bad2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_filter.html">aci_filter</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob_bad</span>, init <span class="op">=</span> <span class="va">init</span>, regularize <span class="op">=</span> <span class="st">"floor"</span><span class="op">)</span>,</span>
+<span>  warning <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">w</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">seen_classes</span> <span class="op">&lt;&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">seen_classes</span>, <span class="fu"><a href="https://rdrr.io/r/base/class.html" class="external-link">class</a></span><span class="op">(</span><span class="va">w</span><span class="op">)</span><span class="op">[</span><span class="fl">1L</span><span class="op">]</span><span class="op">)</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/conditions.html" class="external-link">invokeRestart</a></span><span class="op">(</span><span class="st">"muffleWarning"</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span></span>
+<span><span class="va">seen_classes</span></span>
+<span><span class="co">#&gt; [1] "aci_warn_riccati_stiff" "aci_warn_regularized"</span></span></code></pre></div>
+<p>That scalar record floors on a coarse grid. The policy matters more
+on a matrix hidden state, where a prior that is wide against one
+component’s own scale destabilises the whole Riccati step. The packaged
+ENSO model with three hidden variables is the case: its componentwise
+stationary scales differ by three orders of magnitude, so the single
+scalar prior <code><a href="../reference/aci.html">aci()</a></code> supplies when <code>init$cov</code> is
+omitted is far too wide on two of the three. Run it both ways, once
+under the automatic prior with flooring and once under a prior read off
+the model’s own coefficients:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">m_e</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_enso_model.html">aci_enso_model</a></span><span class="op">(</span>hidden <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"u"</span>, <span class="st">"hW"</span>, <span class="st">"tau"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">ob_e</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_obs.html">as_obs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">m_e</span>, seed <span class="op">=</span> <span class="fl">12</span>, t_end <span class="op">=</span> <span class="fl">4</span>, dt <span class="op">=</span> <span class="fl">5e-3</span>, burn_in <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co">## The componentwise Ornstein-Uhlenbeck stationary scale gyy_ii / (2 |Ly_ii|)</span></span>
+<span><span class="co">## at the first time, read off the model's own coefficients.  The subsection</span></span>
+<span><span class="co">## *A stated prior for a multi-hidden partition* below derives it and says</span></span>
+<span><span class="co">## why the automatic prior is not it.</span></span>
+<span><span class="va">d0</span>    <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">f</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="fu">f</span><span class="op">(</span><span class="va">ob_e</span><span class="op">$</span><span class="va">t</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>, <span class="va">ob_e</span><span class="op">$</span><span class="va">x</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">gyy</span>   <span class="op">&lt;-</span> <span class="fu">d0</span><span class="op">(</span><span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">m_e</span><span class="op">$</span><span class="fu">Sy1</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>              <span class="fu"><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">m_e</span><span class="op">$</span><span class="fu">Sy2</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">ini_e</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mean <span class="op">=</span> <span class="va">m_e</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">ic_default</span><span class="op">$</span><span class="va">y0</span>,</span>
+<span>              cov  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="va">gyy</span> <span class="op">/</span> <span class="op">(</span><span class="fl">2</span> <span class="op">*</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu">d0</span><span class="op">(</span><span class="va">m_e</span><span class="op">$</span><span class="va">Ly</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">a_floor</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci.html">aci</a></span><span class="op">(</span><span class="va">m_e</span>, <span class="va">ob_e</span>, regularize <span class="op">=</span> <span class="st">"floor"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning in .compiled_filter_init(bundle, init): No init$cov supplied; using a</span></span>
+<span><span class="co">#&gt; diffuse prior. Its opening steps are prior-dominated; a prior far wider than</span></span>
+<span><span class="co">#&gt; the hidden state's own scale can also destabilise the explicit step, which is a</span></span>
+<span><span class="co">#&gt; refusal rather than a window to discard.</span></span>
+<span><span class="co">#&gt; Warning in .cgns_filter_matrix_compiled(bundle, init, stepper = stepper, :</span></span>
+<span><span class="co">#&gt; Explicit Riccati step is unstable (max ||Lx' gxx^-1 Lx R|| dt = 5.86 &gt; 1): the</span></span>
+<span><span class="co">#&gt; covariance can overshoot, leave the positive-definite cone, and oscillate. Use</span></span>
+<span><span class="co">#&gt; the positivity-preserving implicit stepper, or reduce dt / increase nsub.</span></span>
+<span><span class="co">#&gt; Warning in .aci_reg_report(rec): regularize = "floor" projected a covariance</span></span>
+<span><span class="co">#&gt; update back into the positive-definite cone (first at filter_explicit, index 2,</span></span>
+<span><span class="co">#&gt; time 0.005). The returned moments and every quantity derived from them are</span></span>
+<span><span class="co">#&gt; regularized, not validated; meta$regularization records every event of this</span></span>
+<span><span class="co">#&gt; call.</span></span>
+<span><span class="va">a_prior</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci.html">aci</a></span><span class="op">(</span><span class="va">m_e</span>, <span class="va">ob_e</span>, init <span class="op">=</span> <span class="va">ini_e</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>floored_peak      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">a_floor</span><span class="op">$</span><span class="va">aci</span><span class="op">)</span>,</span>
+<span>  stated_prior_peak <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">a_prior</span><span class="op">$</span><span class="va">aci</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;      floored_peak stated_prior_peak </span></span>
+<span><span class="co">#&gt;      6.000646e+21      1.830865e+00</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>floored_events <span class="op">=</span> <span class="va">a_floor</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">regularization</span><span class="op">$</span><span class="va">n_events</span>,</span>
+<span>  stated_events  <span class="op">=</span> <span class="va">a_prior</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">regularization</span><span class="op">$</span><span class="va">n_events</span><span class="op">)</span></span>
+<span><span class="co">#&gt; floored_events  stated_events </span></span>
+<span><span class="co">#&gt;              2              0</span></span>
+<span><span class="va">a_floor</span></span>
+<span><span class="co">#&gt; &lt;aci_result&gt; engine = cgns | peak ACI = 6.001e+21 at t = 0.005</span></span>
+<span><span class="co">#&gt;   regularized: 2 floor event(s) under regularize = "floor"; see meta$regularization</span></span></code></pre></div>
+<p>Read those two numbers as what they are. The second is an ACI value:
+the recursion stayed inside the positive-definite cone at every step,
+and every quantity behind it came from the model, the prior and the
+record. The first is not a large influence. Its peak sits at
+<code>t = 0.005</code>, index 2, the first update and the same index the
+strict policy refuses at, and its size is the size of the excursion the
+floor absorbed there, carried through the rest of the recursion by
+arithmetic that has no way to know a covariance was replaced. A floored
+number is a diagnostic that the prior or the step did not resolve the
+dynamics. It is not a reconstruction, not an information score, and not
+comparable with a number from a clean run. Report the policy, the event
+count and the site with any figure computed under it.</p>
+<p>The converse also holds, and is the reason the event count is not a
+sufficient check. Take the structurally independent Brownian null <span class="math inline">dx = dW_1</span>, <span class="math inline">dy =
+dW_2</span>, whose true information gain is zero at every step and for
+every prior, on a single observed interval of length <span class="math inline">h = 0.07</span> with prior variance <span class="math inline">v = 0.1</span> and the observed path <span class="math inline">x(t) = 2t</span>:</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">null_m</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_model.html">aci_model</a></span><span class="op">(</span>Lx <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>                    fx <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span> <span class="fl">0</span>,</span>
+<span>                    Ly <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>                    fy <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span> <span class="fl">0</span>,</span>
+<span>                    Sx1 <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>,</span>
+<span>                    Sy2 <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span>, k <span class="op">=</span> <span class="fl">1</span>, l <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">ob_n</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/observed_trajectory.html">observed_trajectory</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.07</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0.14</span><span class="op">)</span>, ncol <span class="op">=</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">ini_n</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mean <span class="op">=</span> <span class="fl">0</span>, cov <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">0.1</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">n1</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci.html">aci</a></span><span class="op">(</span><span class="va">null_m</span>, <span class="va">ob_n</span>, init <span class="op">=</span> <span class="va">ini_n</span>, regularize <span class="op">=</span> <span class="st">"none"</span><span class="op">)</span></span>
+<span><span class="va">n20</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci.html">aci</a></span><span class="op">(</span><span class="va">null_m</span>, <span class="va">ob_n</span>, init <span class="op">=</span> <span class="va">ini_n</span>, nsub <span class="op">=</span> <span class="fl">20</span>, regularize <span class="op">=</span> <span class="st">"none"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>one_substep <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">n1</span><span class="op">$</span><span class="va">aci</span><span class="op">)</span>, twenty_substeps <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">n20</span><span class="op">$</span><span class="va">aci</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;     one_substep twenty_substeps </span></span>
+<span><span class="co">#&gt;      1.46601150      0.01407792</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>events_1  <span class="op">=</span> <span class="va">n1</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">regularization</span><span class="op">$</span><span class="va">n_events</span>,</span>
+<span>  events_20 <span class="op">=</span> <span class="va">n20</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">regularization</span><span class="op">$</span><span class="va">n_events</span><span class="op">)</span></span>
+<span><span class="co">#&gt;  events_1 events_20 </span></span>
+<span><span class="co">#&gt;         0         0</span></span></code></pre></div>
+<p>The backward smoother returns 1.4660115 nats against a true value of
+zero. Nothing was floored: the run is under
+<code>regularize = "none"</code>, every covariance stayed positive
+definite, every quantity is finite and the event count is zero. The step
+alone produced it, and <code>nsub = 20</code> on the same record leaves
+0.0140779. Positive-definite, finite output with no floor event does not
+certify that the step resolved the problem; it certifies only that the
+recursion did not have to be repaired to continue.</p>
 <p><code><a href="../reference/aci_range.html">aci_range()</a></code> on an <code>aci_result</code> reads the
 policy off the result rather than off the option, so re-analysing a
 saved result in a later session cannot silently change it.
@@ -294,7 +414,7 @@ are the implementation of the opt-in, not a default. Called directly,
 <code><a href="../reference/safe_chol.html">safe_chol()</a></code> factors through a jitter ladder, and gives up
 rather than returning a factor of something that was never a
 covariance:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/spd_floor.html">spd_floor</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0</span>, <span class="op">-</span><span class="fl">1e-14</span><span class="op">)</span>, <span class="fl">2</span>, <span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;      [,1]  [,2]</span></span>
 <span><span class="co">#&gt; [1,]    1 0e+00</span></span>
@@ -313,7 +433,7 @@ covariance:</p>
 convention the lag table of section 3 assumes. A positivity-preserving
 implicit stepper is available for stiff models or very diffuse priors,
 with <code>nsub</code> sub-steps per observation:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">filt_i</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_filter.html">aci_filter</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, init <span class="op">=</span> <span class="va">init</span>, stepper <span class="op">=</span> <span class="st">"implicit"</span>, nsub <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="va">a_i</span>    <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci.html">aci</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, init <span class="op">=</span> <span class="va">init</span>, stepper <span class="op">=</span> <span class="st">"implicit"</span>, nsub <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span></span>
@@ -326,18 +446,124 @@ with <code>nsub</code> sub-steps per observation:</p>
 different numbers, and the difference here is not negligible against the
 size of the metric itself. Pick one deliberately and record which.</p>
 <p><code><a href="../reference/lag_table.html">lag_table()</a></code> refuses anything else outright, because the
-Theorem 3 recursions it accumulates are exact for the explicit
+Theorem 3 recursions it accumulates are derived for the explicit
 single-step discretisation and for no other:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">refused</span><span class="op">(</span><span class="fu"><a href="../reference/lag_table.html">lag_table</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, mode <span class="op">=</span> <span class="st">"forward"</span>, init <span class="op">=</span> <span class="va">init</span>, stepper <span class="op">=</span> <span class="st">"implicit"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; aci_error_stepper: lag_table requires stepper = 'explicit' and nsub = 1.</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="a-stated-prior-for-a-multi-hidden-partition">A stated prior for a multi-hidden partition<a class="anchor" aria-label="anchor" href="#a-stated-prior-for-a-multi-hidden-partition"></a>
+</h3>
+<p>The stepper and the prior are one decision seen from two sides: an
+explicit step is stable only against a covariance of the size the
+dynamics actually carry. <code><a href="../reference/aci_enso_model.html">aci_enso_model()</a></code> is where that
+bites. Its bare constructor default is the two-variable partition
+<code>hidden = c("hW", "tau")</code>; the three-variable partition built
+above adds <code>u</code>, whose stationary variance is three orders of
+magnitude below <code>tau</code>’s. The prior supplied when
+<code>init$cov</code> is omitted is one scalar times the identity,
+formed from the mean over hidden components, so on this partition it is
+about 380 times wider than <code>u</code> and <code>h_W</code> are. The
+explicit Riccati step leaves the positive-definite cone at index 2, the
+first update:</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">refused</span><span class="op">(</span><span class="fu"><a href="../reference/aci.html">aci</a></span><span class="op">(</span><span class="va">m_e</span>, <span class="va">ob_e</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; Warning in .compiled_filter_init(bundle, init): No init$cov supplied; using a</span></span>
+<span><span class="co">#&gt; diffuse prior. Its opening steps are prior-dominated; a prior far wider than</span></span>
+<span><span class="co">#&gt; the hidden state's own scale can also destabilise the explicit step, which is a</span></span>
+<span><span class="co">#&gt; refusal rather than a window to discard.</span></span>
+<span><span class="co">#&gt; aci_error_covariance_not_spd: The filter covariance must stay finite and positive definite; it reached -7.14936 at index 2 (time 0.005), in the explicit Riccati step. The realised observation-noise Gram was accepted against the constructor's relative-conditioning contract at every step of this record, so this is integration instability on a valid observation model: reduce dt, raise nsub, or use stepper = "implicit", which preserves positivity. To keep the previous behaviour, call with regularize = "floor"; every floored step is then recorded in the result's meta$regularization. Flooring changes the numerical covariance; it does not establish that the step resolves the dynamics.</span></span></code></pre></div>
+<p>There is no opening window to discard here; the run ends at the first
+update. The remedy is to state the prior. The componentwise
+Ornstein-Uhlenbeck stationary scale <code>gyy_ii / (2 |Ly_ii|)</code> is
+read off the model’s own coefficients, and it is the prior built in the
+previous subsection:</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/diag.html" class="external-link">diag</a></span><span class="op">(</span><span class="va">ini_e</span><span class="op">$</span><span class="va">cov</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 0.0032000 0.0008000 0.2836974</span></span>
+<span><span class="va">a_prior</span></span>
+<span><span class="co">#&gt; &lt;aci_result&gt; engine = cgns | peak ACI = 1.831 at t = 2.93</span></span>
+<span><span class="va">a_prior</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">regularization</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"policy"</span>, <span class="st">"fired"</span>, <span class="st">"n_events"</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="co">#&gt; $policy</span></span>
+<span><span class="co">#&gt; [1] "none"</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $fired</span></span>
+<span><span class="co">#&gt; [1] FALSE</span></span>
+<span><span class="co">#&gt; </span></span>
+<span><span class="co">#&gt; $n_events</span></span>
+<span><span class="co">#&gt; [1] 0</span></span></code></pre></div>
+<p>Nothing else moves: the default explicit stepper,
+<code>nsub = 1</code>, and the strict covariance policy. Those are also
+what <code><a href="../reference/lag_table.html">lag_table()</a></code>, <code><a href="../reference/aci_range.html">aci_range()</a></code> and
+<code><a href="../reference/aci_online.html">aci_online()</a></code> require, so the same record carries into
+sections 3 and 5 unchanged. This vignette does not build the table on
+all 801 anchors, because that is slow enough to be worth a shorter
+record.</p>
+<p>Sub-stepping the same record under the same prior is a
+self-consistency check on the discretisation, not an accuracy guarantee.
+<code>nsub</code> is the only knob that holds the record fixed: changing
+<code>dt</code> changes the simulated path, so two <code>dt</code>
+values give two records rather than two resolutions of one.</p>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">nsubs</span>   <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">4</span>, <span class="fl">20</span><span class="op">)</span></span>
+<span><span class="va">exp_tau</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">nsubs</span>, <span class="kw">function</span><span class="op">(</span><span class="va">n</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="../reference/aci.html">aci</a></span><span class="op">(</span><span class="va">m_e</span>, <span class="va">ob_e</span>, init <span class="op">=</span> <span class="va">ini_e</span>, nsub <span class="op">=</span> <span class="va">n</span><span class="op">)</span><span class="op">$</span><span class="va">aci</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">imp_tau</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">20</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">n</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="../reference/aci.html">aci</a></span><span class="op">(</span><span class="va">m_e</span>, <span class="va">ob_e</span>, init <span class="op">=</span> <span class="va">ini_e</span>, stepper <span class="op">=</span> <span class="st">"implicit"</span>, nsub <span class="op">=</span> <span class="va">n</span><span class="op">)</span><span class="op">$</span><span class="va">aci</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">exp_tau</span>, <span class="va">imp_tau</span><span class="op">)</span>, <span class="fl">6</span><span class="op">)</span>,</span>
+<span>         <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"explicit_nsub"</span>, <span class="va">nsubs</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"implicit_nsub"</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">20</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;  explicit_nsub1  explicit_nsub2  explicit_nsub4 explicit_nsub20  implicit_nsub1 </span></span>
+<span><span class="co">#&gt;        1.830865        1.821365        1.816720        1.813052        1.638131 </span></span>
+<span><span class="co">#&gt; implicit_nsub20 </span></span>
+<span><span class="co">#&gt;        1.803244</span></span></code></pre></div>
+<p>The explicit sequence settles near 1.813 and the implicit one climbs
+towards it from below. The two schemes are different discretisations and
+are not required to agree at <code>nsub = 1</code>; the gap there is the
+size of that disagreement on this record, and it belongs beside a
+reported peak rather than averaged into it.</p>
+<p>The prior moves the answer as well, and the refusal boundary is not
+far away. Scaling the stated prior:</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">scales</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">1</span>, <span class="fl">2</span>, <span class="fl">4</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">scales</span>, <span class="kw">function</span><span class="op">(</span><span class="va">s</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="../reference/aci.html">aci</a></span><span class="op">(</span><span class="va">m_e</span>, <span class="va">ob_e</span>, init <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mean <span class="op">=</span> <span class="va">ini_e</span><span class="op">$</span><span class="va">mean</span>,</span>
+<span>                                 cov  <span class="op">=</span> <span class="va">s</span> <span class="op">*</span> <span class="va">ini_e</span><span class="op">$</span><span class="va">cov</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">aci</span><span class="op">)</span><span class="op">)</span>, <span class="fl">6</span><span class="op">)</span>,</span>
+<span>         <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">scales</span>, <span class="st">"x"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt;     0.5x       1x       2x       4x </span></span>
+<span><span class="co">#&gt; 1.814876 1.830865 1.851048 1.971858</span></span>
+<span><span class="fu">refused</span><span class="op">(</span><span class="fu"><a href="../reference/aci.html">aci</a></span><span class="op">(</span><span class="va">m_e</span>, <span class="va">ob_e</span>, init <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mean <span class="op">=</span> <span class="va">ini_e</span><span class="op">$</span><span class="va">mean</span>, cov <span class="op">=</span> <span class="fl">8</span> <span class="op">*</span> <span class="va">ini_e</span><span class="op">$</span><span class="va">cov</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; aci_error_covariance_not_spd: The filter covariance must stay finite and positive definite; it reached -1.710848 at index 2 (time 0.005), in the explicit Riccati step. The realised observation-noise Gram was accepted against the constructor's relative-conditioning contract at every step of this record, so this is integration instability on a valid observation model: reduce dt, raise nsub, or use stepper = "implicit", which preserves positivity. To keep the previous behaviour, call with regularize = "floor"; every floored step is then recorded in the result's meta$regularization. Flooring changes the numerical covariance; it does not establish that the step resolves the dynamics.</span></span></code></pre></div>
+<p>Somewhere between four and eight times the stationary scale the
+explicit step stops being stable at all, and the automatic prior is
+about 380 times it. A peak reported on this partition is a statement
+about a model, a prior and a step together, and the prior and the step
+have to be stated with it.</p>
+<p>None of this says the model is ill-posed. The realised
+observation-noise Gram is nondegenerate along the whole record, so the
+observation model is admissible at every step and what fails is the
+integration:</p>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">gram</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">vapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">ob_e</span><span class="op">$</span><span class="va">t</span><span class="op">)</span>, <span class="kw">function</span><span class="op">(</span><span class="va">j</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">G</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">m_e</span><span class="op">$</span><span class="fu">Sx1</span><span class="op">(</span><span class="va">ob_e</span><span class="op">$</span><span class="va">t</span><span class="op">[</span><span class="va">j</span><span class="op">]</span>, <span class="va">ob_e</span><span class="op">$</span><span class="va">x</span><span class="op">[</span><span class="va">j</span>, <span class="op">]</span><span class="op">)</span><span class="op">)</span> <span class="op">+</span></span>
+<span>       <span class="fu"><a href="https://rdrr.io/r/base/crossprod.html" class="external-link">tcrossprod</a></span><span class="op">(</span><span class="va">m_e</span><span class="op">$</span><span class="fu">Sx2</span><span class="op">(</span><span class="va">ob_e</span><span class="op">$</span><span class="va">t</span><span class="op">[</span><span class="va">j</span><span class="op">]</span>, <span class="va">ob_e</span><span class="op">$</span><span class="va">x</span><span class="op">[</span><span class="va">j</span>, <span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/eigen.html" class="external-link">eigen</a></span><span class="op">(</span><span class="va">G</span>, symmetric <span class="op">=</span> <span class="cn">TRUE</span>, only.values <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">values</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/kappa.html" class="external-link">rcond</a></span><span class="op">(</span><span class="va">G</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span>, <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>min_eigenvalue <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">gram</span><span class="op">[</span><span class="fl">1</span>, <span class="op">]</span><span class="op">)</span>, min_rcond <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">min</a></span><span class="op">(</span><span class="va">gram</span><span class="op">[</span><span class="fl">2</span>, <span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; min_eigenvalue      min_rcond </span></span>
+<span><span class="co">#&gt;    0.000325000    0.002436891</span></span></code></pre></div>
+<p>That is the distinction the refusal draws. A valid observation model
+can still require a smaller step, more sub-steps, the implicit stepper
+or a tighter prior, and that is what happened here. An observation Gram
+that is itself singular is a different failure, and it is refused before
+the recursion starts.</p>
 </div>
 <div class="section level3">
 <h3 id="the-predictive-likelihood">The predictive likelihood<a class="anchor" aria-label="anchor" href="#the-predictive-likelihood"></a>
 </h3>
 <p>The filter chain can accumulate a predictive log-likelihood. ACI
 never uses it, so it is switchable:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">filt</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">loglik</span></span>
 <span><span class="co">#&gt; [1] 1261.46</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="fu"><a href="../reference/aci_filter.html">aci_filter</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, init <span class="op">=</span> <span class="va">init</span>, loglik <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">loglik</span><span class="op">)</span></span>
@@ -356,7 +582,7 @@ smoothed. Any other supplied path, including one that has been through
 <code><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS()</a></code>, is validated in full as before, and
 <code>force_validate = TRUE</code> validates unconditionally. The
 smoother result is the same either way:</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="../reference/aci_smoother.html">aci_smoother</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, filter <span class="op">=</span> <span class="va">filt</span><span class="op">)</span><span class="op">$</span><span class="va">mean</span>,</span>
 <span>          <span class="fu"><a href="../reference/aci_smoother.html">aci_smoother</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, filter <span class="op">=</span> <span class="va">filt</span>, force_validate <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">$</span><span class="va">mean</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
@@ -371,7 +597,7 @@ time when the documented <code><a href="../reference/aci_filter.html">aci_filter
 <p><code><a href="../reference/aci_metric_pair.html">aci_metric_pair()</a></code> and <code><a href="../reference/aci_metric.html">aci_metric()</a></code> are
 exposed directly, so the metric can be recomputed from posteriors
 obtained any other way:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/aci_metric_pair.html">aci_metric_pair</a></span><span class="op">(</span>mu_p <span class="op">=</span> <span class="fl">0</span>, R_p <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span>
 <span>                mu_q <span class="op">=</span> <span class="fl">0.5</span>, R_q <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">2</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;      total     signal dispersion </span></span>
@@ -403,7 +629,7 @@ keeping none. Memory is linear.</li>
 <p>Both reduce identically. On this record, asking the streamed route
 for a subsample of anchors costs a fraction of the whole-record
 computation:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">anchors</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="fl">1L</span>, <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">ob</span><span class="op">$</span><span class="va">t</span><span class="op">)</span>, by <span class="op">=</span> <span class="fl">8L</span><span class="op">)</span></span>
 <span><span class="va">fc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_range.html">aci_range</a></span><span class="op">(</span><span class="va">a</span>, anchors <span class="op">=</span> <span class="va">anchors</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning in .forward_cir_compiled(bundle, filter = x$paths$filter, init =</span></span>
@@ -421,7 +647,7 @@ streamed engine forms only those rows, skipping the per-interval
 primitives before the earliest of them. Asking for fifteen anchors
 instead of every one is a saving in work, not a subsample taken
 afterwards, and the values it returns are the same ones to the bit:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ob_w</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/observed_trajectory.html">observed_trajectory</a></span><span class="op">(</span><span class="va">ob</span><span class="op">$</span><span class="va">t</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">401</span><span class="op">]</span>, <span class="va">ob</span><span class="op">$</span><span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">401</span>, , drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span>,</span>
 <span>                            names <span class="op">=</span> <span class="st">"x"</span><span class="op">)</span></span>
 <span><span class="va">a_w</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci.html">aci</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob_w</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span></span>
@@ -435,7 +661,7 @@ afterwards, and the values it returns are the same ones to the bit:</p>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>all_401_anchors <span class="op">=</span> <span class="va">t_all</span>, fifteen_anchors <span class="op">=</span> <span class="va">t_w15</span>, ratio <span class="op">=</span> <span class="va">t_all</span> <span class="op">/</span> <span class="va">t_w15</span><span class="op">)</span></span>
 <span><span class="co">#&gt; all_401_anchors fifteen_anchors           ratio </span></span>
-<span><span class="co">#&gt;           0.081           0.008          10.125</span></span>
+<span><span class="co">#&gt;         0.08100         0.00700        11.57143</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">f_all</span><span class="op">$</span><span class="va">tau</span><span class="op">[</span><span class="va">w15</span><span class="op">]</span>, <span class="va">f_w15</span><span class="op">$</span><span class="va">tau</span><span class="op">)</span>    <span class="co"># the same values, not a resample</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
 <p>The saving is on the streamed route only. <code><a href="../reference/lag_table.html">lag_table()</a></code>
@@ -466,7 +692,7 @@ lag.</li>
 </ul>
 <p>Truncation is not free and it is not hidden. Measured against an
 untruncated reference on a shorter record:</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ob_s</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/observed_trajectory.html">observed_trajectory</a></span><span class="op">(</span><span class="va">ob</span><span class="op">$</span><span class="va">t</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">301</span><span class="op">]</span>, <span class="va">ob</span><span class="op">$</span><span class="va">x</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">301</span>, , drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span>,</span>
 <span>                            names <span class="op">=</span> <span class="st">"x"</span><span class="op">)</span></span>
 <span><span class="va">reduce_tab</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">...</span><span class="op">)</span> <span class="op">{</span></span>
@@ -500,7 +726,7 @@ estimate. <code>lt_row(pad = "na")</code> is the one to reach for when
 the question is <em>where the table stopped</em> rather than what the
 row was worth, because the zero padding of the default is
 indistinguishable from a genuinely decayed tail:</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tb_s</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lag_table.html">lag_table</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob_s</span>, mode <span class="op">=</span> <span class="st">"forward"</span>, init <span class="op">=</span> <span class="va">init</span>, tol <span class="op">=</span> <span class="fl">1e-2</span><span class="op">)</span></span>
 <span><span class="va">r10</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lt_row.html">lt_row</a></span><span class="op">(</span><span class="va">tb_s</span>, <span class="fl">10</span>, pad <span class="op">=</span> <span class="st">"na"</span><span class="op">)</span></span>
 <span></span>
@@ -517,7 +743,7 @@ indistinguishable from a genuinely decayed tail:</p>
 <code>bound</code> says whether the number came off a truncated table,
 and <code>tail_bound</code> estimates what the frozen tails would have
 contributed.</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>bound <span class="op">=</span> <span class="va">fc</span><span class="op">$</span><span class="va">bound</span>, l1_bound <span class="op">=</span> <span class="va">l1</span><span class="op">$</span><span class="va">bound</span><span class="op">)</span></span>
 <span><span class="co">#&gt;                                 bound                              l1_bound </span></span>
 <span><span class="co">#&gt;        "objective_on_truncated_table" "lower_ratio_on_truncated_table_only"</span></span>
@@ -560,9 +786,13 @@ script’s <code>defn_objective_CIR</code> by taking a Simpson quadrature
 of the subjective read-out over a threshold grid.</li>
 </ul>
 <p>The first two are different functionals, not two quadratures of one.
-They coincide only where the divergence decreases with lag. On this
-record they differ by a factor of</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+On a row that decreases with lag they agree term by term, so they
+coincide under <code>quadrature = "sum"</code>; under the default
+Simpson rule they still differ. On the row <code>c(1, 0.5, 0)</code>
+with <code>M = 1</code> the objective is <code>1.5 * dt</code> while the
+Simpson ratio is <code>1 * dt</code>. On this record the two differ by a
+factor of</p>
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">fc</span><span class="op">$</span><span class="va">tau</span> <span class="op">/</span> <span class="va">l1</span><span class="op">$</span><span class="va">tau</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, <span class="fl">3</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 3.169</span></span></code></pre></div>
 <p>This is a naming hazard the comparison of the two predecessor
@@ -576,7 +806,7 @@ remembered default.</p>
 axes. The compatibility mode carries a quadrature error that the exact
 sum does not, and refining its grid moves it towards the exact
 value:</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mg</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_range.html">aci_range</a></span><span class="op">(</span><span class="va">a</span>, anchors <span class="op">=</span> <span class="va">anchors</span>, quadrature <span class="op">=</span> <span class="st">"matlab_eps_grid"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning in .forward_cir_compiled(bundle, filter = x$paths$filter, init =</span></span>
 <span><span class="co">#&gt; x$handles$init, : 1 forward CIR values masked (M &lt; 1e-05); interpret CIRs</span></span>
@@ -607,7 +837,7 @@ interval when a grid has an even number of points.
 <code>"trapezoid"</code> reproduces results reported by earlier package
 versions.</li>
 </ul>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sum_rule</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_range.html">aci_range</a></span><span class="op">(</span><span class="va">a</span>, anchors <span class="op">=</span> <span class="va">anchors</span>, method <span class="op">=</span> <span class="st">"l1_linf"</span>,</span>
 <span>                      quadrature <span class="op">=</span> <span class="st">"sum"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning in .forward_cir_compiled(bundle, filter = x$paths$filter, init =</span></span>
@@ -629,7 +859,7 @@ evidence that the argument is inert.</p>
 <p>The <span class="math inline">\varepsilon</span>-resolved
 <strong>subjective</strong> range, the lag of the last exceedance of
 each threshold, is reached through <code>epsilon</code>:</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_range.html">aci_range</a></span><span class="op">(</span><span class="va">a</span>, anchors <span class="op">=</span> <span class="va">anchors</span>,</span>
 <span>                epsilon <span class="op">=</span> <span class="fl">10</span><span class="op">^</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">4</span>, <span class="fl">0</span>, length.out <span class="op">=</span> <span class="fl">30</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning in .forward_cir_compiled(bundle, filter = x$paths$filter, init =</span></span>
@@ -650,7 +880,7 @@ times the step.</li>
 <code>"lag_time"</code> is the paper convention, the lag time of
 that exceedance with the first cell at lag 0.</li>
 </ul>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lag_time</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_range.html">aci_range</a></span><span class="op">(</span><span class="va">a</span>, anchors <span class="op">=</span> <span class="va">anchors</span>,</span>
 <span>                      epsilon <span class="op">=</span> <span class="fl">10</span><span class="op">^</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq</a></span><span class="op">(</span><span class="op">-</span><span class="fl">4</span>, <span class="fl">0</span>, length.out <span class="op">=</span> <span class="fl">30</span><span class="op">)</span>,</span>
 <span>                      convention <span class="op">=</span> <span class="st">"lag_time"</span><span class="op">)</span></span>
@@ -674,14 +904,14 @@ arguments on purpose. <code>epsilon</code> reports thresholds, and
 mode. Asking one vector to do both jobs drove a predecessor
 implementation’s objective negative on a sparse grid, so the package
 refuses the combination outright:</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">refused</span><span class="op">(</span><span class="fu"><a href="../reference/aci_range.html">aci_range</a></span><span class="op">(</span><span class="va">a</span>, anchors <span class="op">=</span> <span class="va">anchors</span>, epsilon_grid <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1e-3</span>, <span class="fl">1e-2</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; aci_error_dims: epsilon_grid supplies quadrature nodes for quadrature = 'matlab_eps_grid' only; use epsilon for reporting thresholds.</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="statuses-and-masking">Statuses and masking<a class="anchor" aria-label="anchor" href="#statuses-and-masking"></a>
 </h3>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">fc</span><span class="op">$</span><span class="va">status</span><span class="op">)</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;        resolved        censored below_threshold    insufficient </span></span>
@@ -763,14 +993,14 @@ observed block entirely.</li>
 admissible only when the observation-noise Gram has no <span class="math inline">A</span>-<span class="math inline">B</span>
 cross-block, and the package checks that along the whole path rather
 than at its first point:</p>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">s2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">m2</span>, seed <span class="op">=</span> <span class="fl">1</span>, t_end <span class="op">=</span> <span class="fl">1</span>, dt <span class="op">=</span> <span class="fl">0.01</span><span class="op">)</span></span>
 <span><span class="va">o2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/observed_trajectory.html">observed_trajectory</a></span><span class="op">(</span><span class="va">s2</span><span class="op">$</span><span class="va">obs</span><span class="op">$</span><span class="va">t</span>, <span class="va">s2</span><span class="op">$</span><span class="va">obs</span><span class="op">$</span><span class="va">x</span>, names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"xA"</span>, <span class="st">"xB"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu">refused</span><span class="op">(</span><span class="fu"><a href="../reference/aci_conditional_reduce.html">aci_conditional_reduce</a></span><span class="op">(</span><span class="va">m2</span>, <span class="va">o2</span>, <span class="fu"><a href="../reference/aci_conditional.html">aci_conditional</a></span><span class="op">(</span><span class="st">"xB"</span>, <span class="st">"reduce"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; aci_error_nontarget_crossnoise: The observation-noise Gram gxx couples the target and non-target channels; method = 'reduce' needs a vanishing cross-block, so use aci_conditional(method = 'mask').</span></span></code></pre></div>
 <p><code>method = "mask"</code> carries no such restriction and works on
 the same model:</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">init2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mean <span class="op">=</span> <span class="fl">0</span>, cov <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>total <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="../reference/aci.html">aci</a></span><span class="op">(</span><span class="va">m2</span>, <span class="va">o2</span>, init <span class="op">=</span> <span class="va">init2</span><span class="op">)</span><span class="op">$</span><span class="va">aci</span><span class="op">)</span>,</span>
 <span>  conditional <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="../reference/aci.html">aci</a></span><span class="op">(</span><span class="va">m2</span>, <span class="va">o2</span>, init <span class="op">=</span> <span class="va">init2</span>,</span>
@@ -784,7 +1014,7 @@ record (development record). On the shorter <span class="math inline">h_W</span>
 section also uses, the two paths agree to round-off rather than bitwise:
 the arithmetic takes a different route to the same operator, not to a
 second answer.</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">me</span>     <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_enso_model.html">aci_enso_model</a></span><span class="op">(</span>hidden <span class="op">=</span> <span class="st">"hW"</span><span class="op">)</span></span>
 <span><span class="va">se</span>     <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">me</span>, seed <span class="op">=</span> <span class="fl">12</span>, t_end <span class="op">=</span> <span class="fl">4</span>, dt <span class="op">=</span> <span class="fl">5e-3</span>, burn_in <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">obe</span>    <span class="op">&lt;-</span> <span class="fu"><a href="../reference/as_obs.html">as_obs</a></span><span class="op">(</span><span class="va">se</span><span class="op">)</span></span>
@@ -813,7 +1043,7 @@ further targets present but commented out.
 <code>target</code> or <code>given</code>, never both, and the
 constructor records which estimand the script asked for and where it
 read it:</p>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">me</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">causal_link</span></span>
 <span><span class="co">#&gt; [1] "(hW) -&gt; (TC) | (u,TE,tau,I)"</span></span>
 <span><span class="va">me</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">estimand_provenance</span></span>
@@ -841,7 +1071,7 @@ read it:</p>
 metric here, but only because of <em>which</em> channel it removes. The
 hidden state reaches the observed drift only through the non-zero rows
 of <span class="math inline">L_x</span>:</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">Lx_max</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">obe</span><span class="op">$</span><span class="va">t</span><span class="op">)</span>,</span>
 <span>                 <span class="kw">function</span><span class="op">(</span><span class="va">j</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/drop.html" class="external-link">drop</a></span><span class="op">(</span><span class="va">me</span><span class="op">$</span><span class="fu">Lx</span><span class="op">(</span><span class="va">obe</span><span class="op">$</span><span class="va">t</span><span class="op">[</span><span class="va">j</span><span class="op">]</span>, <span class="va">obe</span><span class="op">$</span><span class="va">x</span><span class="op">[</span><span class="va">j</span>, <span class="op">]</span><span class="op">)</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Round.html" class="external-link">round</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply</a></span><span class="op">(</span><span class="va">Lx_max</span>, <span class="fl">1</span>, <span class="va">max</span><span class="op">)</span>, <span class="fl">4</span><span class="op">)</span>, <span class="va">me</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">vars</span><span class="op">$</span><span class="va">observed</span><span class="op">)</span></span>
@@ -850,7 +1080,7 @@ of <span class="math inline">L_x</span>:</p>
 <p>Three of the five rows are identically zero, so conditioning on those
 three is not a small correction, it is bit-for-bit the unconditional
 run:</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">a_inert</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci.html">aci</a></span><span class="op">(</span><span class="va">me</span>, <span class="va">obe</span>, init <span class="op">=</span> <span class="va">init_e</span>,</span>
 <span>               conditional <span class="op">=</span> <span class="fu"><a href="../reference/aci_conditional.html">aci_conditional</a></span><span class="op">(</span>given <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"u"</span>, <span class="st">"tau"</span>, <span class="st">"I"</span><span class="op">)</span>,</span>
 <span>                                             method <span class="op">=</span> <span class="st">"mask"</span><span class="op">)</span><span class="op">)</span></span>
@@ -902,7 +1132,7 @@ t</span>. Every object records which discretisation produced it, in
 <code>meta$smoother_scheme</code>. The finer implementation tag is
 separate, in a path’s <code>meta$route</code>, so the label a reader
 needs and the label a maintainer needs are not the same field:</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">tb</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lag_table.html">lag_table</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, mode <span class="op">=</span> <span class="st">"forward"</span>, init <span class="op">=</span> <span class="va">init</span>, max_lag <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>aci          <span class="op">=</span> <span class="va">a</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">smoother_scheme</span>,</span>
@@ -922,7 +1152,7 @@ diagonal without building a table: it retains only the cells needed for
 the zero-lag entry, so the cost is linear in the record rather than
 quadratic, and the diagonal is the same one a full table would give.</p>
 <p>The gap between the two schemes on this record:</p>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>max_abs_gap <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/MathFun.html" class="external-link">abs</a></span><span class="op">(</span><span class="fu"><a href="../reference/lt_diag.html">lt_diag</a></span><span class="op">(</span><span class="va">tb</span><span class="op">)</span> <span class="op">-</span> <span class="va">a</span><span class="op">$</span><span class="va">aci</span><span class="op">)</span><span class="op">)</span>,</span>
 <span>  peak_aci    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="va">a</span><span class="op">$</span><span class="va">aci</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; max_abs_gap    peak_aci </span></span>
@@ -935,7 +1165,7 @@ the same number to all printed digits, 1.04276e-01 on a scale of
 package difference (development record).</p>
 <p>Feeding a table to <code><a href="../reference/aci.html">aci()</a></code> swaps the metric onto the
 discrete scheme deliberately, and the result says so:</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">a_discrete</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci.html">aci</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, init <span class="op">=</span> <span class="va">init</span>, table <span class="op">=</span> <span class="va">tb</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>engine <span class="op">=</span> <span class="va">a_discrete</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">engine</span>,</span>
 <span>  scheme <span class="op">=</span> <span class="va">a_discrete</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">smoother_scheme</span><span class="op">)</span></span>
@@ -952,7 +1182,7 @@ at any lag. The estimate at index <span class="math inline">j</span>
 conditions on the observed record through <span class="math inline">j +
 \mathtt{lag}</span> and saturates at the end of the record, which the
 result records per anchor:</p>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">on</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_online.html">aci_online</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, lag <span class="op">=</span> <span class="fl">20</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span></span>
 <span><span class="va">on</span></span>
 <span><span class="co">#&gt; &lt;da_path_gaussian&gt; kind = online, l = 1, N+1 = 801</span></span>
@@ -967,12 +1197,14 @@ result records per anchor:</p>
 have no record left to condition on, so <code>lag_effective</code> falls
 away to zero and <code>saturated</code> marks where it did. Nothing is
 padded or extrapolated to hide that.</p>
-<p>The two ends are exact, and they are exact against different things.
-<code>lag = 0</code> returns the filter moments value for value, and
-<code>lag = Inf</code> returns the complete Theorem 3 posterior, which
-is the lag table’s own reference smoother rather than
-<code><a href="../reference/aci_smoother.html">aci_smoother()</a></code>:</p>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<p>The two ends are the definite ones, and they are definite against
+different things. <code>lag = 0</code> returns the filter moments value
+for value, and <code>lag = Inf</code> composes the Theorem 3 updates
+over the whole record, which is the lag table’s own reference smoother
+rather than <code><a href="../reference/aci_smoother.html">aci_smoother()</a></code>. At a finite step that
+composition approximates the continuous-time conditional law; it is not
+the exact posterior of the Euler-sampled record:</p>
+<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">on_full</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_online.html">aci_online</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, lag <span class="op">=</span> <span class="cn">Inf</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="fu"><a href="../reference/aci_online.html">aci_online</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, lag <span class="op">=</span> <span class="fl">0</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span><span class="op">$</span><span class="va">mean</span>, <span class="va">filt</span><span class="op">$</span><span class="va">mean</span><span class="op">)</span></span>
@@ -994,18 +1226,18 @@ argument the function exists for, and a defaulted full-lag result is
 exactly the one that would be mistaken for <code><a href="../reference/aci_smoother.html">aci_smoother()</a></code>.
 Cost is linear in the record whatever the lag, so choosing the lag is a
 modelling decision and not a budget:</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lags</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">20</span>, <span class="fl">400</span>, <span class="fl">800</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply</a></span><span class="op">(</span><span class="va">lags</span>, <span class="kw">function</span><span class="op">(</span><span class="va">L</span><span class="op">)</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu"><a href="../reference/aci_online.html">aci_online</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, lag <span class="op">=</span> <span class="va">L</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span><span class="op">)</span><span class="op">[[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"lag_"</span>, <span class="va">lags</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   lag_1  lag_20 lag_400 lag_800 </span></span>
-<span><span class="co">#&gt;   0.013   0.025   0.024   0.002</span></span></code></pre></div>
+<span><span class="co">#&gt;   0.014   0.025   0.025   0.002</span></span></code></pre></div>
 <p>An online path carries <code>kind = "online"</code>, and that is what
 keeps it out of the places a complete smoother is required:
 <code>lag_table(smoother = )</code> rejects it rather than treating a
 truncated lag as the whole record.</p>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">refused</span><span class="op">(</span><span class="fu"><a href="../reference/lag_table.html">lag_table</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, mode <span class="op">=</span> <span class="st">"forward"</span>, init <span class="op">=</span> <span class="va">init</span>,</span>
 <span>                  filter <span class="op">=</span> <span class="va">filt</span>, smoother <span class="op">=</span> <span class="va">on</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; aci_error_dims: smoother has kind 'online', not 'smoother'.</span></span></code></pre></div>

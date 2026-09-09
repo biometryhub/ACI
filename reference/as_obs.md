@@ -44,7 +44,13 @@ An object of class `obs_traj`; see
 
 ## Methods (by class)
 
-- `as_obs(obs_traj)`: Returns the trajectory unchanged.
+- `as_obs(obs_traj)`: Returns an existing `obs_traj` unchanged. It is
+  not re-validated, so an object whose fields were assigned into after
+  construction keeps whatever `dt`, `k` or `noise_free` it was left
+  with. Observation objects are immutable through the supported
+  workflow: build a changed record with
+  [`observed_trajectory()`](https://biometryhub.github.io/ACI/reference/observed_trajectory.md)
+  rather than modifying one.
 
 - `as_obs(matrix)`: Builds a uniform grid from `dt` and `t0` for a
   matrix of observations.

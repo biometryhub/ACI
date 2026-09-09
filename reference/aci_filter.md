@@ -70,9 +70,37 @@ aci_filter(model, obs, ...)
   time as soon as a covariance leaves the positive-definite cone.
   `"floor"` is the previous behaviour: the covariance is projected back
   by
-  [`spd_floor()`](https://biometryhub.github.io/ACI/reference/spd_floor.md)
-  and every such event is recorded in the result's
-  `meta$regularization`.
+  [`spd_floor()`](https://biometryhub.github.io/ACI/reference/spd_floor.md),
+  every such event is recorded in the result's `meta$regularization`,
+  and a call in which at least one floor fires raises one
+  `aci_warn_regularized` naming the first floored site, its grid index
+  and its time. Flooring changes the numerical covariance so that the
+  recursion can continue; it establishes nothing about the accuracy of
+  the reconstruction or of the resulting information score, and a large
+  finite ACI obtained after a floor is a diagnostic, not a result. A
+  realised observation-noise Gram whose reciprocal condition number
+  falls below 1e-12 at an interval start raises `aci_error_gram_path`, a
+  subclass of `aci_error_gram`, naming the grid index, the time and the
+  `rcond`; that check runs before any covariance policy, so
+  `regularize = "floor"` does not bypass it. It is a conditioning test,
+  not a noise-floor test: [`rcond()`](https://rdrr.io/r/base/kappa.html)
+  is invariant under a uniform rescaling of the Gram, so for a
+  one-dimensional observed state the mathematical reciprocal condition
+  number of every positive Gram is 1. Small positive noise can therefore
+  pass; condition estimation can also fail at extreme floating-point
+  scales. Depending on the coupling and time step, explicit integration
+  may fail, while implicit integration can return finite positive
+  covariances without a warning or regularization event. Such a return
+  does not establish that the step resolves the covariance dynamics.
+  Assess sensitivity to time resolution when observation noise is small
+  relative to the coupling. Regularization events record applied
+  covariance corrections, not all sources of numerical error. A large
+  reduction in uncertainty can also be valid for a sufficiently
+  informative observation model; no additional noise-scale or
+  variance-drop threshold is imposed. A mean or predictive
+  log-likelihood that overflows to `Inf` or `NaN` raises
+  `aci_error_nonfinite` naming the quantity, the grid index and the
+  time.
 
 - loglik:
 
@@ -109,7 +137,7 @@ m <- aci_dyad_model()
 sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
 ob <- as_obs(sim)
 f <- aci_filter(m, ob)
-#> Warning: No init$cov supplied; using a diffuse prior. Discard an initial burn-in window when interpreting results.
+#> Warning: No init$cov supplied; using a diffuse prior. Its opening steps are prior-dominated; a prior far wider than the hidden state's own scale can also destabilise the explicit step, which is a refusal rather than a window to discard.
 f
 #> <da_path_gaussian> kind = filter, l = 1, N+1 = 201
 ```

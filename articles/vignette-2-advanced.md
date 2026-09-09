@@ -166,15 +166,23 @@ where the reference does something else.
 
 ### Observations
 
+This release assimilates a complete record of the observed state on a
+uniform grid, taken as noise-free: every observed channel present at
+every time, uniform spacing, and no independent sensor error.
 [`observed_trajectory()`](https://biometryhub.github.io/ACI/reference/observed_trajectory.md)
-derives `dt` from the supplied times and refuses a non-uniform grid. A
+derives `dt` from the supplied times and refuses anything else. A
 desynchronised time column is an error, not a wrong answer:
 
 ``` r
 
 refused(observed_trajectory(c(0, 0.01, 0.03), matrix(c(1, 2, 3), ncol = 1)))
-#> aci_error_obs_contract: Observations must lie on a uniform time grid; resample first.
+#> aci_error_obs_contract: Observations must lie on a uniform time grid. Resample or subset the record onto one before constructing the trajectory; interpolation onto a uniform grid does not create independent observations and does not remove observation error.
 ```
+
+Resampling onto a uniform grid is how you meet the contract, not how you
+remove observation error: interpolation does not create independent
+noise-free observations, and the model’s process diffusion is not sensor
+variance.
 
 Naming the columns is what makes the conditional questions of section 4
 readable, because
@@ -210,7 +218,7 @@ idx    <- seq.int(1L, length(ob$t), by = 20L)
 ob_bad <- observed_trajectory(ob$t[idx], ob$x[idx, , drop = FALSE],
                               names = "x")
 refused(aci_filter(m, ob_bad, init = init))
-#> aci_error_covariance_not_spd: The filter covariance must stay finite and positive definite; it reached -0.1336333 at index 37 (time 7.2), in the explicit Riccati step. Reduce dt, raise nsub, or use stepper = "implicit", which preserves positivity. To keep the previous behaviour, call with regularize = "floor"; every floored step is then recorded in the result's meta$regularization.
+#> aci_error_covariance_not_spd: The filter covariance must stay finite and positive definite; it reached -0.1336333 at index 37 (time 7.2), in the explicit Riccati step. The realised observation-noise Gram was accepted against the constructor's relative-conditioning contract at every step of this record, so this is integration instability on a valid observation model: reduce dt, raise nsub, or use stepper = "implicit", which preserves positivity. To keep the previous behaviour, call with regularize = "floor"; every floored step is then recorded in the result's meta$regularization. Flooring changes the numerical covariance; it does not establish that the step resolves the dynamics.
 ```
 
 `regularize = "floor"` is the previous behaviour, available on
@@ -229,6 +237,11 @@ bad <- aci_filter(m, ob_bad, init = init, regularize = "floor")
 #> Explicit Riccati step is unstable (max ||Lx' gxx^-1 Lx R|| dt = 2.44 > 1): the
 #> covariance can overshoot, leave the positive-definite cone, and oscillate. Use
 #> the positivity-preserving implicit stepper, or reduce dt / increase nsub.
+#> Warning in .aci_reg_report(rec): regularize = "floor" projected a covariance
+#> update back into the positive-definite cone (first at filter_explicit, index
+#> 37, time 7.2). The returned moments and every quantity derived from them are
+#> regularized, not validated; meta$regularization records every event of this
+#> call.
 bad$meta$regularization[c("policy", "fired", "n_events")]
 #> $policy
 #> [1] "floor"
@@ -260,6 +273,129 @@ a$meta$regularization[c("policy", "fired", "n_events")]
 nrow(a$meta$regularization$sites)
 #> [1] 0
 ```
+
+A floor that actually fires is signalled once per call, as a classed
+warning naming the first floored site, its grid index and its time. The
+condition classes a run raised are what tells a script, rather than a
+reader, that it is holding a regularized result:
+
+``` r
+
+seen_classes <- character(0)
+withCallingHandlers(
+  bad2 <- aci_filter(m, ob_bad, init = init, regularize = "floor"),
+  warning = function(w) {
+    seen_classes <<- c(seen_classes, class(w)[1L])
+    invokeRestart("muffleWarning")
+  })
+seen_classes
+#> [1] "aci_warn_riccati_stiff" "aci_warn_regularized"
+```
+
+That scalar record floors on a coarse grid. The policy matters more on a
+matrix hidden state, where a prior that is wide against one component’s
+own scale destabilises the whole Riccati step. The packaged ENSO model
+with three hidden variables is the case: its componentwise stationary
+scales differ by three orders of magnitude, so the single scalar prior
+[`aci()`](https://biometryhub.github.io/ACI/reference/aci.md) supplies
+when `init$cov` is omitted is far too wide on two of the three. Run it
+both ways, once under the automatic prior with flooring and once under a
+prior read off the model’s own coefficients:
+
+``` r
+
+m_e  <- aci_enso_model(hidden = c("u", "hW", "tau"))
+ob_e <- as_obs(simulate(m_e, seed = 12, t_end = 4, dt = 5e-3, burn_in = 0))
+
+## The componentwise Ornstein-Uhlenbeck stationary scale gyy_ii / (2 |Ly_ii|)
+## at the first time, read off the model's own coefficients.  The subsection
+## *A stated prior for a multi-hidden partition* below derives it and says
+## why the automatic prior is not it.
+d0    <- function(f) diag(as.matrix(f(ob_e$t[1], ob_e$x[1, ])))
+gyy   <- d0(function(t, x) tcrossprod(m_e$Sy1(t, x)) +
+              tcrossprod(m_e$Sy2(t, x)))
+ini_e <- list(mean = m_e$meta$ic_default$y0,
+              cov  = diag(gyy / (2 * abs(d0(m_e$Ly)))))
+
+a_floor <- aci(m_e, ob_e, regularize = "floor")
+#> Warning in .compiled_filter_init(bundle, init): No init$cov supplied; using a
+#> diffuse prior. Its opening steps are prior-dominated; a prior far wider than
+#> the hidden state's own scale can also destabilise the explicit step, which is a
+#> refusal rather than a window to discard.
+#> Warning in .cgns_filter_matrix_compiled(bundle, init, stepper = stepper, :
+#> Explicit Riccati step is unstable (max ||Lx' gxx^-1 Lx R|| dt = 5.86 > 1): the
+#> covariance can overshoot, leave the positive-definite cone, and oscillate. Use
+#> the positivity-preserving implicit stepper, or reduce dt / increase nsub.
+#> Warning in .aci_reg_report(rec): regularize = "floor" projected a covariance
+#> update back into the positive-definite cone (first at filter_explicit, index 2,
+#> time 0.005). The returned moments and every quantity derived from them are
+#> regularized, not validated; meta$regularization records every event of this
+#> call.
+a_prior <- aci(m_e, ob_e, init = ini_e)
+
+c(floored_peak      = max(a_floor$aci),
+  stated_prior_peak = max(a_prior$aci))
+#>      floored_peak stated_prior_peak 
+#>      6.000646e+21      1.830865e+00
+c(floored_events = a_floor$meta$regularization$n_events,
+  stated_events  = a_prior$meta$regularization$n_events)
+#> floored_events  stated_events 
+#>              2              0
+a_floor
+#> <aci_result> engine = cgns | peak ACI = 6.001e+21 at t = 0.005
+#>   regularized: 2 floor event(s) under regularize = "floor"; see meta$regularization
+```
+
+Read those two numbers as what they are. The second is an ACI value: the
+recursion stayed inside the positive-definite cone at every step, and
+every quantity behind it came from the model, the prior and the record.
+The first is not a large influence. Its peak sits at `t = 0.005`, index
+2, the first update and the same index the strict policy refuses at, and
+its size is the size of the excursion the floor absorbed there, carried
+through the rest of the recursion by arithmetic that has no way to know
+a covariance was replaced. A floored number is a diagnostic that the
+prior or the step did not resolve the dynamics. It is not a
+reconstruction, not an information score, and not comparable with a
+number from a clean run. Report the policy, the event count and the site
+with any figure computed under it.
+
+The converse also holds, and is the reason the event count is not a
+sufficient check. Take the structurally independent Brownian null dx =
+dW_1, dy = dW_2, whose true information gain is zero at every step and
+for every prior, on a single observed interval of length h = 0.07 with
+prior variance v = 0.1 and the observed path x(t) = 2t:
+
+``` r
+
+null_m <- aci_model(Lx = function(t, x) matrix(0),
+                    fx = function(t, x) 0,
+                    Ly = function(t, x) matrix(0),
+                    fy = function(t, x) 0,
+                    Sx1 = function(t, x) matrix(1),
+                    Sy2 = function(t, x) matrix(1), k = 1, l = 1)
+ob_n  <- observed_trajectory(c(0, 0.07), matrix(c(0, 0.14), ncol = 1))
+ini_n <- list(mean = 0, cov = matrix(0.1, 1, 1))
+
+n1  <- aci(null_m, ob_n, init = ini_n, regularize = "none")
+n20 <- aci(null_m, ob_n, init = ini_n, nsub = 20, regularize = "none")
+
+c(one_substep = max(n1$aci), twenty_substeps = max(n20$aci))
+#>     one_substep twenty_substeps 
+#>      1.46601150      0.01407792
+c(events_1  = n1$meta$regularization$n_events,
+  events_20 = n20$meta$regularization$n_events)
+#>  events_1 events_20 
+#>         0         0
+```
+
+The backward smoother returns 1.4660115 nats against a true value of
+zero. Nothing was floored: the run is under `regularize = "none"`, every
+covariance stayed positive definite, every quantity is finite and the
+event count is zero. The step alone produced it, and `nsub = 20` on the
+same record leaves 0.0140779. Positive-definite, finite output with no
+floor event does not certify that the step resolved the problem; it
+certifies only that the recursion did not have to be repaired to
+continue.
 
 [`aci_range()`](https://biometryhub.github.io/ACI/reference/aci_range.md)
 on an `aci_result` reads the policy off the result rather than off the
@@ -315,7 +451,7 @@ the metric itself. Pick one deliberately and record which.
 
 [`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md)
 refuses anything else outright, because the Theorem 3 recursions it
-accumulates are exact for the explicit single-step discretisation and
+accumulates are derived for the explicit single-step discretisation and
 for no other:
 
 ``` r
@@ -323,6 +459,135 @@ for no other:
 refused(lag_table(m, ob, mode = "forward", init = init, stepper = "implicit"))
 #> aci_error_stepper: lag_table requires stepper = 'explicit' and nsub = 1.
 ```
+
+### A stated prior for a multi-hidden partition
+
+The stepper and the prior are one decision seen from two sides: an
+explicit step is stable only against a covariance of the size the
+dynamics actually carry.
+[`aci_enso_model()`](https://biometryhub.github.io/ACI/reference/aci_enso_model.md)
+is where that bites. Its bare constructor default is the two-variable
+partition `hidden = c("hW", "tau")`; the three-variable partition built
+above adds `u`, whose stationary variance is three orders of magnitude
+below `tau`’s. The prior supplied when `init$cov` is omitted is one
+scalar times the identity, formed from the mean over hidden components,
+so on this partition it is about 380 times wider than `u` and `h_W` are.
+The explicit Riccati step leaves the positive-definite cone at index 2,
+the first update:
+
+``` r
+
+refused(aci(m_e, ob_e))
+#> Warning in .compiled_filter_init(bundle, init): No init$cov supplied; using a
+#> diffuse prior. Its opening steps are prior-dominated; a prior far wider than
+#> the hidden state's own scale can also destabilise the explicit step, which is a
+#> refusal rather than a window to discard.
+#> aci_error_covariance_not_spd: The filter covariance must stay finite and positive definite; it reached -7.14936 at index 2 (time 0.005), in the explicit Riccati step. The realised observation-noise Gram was accepted against the constructor's relative-conditioning contract at every step of this record, so this is integration instability on a valid observation model: reduce dt, raise nsub, or use stepper = "implicit", which preserves positivity. To keep the previous behaviour, call with regularize = "floor"; every floored step is then recorded in the result's meta$regularization. Flooring changes the numerical covariance; it does not establish that the step resolves the dynamics.
+```
+
+There is no opening window to discard here; the run ends at the first
+update. The remedy is to state the prior. The componentwise
+Ornstein-Uhlenbeck stationary scale `gyy_ii / (2 |Ly_ii|)` is read off
+the model’s own coefficients, and it is the prior built in the previous
+subsection:
+
+``` r
+
+diag(ini_e$cov)
+#> [1] 0.0032000 0.0008000 0.2836974
+a_prior
+#> <aci_result> engine = cgns | peak ACI = 1.831 at t = 2.93
+a_prior$meta$regularization[c("policy", "fired", "n_events")]
+#> $policy
+#> [1] "none"
+#> 
+#> $fired
+#> [1] FALSE
+#> 
+#> $n_events
+#> [1] 0
+```
+
+Nothing else moves: the default explicit stepper, `nsub = 1`, and the
+strict covariance policy. Those are also what
+[`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md),
+[`aci_range()`](https://biometryhub.github.io/ACI/reference/aci_range.md)
+and
+[`aci_online()`](https://biometryhub.github.io/ACI/reference/aci_online.md)
+require, so the same record carries into sections 3 and 5 unchanged.
+This vignette does not build the table on all 801 anchors, because that
+is slow enough to be worth a shorter record.
+
+Sub-stepping the same record under the same prior is a self-consistency
+check on the discretisation, not an accuracy guarantee. `nsub` is the
+only knob that holds the record fixed: changing `dt` changes the
+simulated path, so two `dt` values give two records rather than two
+resolutions of one.
+
+``` r
+
+nsubs   <- c(1, 2, 4, 20)
+exp_tau <- sapply(nsubs, function(n)
+  max(aci(m_e, ob_e, init = ini_e, nsub = n)$aci))
+imp_tau <- sapply(c(1, 20), function(n)
+  max(aci(m_e, ob_e, init = ini_e, stepper = "implicit", nsub = n)$aci))
+setNames(round(c(exp_tau, imp_tau), 6),
+         c(paste0("explicit_nsub", nsubs), paste0("implicit_nsub", c(1, 20))))
+#>  explicit_nsub1  explicit_nsub2  explicit_nsub4 explicit_nsub20  implicit_nsub1 
+#>        1.830865        1.821365        1.816720        1.813052        1.638131 
+#> implicit_nsub20 
+#>        1.803244
+```
+
+The explicit sequence settles near 1.813 and the implicit one climbs
+towards it from below. The two schemes are different discretisations and
+are not required to agree at `nsub = 1`; the gap there is the size of
+that disagreement on this record, and it belongs beside a reported peak
+rather than averaged into it.
+
+The prior moves the answer as well, and the refusal boundary is not far
+away. Scaling the stated prior:
+
+``` r
+
+scales <- c(0.5, 1, 2, 4)
+setNames(round(sapply(scales, function(s)
+  max(aci(m_e, ob_e, init = list(mean = ini_e$mean,
+                                 cov  = s * ini_e$cov))$aci)), 6),
+         paste0(scales, "x"))
+#>     0.5x       1x       2x       4x 
+#> 1.814876 1.830865 1.851048 1.971858
+refused(aci(m_e, ob_e, init = list(mean = ini_e$mean, cov = 8 * ini_e$cov)))
+#> aci_error_covariance_not_spd: The filter covariance must stay finite and positive definite; it reached -1.710848 at index 2 (time 0.005), in the explicit Riccati step. The realised observation-noise Gram was accepted against the constructor's relative-conditioning contract at every step of this record, so this is integration instability on a valid observation model: reduce dt, raise nsub, or use stepper = "implicit", which preserves positivity. To keep the previous behaviour, call with regularize = "floor"; every floored step is then recorded in the result's meta$regularization. Flooring changes the numerical covariance; it does not establish that the step resolves the dynamics.
+```
+
+Somewhere between four and eight times the stationary scale the explicit
+step stops being stable at all, and the automatic prior is about 380
+times it. A peak reported on this partition is a statement about a
+model, a prior and a step together, and the prior and the step have to
+be stated with it.
+
+None of this says the model is ill-posed. The realised observation-noise
+Gram is nondegenerate along the whole record, so the observation model
+is admissible at every step and what fails is the integration:
+
+``` r
+
+gram <- vapply(seq_along(ob_e$t), function(j) {
+  G <- tcrossprod(m_e$Sx1(ob_e$t[j], ob_e$x[j, ])) +
+       tcrossprod(m_e$Sx2(ob_e$t[j], ob_e$x[j, ]))
+  c(min(eigen(G, symmetric = TRUE, only.values = TRUE)$values), rcond(G))
+}, numeric(2))
+c(min_eigenvalue = min(gram[1, ]), min_rcond = min(gram[2, ]))
+#> min_eigenvalue      min_rcond 
+#>    0.000325000    0.002436891
+```
+
+That is the distinction the refusal draws. A valid observation model can
+still require a smaller step, more sub-steps, the implicit stepper or a
+tighter prior, and that is what happened here. An observation Gram that
+is itself singular is a different failure, and it is refused before the
+recursion starts.
 
 ### The predictive likelihood
 
@@ -445,7 +710,7 @@ t_w15 <- system.time(f_w15 <- aci_range(a_w, anchors = w15))[["elapsed"]]
 
 c(all_401_anchors = t_all, fifteen_anchors = t_w15, ratio = t_all / t_w15)
 #> all_401_anchors fifteen_anchors           ratio 
-#>           0.081           0.008          10.125
+#>         0.08100         0.00700        11.57143
 identical(f_all$tau[w15], f_w15$tau)    # the same values, not a resample
 #> [1] TRUE
 ```
@@ -571,9 +836,12 @@ more than usual here.
   `defn_objective_CIR` by taking a Simpson quadrature of the subjective
   read-out over a threshold grid.
 
-The first two are different functionals, not two quadratures of one.
-They coincide only where the divergence decreases with lag. On this
-record they differ by a factor of
+The first two are different functionals, not two quadratures of one. On
+a row that decreases with lag they agree term by term, so they coincide
+under `quadrature = "sum"`; under the default Simpson rule they still
+differ. On the row `c(1, 0.5, 0)` with `M = 1` the objective is
+`1.5 * dt` while the Simpson ratio is `1 * dt`. On this record the two
+differ by a factor of
 
 ``` r
 
@@ -1020,11 +1288,14 @@ no record left to condition on, so `lag_effective` falls away to zero
 and `saturated` marks where it did. Nothing is padded or extrapolated to
 hide that.
 
-The two ends are exact, and they are exact against different things.
-`lag = 0` returns the filter moments value for value, and `lag = Inf`
-returns the complete Theorem 3 posterior, which is the lag table’s own
-reference smoother rather than
-[`aci_smoother()`](https://biometryhub.github.io/ACI/reference/aci_smoother.md):
+The two ends are the definite ones, and they are definite against
+different things. `lag = 0` returns the filter moments value for value,
+and `lag = Inf` composes the Theorem 3 updates over the whole record,
+which is the lag table’s own reference smoother rather than
+[`aci_smoother()`](https://biometryhub.github.io/ACI/reference/aci_smoother.md).
+At a finite step that composition approximates the continuous-time
+conditional law; it is not the exact posterior of the Euler-sampled
+record:
 
 ``` r
 
@@ -1062,7 +1333,7 @@ setNames(sapply(lags, function(L)
   system.time(aci_online(m, ob, lag = L, init = init))[["elapsed"]]),
   paste0("lag_", lags))
 #>   lag_1  lag_20 lag_400 lag_800 
-#>   0.013   0.025   0.024   0.002
+#>   0.014   0.025   0.025   0.002
 ```
 
 An online path carries `kind = "online"`, and that is what keeps it out

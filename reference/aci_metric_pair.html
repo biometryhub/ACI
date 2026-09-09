@@ -90,6 +90,20 @@ only in the degenerate limit, which is the published basis for this
 function's strictness. The state recursions are strict by default too, and
 regularise only when a call asks for it with <code>regularize = "floor"</code>; see
 <code><a href="aci_filter.html">aci_filter()</a></code>.</p>
+<p>The dispersion part is <code>O(delta^2)</code> in <code>delta = R_p / R_q - 1</code>, and this
+function evaluates it in the trace and log-difference form
+<code>0.5 * (tr(R_q^-1 R_p) - l + log det R_q - log det R_p)</code> at every dimension,
+including <code>l = 1</code>. That form loses relative precision to cancellation as the
+two covariances approach each other: measured against the exact series at
+<code>R_q = 1</code>, <code>R_p = 1 + delta</code>, its relative error is 4.5e-05 at
+<code>delta = 1e-06</code>, 1.2e-02 at 1e-07 and a factor of two from 1e-08 down.
+<code><a href="aci_metric.html">aci_metric()</a></code> instead routes a one-dimensional hidden state through a
+cancellation-resistant <code>log1p</code> form, so the two public routes disagree on
+identical one-dimensional inputs in that regime. The absolute error stays
+below 3e-17 nats across that sweep, because the quantity itself is quadratic
+in <code>delta</code>, so this is a precision boundary and not a demonstrated accuracy
+failure on ordinary inputs. Positivity is imposed by <code>max(., 0)</code> on each
+part; that is a guard, not an accuracy proof.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

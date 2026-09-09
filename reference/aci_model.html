@@ -144,6 +144,12 @@ diffusion-channel counts. Random-number generation or result-changing
 mutable state inside a coefficient function is outside the model contract.
 Closed-form execution may realise each coefficient once on the observation
 grid and reuse that realised path.</p>
+<p>A model is fixed once constructed. Its derived drifts capture the
+coefficient functions supplied to the constructor, so assigning a new
+coefficient into an existing model changes only the field assigned and
+leaves simulation, filtering and every realised path on the original
+coefficients. Change a parameter by rebuilding the model with
+<code>aci_model()</code>, not by modifying one.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -161,6 +167,19 @@ grid and reuse that realised path.</p>
 <span class="r-in"><span>  Sy2 <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  k <span class="op">=</span> <span class="fl">1</span>, l <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;cgns_model&gt; 'cgns_model': k = 1 observed, l = 1 hidden</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Coefficients are fixed for the model's lifetime: change a parameter by</span></span></span>
+<span class="r-in"><span><span class="co"># rebuilding, not by assigning into an existing model.</span></span></span>
+<span class="r-in"><span><span class="va">make_dyadish</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">lambda</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="fu">aci_model</span><span class="op">(</span>Lx <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>            fx <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span> <span class="va">lambda</span> <span class="op">*</span> <span class="va">x</span>,</span></span>
+<span class="r-in"><span>            Ly <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="op">-</span><span class="fl">0.5</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>            fy <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span> <span class="fl">0</span>,</span></span>
+<span class="r-in"><span>            Sx1 <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>            Sy2 <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>            k <span class="op">=</span> <span class="fl">1</span>, l <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">m_a</span> <span class="op">&lt;-</span> <span class="fu">make_dyadish</span><span class="op">(</span><span class="op">-</span><span class="fl">0.5</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">m_b</span> <span class="op">&lt;-</span> <span class="fu">make_dyadish</span><span class="op">(</span><span class="op">-</span><span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 </code></pre></div>
     </div>

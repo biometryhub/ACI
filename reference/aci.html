@@ -127,7 +127,11 @@ are retained on the result. It does not select a smoother.</p></dd>
 <dt id="arg-regularize">regularize<a class="anchor" aria-label="anchor" href="#arg-regularize"></a></dt>
 <dd><p>Covariance policy for this call; see <code><a href="aci_filter.html">aci_filter()</a></code>. One
 record covers the filter, the smoother and any table this call builds, and
-is returned in <code>meta$regularization</code>.</p></dd>
+is returned in <code>meta$regularization</code>. Flooring changes the numerical
+covariance so that the recursion can continue; it establishes nothing
+about the accuracy of the reconstruction or of the resulting information
+score, and a large finite ACI obtained after a floor is a diagnostic, not
+a result.</p></dd>
 
 
 <dt id="arg-loglik">loglik<a class="anchor" aria-label="anchor" href="#arg-loglik"></a></dt>
@@ -147,6 +151,26 @@ unchanged.</p></dd>
     <p>An object of class <code>aci_result</code>.</p>
     </div>
     <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>ACI is measured under the model, prior and observation record supplied to
+it: it scores how much the later observed record sharpens the hidden-state
+reconstruction those inputs imply, and does not test whether they are
+correct. The per-time value is in nats; a record-length total is in nats
+times model time. A positive value alone is not an empirically identified
+causal effect, an intervention effect or a significance statement, and it
+carries the discretisation. On a structurally independent Brownian null
+(<code>dx = dW1</code>, <code>dy = dW2</code>, uncoupled in both directions) with prior variance
+1, one observed interval of length <code>dt</code>, the observed path <code>x(t) = 2t</code>, the
+explicit stepper at <code>nsub = 1</code> and <code>regularize = "none"</code>, the headline
+backward smoother returns 1.0135e-4 nats at <code>dt = 0.1</code> and 2.4419e-8 at
+<code>dt = 0.0125</code>. The same null returns much larger values at a step that is
+coarse against the prior and process variance scales: at prior variance 0.1
+and <code>dt = 0.07</code> it returns 1.4660115 nats, which <code>nsub = 20</code> reduces to
+0.0140779. Every one of those runs is positive definite and finite and
+records zero floor events, so positive-definite, finite output with no
+floor event does not certify that the step resolved the problem.</p>
+    </div>
+    <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="aci_range.html">aci_range()</a></code>, <code><a href="lag_table.html">lag_table()</a></code>, <code><a href="aci_metric.html">aci_metric()</a></code></p></div>
     </div>
@@ -157,7 +181,7 @@ unchanged.</p></dd>
 <span class="r-in"><span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">m</span>, seed <span class="op">=</span> <span class="fl">1</span>, t_end <span class="op">=</span> <span class="fl">2</span>, dt <span class="op">=</span> <span class="fl">0.01</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">ob</span> <span class="op">&lt;-</span> <span class="fu"><a href="as_obs.html">as_obs</a></span><span class="op">(</span><span class="va">sim</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">a</span> <span class="op">&lt;-</span> <span class="fu">aci</span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span><span class="op">)</span></span></span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>No init$cov supplied; using a diffuse prior. Discard an initial burn-in window when interpreting results.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>No init$cov supplied; using a diffuse prior. Its opening steps are prior-dominated; a prior far wider than the hidden state's own scale can also destabilise the explicit step, which is a refusal rather than a window to discard.</span>
 <span class="r-in"><span><span class="va">a</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;aci_result&gt; engine = cgns | peak ACI = 2.523 at t = 0.03</span>
 <span class="r-in"><span></span></span>

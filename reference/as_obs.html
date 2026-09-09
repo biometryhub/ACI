@@ -88,7 +88,11 @@ of class <code>aci_sim</code>.</p></dd>
     <div class="section level2">
     <h2 id="methods-by-class-">Methods (by class)<a class="anchor" aria-label="anchor" href="#methods-by-class-"></a></h2>
 
-<ul><li><p><code>as_obs(obs_traj)</code>: Returns the trajectory unchanged.</p></li>
+<ul><li><p><code>as_obs(obs_traj)</code>: Returns an existing <code>obs_traj</code> unchanged. It is not
+re-validated, so an object whose fields were assigned into after
+construction keeps whatever <code>dt</code>, <code>k</code> or <code>noise_free</code> it was left with.
+Observation objects are immutable through the supported workflow: build a
+changed record with <code><a href="observed_trajectory.html">observed_trajectory()</a></code> rather than modifying one.</p></li>
 <li><p><code>as_obs(matrix)</code>: Builds a uniform grid from <code>dt</code> and <code>t0</code> for a matrix of
 observations.</p></li>
 <li><p><code>as_obs(aci_sim)</code>: Extracts the observation component of a simulation.</p></li>

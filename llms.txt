@@ -10,21 +10,42 @@ acir is a closed-form assimilative causal inference engine for
 conditional Gaussian nonlinear systems, consolidating the `aci` and
 `aciR` packages into a single implementation.
 
-Its outputs are verified number by number against the authors’ published
-MATLAB reference implementation, and the evidence documents accompany
-this repository.
+Its outputs are graded against hash-pinned reference records. The
+filter, the smoother and the total ACI metric are compared with the
+authors’ published MATLAB outputs for the dyad and predator-prey
+systems, and the fixed-lag online smoother and the causal influence
+range with those outputs for the dyad record only; the paths those
+scripts do not exercise (the noise cross-covariance terms, the matrix
+online smoother, the general auxiliary matrices) are compared with
+independent MATLAB or R transcriptions of the published equations, with
+analytic identities, or with a source-derived run.
+`inst/evidence/register.csv` names the comparator, the source class and
+the tolerance for each checked feature.
 
 ## Status
 
-Version 0.1.0 is the parity milestone: every quantity the reference
-MATLAB implementation computes is reproduced to the tolerance recorded
-in the evidence register, and the performance table of the specification
-is met. Maintainer: Aidan Moller. Authors: Aidan Moller and Max
-Moldovan.
+Version 0.1.0 is the parity milestone for the graded surface. The
+evidence register carries 68 rows: 28 are graded against a hash-pinned
+fixture and 40 record an exact relation, a behavioural check or an
+in-test independent transcription with no fixture behind them. Ten of
+the fixture-backed rows cite a fixture the method authors produced: nine
+compare a computed output against it, and the tenth records that
+[`observed_trajectory()`](https://biometryhub.github.io/ACI/reference/observed_trajectory.md)
+ingests the authors’ pinned input signal and carries it onto the seven
+dyad grades; the two predator-prey grades run on the authors’ pinned
+predator-prey record, which has no register row of its own. The
+remaining fixture-backed rows compare against source-derived,
+independently transcribed or analytic references, each named in
+`inst/evidence/register.csv` with its tolerance. The stages of the
+specification’s performance table are timed against the committed
+baseline by `tools/bench/bench_reference.R`.
 
-The numerical core is fixed at parity with the reference implementation;
-the public interface may still change before 1.0, and every such change
-is announced in `NEWS.md`. Details in `API_STABILITY.md`.
+Maintainer: Aidan Moller. Authors: Aidan Moller and Max Moldovan.
+
+The numerical core is fixed: a change that moves a graded number beyond
+round-off is a change of method, not a release. The public interface may
+still change before 1.0, and every such change is announced in
+`NEWS.md`. Details in `API_STABILITY.md`.
 
 ## Installation
 

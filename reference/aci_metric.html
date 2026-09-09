@@ -74,7 +74,21 @@ the total.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A data frame with the time column <code>t</code> and either <code>total</code> alone or
-<code>total</code>, <code>signal</code> and <code>dispersion</code>.</p>
+<code>total</code>, <code>signal</code> and <code>dispersion</code>. <code>aci_metric()</code> keeps no regularization
+record of its own: it scores the paths it is given, so a score computed
+from floored moments is itself regularized without saying so. Read
+<code>p$meta$regularization</code> and <code>q$meta$regularization</code> for the record the
+input paths were computed under.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>A one-dimensional hidden state is evaluated with the cancellation-resistant
+<code>log1p</code> form <code>0.5 * (delta - log1p(delta))</code>, <code>delta = R_p / R_q - 1</code>; two or
+more hidden components use the trace and log-difference form, whose relative
+precision on the dispersion degrades as the two covariances approach each
+other. <code><a href="aci_metric_pair.html">aci_metric_pair()</a></code> documents that boundary with the measured
+figures, and uses the trace form at every dimension, so it and this function
+need not agree in the last digits on one-dimensional inputs.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -87,7 +101,7 @@ the total.</p></dd>
 <span class="r-in"><span><span class="va">sim</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate</a></span><span class="op">(</span><span class="va">m</span>, seed <span class="op">=</span> <span class="fl">1</span>, t_end <span class="op">=</span> <span class="fl">2</span>, dt <span class="op">=</span> <span class="fl">0.01</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">ob</span> <span class="op">&lt;-</span> <span class="fu"><a href="as_obs.html">as_obs</a></span><span class="op">(</span><span class="va">sim</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">f</span> <span class="op">&lt;-</span> <span class="fu"><a href="aci_filter.html">aci_filter</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span><span class="op">)</span></span></span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>No init$cov supplied; using a diffuse prior. Discard an initial burn-in window when interpreting results.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>No init$cov supplied; using a diffuse prior. Its opening steps are prior-dominated; a prior far wider than the hidden state's own scale can also destabilise the explicit step, which is a refusal rather than a window to discard.</span>
 <span class="r-in"><span><span class="va">s</span> <span class="op">&lt;-</span> <span class="fu"><a href="aci_smoother.html">aci_smoother</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, filter <span class="op">=</span> <span class="va">f</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="fu">aci_metric</span><span class="op">(</span><span class="va">s</span>, <span class="va">f</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      t     total    signal dispersion</span>

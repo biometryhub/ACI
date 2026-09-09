@@ -35,9 +35,13 @@ simulate(
 - seed:
 
   Optional non-negative whole number seeding the generator. Seeding is
-  contained: the caller's `.Random.seed` is restored when the call
-  returns, so a reproducible path leaves the caller's stream where it
-  was.
+  contained: an existing `.Random.seed` is restored bit for bit when the
+  call returns, so a reproducible path leaves the caller's stream where
+  it was and the next draw is the draw that would have followed no call
+  at all. When no `.Random.seed` exists, one is created before the
+  seeded draw so that there is a state to restore, and the caller is
+  left holding it. An unseeded call draws from, and advances, the
+  caller's stream as usual.
 
 - t_end:
 

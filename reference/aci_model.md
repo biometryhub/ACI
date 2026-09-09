@@ -96,6 +96,13 @@ mutable state inside a coefficient function is outside the model
 contract. Closed-form execution may realise each coefficient once on the
 observation grid and reuse that realised path.
 
+A model is fixed once constructed. Its derived drifts capture the
+coefficient functions supplied to the constructor, so assigning a new
+coefficient into an existing model changes only the field assigned and
+leaves simulation, filtering and every realised path on the original
+coefficients. Change a parameter by rebuilding the model with
+`aci_model()`, not by modifying one.
+
 ## See also
 
 [`aci_model_from_affine()`](https://biometryhub.github.io/ACI/reference/aci_model_from_affine.md),
@@ -114,4 +121,17 @@ aci_model(
   Sy2 = function(t, x) matrix(1, 1, 1),
   k = 1, l = 1)
 #> <cgns_model> 'cgns_model': k = 1 observed, l = 1 hidden
+
+# Coefficients are fixed for the model's lifetime: change a parameter by
+# rebuilding, not by assigning into an existing model.
+make_dyadish <- function(lambda)
+  aci_model(Lx = function(t, x) matrix(1, 1, 1),
+            fx = function(t, x) lambda * x,
+            Ly = function(t, x) matrix(-0.5, 1, 1),
+            fy = function(t, x) 0,
+            Sx1 = function(t, x) matrix(0.5, 1, 1),
+            Sy2 = function(t, x) matrix(1, 1, 1),
+            k = 1, l = 1)
+m_a <- make_dyadish(-0.5)
+m_b <- make_dyadish(-1)
 ```

@@ -6,10 +6,12 @@ Assimilative causal inference (Andreou, Chen and Bollt, 2026) treats
 causality as an inverse problem. Given a model of how an observed
 process x and a hidden process y evolve together, it asks whether the
 future of x carries information about y_t that the past of x did not. If
-it does, y drives x, and the amount of new information is the strength
-of that influence at time t. The answer is computed along one
-trajectory, so it describes causality as it happened rather than on
-average.
+it does, y influenced x under the supplied model, and the amount of new
+information is the strength of that influence at time t. The answer is
+computed along one trajectory, so it describes causality as it happened
+rather than on average. The direction is the model’s: a positive value
+is influence under the dynamics that were supplied, not an empirically
+identified causal effect and not a significance test.
 
 The causal influence range (Andreou and Chen, 2026) extends the question
 from strength to duration: for how long does an influence planted at
@@ -29,7 +31,8 @@ the coefficient blocks written directly with
 or a full drift that
 [`aci_model_from_affine()`](https://biometryhub.github.io/ACI/reference/aci_model_from_affine.md)
 splits for you. *The closed-form ACI engine* describes the three routes.
-Learning the model from data is not part of this release.
+The model supplies the likelihood; it is not estimated from the record,
+and learning the model from data is not part of this release.
 
 ### Two reconstructions and one number
 
@@ -40,14 +43,16 @@ available in closed form:
 - the **smoother** p(y_t \mid x\_{\le T}), what the past and the future
   of x say together.
 
-If the future sharpens the reconstruction, y influenced x. The ACI
-metric is the relative entropy between the two,
+If the future sharpens the reconstruction, y influenced x under the
+supplied model. The ACI metric is the relative entropy between the two,
 
 \mathrm{ACI}(t) = D\_{\mathrm{KL}}\\\big(p^{\text{smoother}}\_t
 \\\big\\\\ p^{\text{filter}}\_t\big) \ge 0,
 
-and it splits into a **signal** part, from disagreement between the two
-means, and a **dispersion** part, from disagreement between the two
+\mathrm{ACI}(t) is a pointwise information gain in nats; summed over the
+record with the step it is a time-integrated value in nats times model
+time. It splits into a **signal** part, from disagreement between the
+two means, and a **dispersion** part, from disagreement between the two
 spreads.
 
 ## 3. A worked example
@@ -99,7 +104,10 @@ res  <- aci(truth, ob, init = init)
 
 Name the prior. Omitting `cov` falls back to a diffuse prior with a
 warning, and the opening steps of such a run show the prior washing out
-rather than anything causal.
+rather than anything causal. The prior and the integration step change
+the number as well as the model does: refine `dt` and compare before
+reading a value as a property of the system rather than of the
+discretisation.
 
 ## 4. Read the result
 
@@ -194,10 +202,11 @@ conventions each number is computed under.
 
 What is here is the closed-form engine: models in the conditional
 Gaussian nonlinear system (CGNS) class, for which the filter, the
-smoother and the metric have exact solutions, and the forward influence
-range. Learning the dynamics from data, the backward range, significance
-testing and the ensemble engine for systems outside the class are not in
-this release.
+smoother and the metric have closed-form continuous-time solutions that
+the package integrates on the observation grid, and the forward
+influence range. Learning the dynamics from data, the backward range,
+significance testing and the ensemble engine for systems outside the
+class are not in this release.
 
 *The closed-form ACI engine*
 ([`vignette("vignette-2-advanced")`](https://biometryhub.github.io/ACI/articles/vignette-2-advanced.md))

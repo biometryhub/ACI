@@ -55,7 +55,7 @@ aci_online(model, obs, lag, ...)
 
   Optional precomputed filter path; recomputed when `NULL`. It must be
   the explicit single-step filter, which is the discretization the
-  Theorem 3 recursions are exact for.
+  Theorem 3 recursions are derived for.
 
 - conditional:
 
@@ -72,7 +72,10 @@ aci_online(model, obs, lag, ...)
   Covariance policy for this call; see
   [`aci_filter()`](https://biometryhub.github.io/ACI/reference/aci_filter.md).
   One record covers the whole call, and is returned in
-  `meta$regularization`.
+  `meta$regularization`; a call in which a floor fires also raises one
+  `aci_warn_regularized`. Flooring changes the numerical covariance so
+  that the recursion can continue; it establishes nothing about the
+  accuracy of the resulting reconstruction.
 
 - force_validate:
 
@@ -94,8 +97,8 @@ kind is what keeps it out of the places a complete smoother is required:
 `lag` is the number of future observations each estimate may condition
 on: the estimate at index `j` uses the observed record through index
 `j + lag`, and saturates at the end of the record. `lag = 0` returns the
-filter moments unchanged. `lag = Inf` returns the complete Theorem 3
-posterior given the whole record.
+filter moments unchanged. `lag = Inf` composes the Theorem 3 updates
+over the whole record.
 
 ## Methods (by class)
 
@@ -107,9 +110,15 @@ posterior given the whole record.
 
 ## Scheme
 
-`aci_online()` computes the **discrete** Theorem 3 posterior: the exact
-conditional law of the hidden state given the observed increments on the
-sampling grid under the explicit single-step discretization.
+`aci_online()` composes the published **discrete** Theorem 3 updates,
+which retain the leading-order terms of the continuous-time conditional
+equations under the explicit single-step discretization. Its finite-step
+output approximates the continuous-time conditional distribution and is
+not generally the exact posterior for an Euler-sampled record: for
+`dx = y dt + dW1`, `dy = dW2`, `y0 ~ N(0, 1)`, `dt = 0.1` and one
+observed increment 0.2 it returns mean 0.2 and variance 0.9, where exact
+conditioning on that Euler-sampled increment gives 0.1818 and 0.9091.
+The gap falls with the step.
 [`aci_smoother()`](https://biometryhub.github.io/ACI/reference/aci_smoother.md)
 integrates the **continuous** backward smoothing equations with an Euler
 step of the same size. These are two discretizations of the same
@@ -155,6 +164,6 @@ m <- aci_dyad_model()
 sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
 ob <- as_obs(sim)
 aci_online(m, ob, lag = 5)
-#> Warning: No init$cov supplied; using a diffuse prior. Discard an initial burn-in window when interpreting results.
+#> Warning: No init$cov supplied; using a diffuse prior. Its opening steps are prior-dominated; a prior far wider than the hidden state's own scale can also destabilise the explicit step, which is a refusal rather than a window to discard.
 #> <da_path_gaussian> kind = online, l = 1, N+1 = 201
 ```

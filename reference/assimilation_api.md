@@ -34,9 +34,11 @@ use, and `meta$scheme` on a path says which one produced it.
 the continuous backward smoothing equations integrated with an Euler
 step. `"theorem3_discrete"` is
 [`aci_online()`](https://biometryhub.github.io/ACI/reference/aci_online.md)
-and the lag table's reference smoother: the exact conditional law of the
-hidden state given the observed increments on the sampling grid, under
-the explicit single-step discretization. They agree only to first order
+and the lag table's reference smoother: the published leading-order
+Theorem 3 updates composed on the sampling grid, under the explicit
+single-step discretization. Neither scheme returns the exact posterior
+of an Euler-sampled record at a finite step; both approximate the same
+continuous-time conditional distribution. They agree only to first order
 in the step, so
 [`aci_online()`](https://biometryhub.github.io/ACI/reference/aci_online.md)
 at `lag = Inf` does not reproduce

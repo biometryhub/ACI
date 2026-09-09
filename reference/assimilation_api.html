@@ -94,9 +94,11 @@ in the worst case. <code><a href="aci_online.html">aci_online()</a></code> costs
 use, and <code>meta$scheme</code> on a path says which one produced it.
 <code>"backward_ode_euler"</code> is <code><a href="aci_smoother.html">aci_smoother()</a></code>: the continuous backward smoothing
 equations integrated with an Euler step. <code>"theorem3_discrete"</code> is
-<code><a href="aci_online.html">aci_online()</a></code> and the lag table's reference smoother: the exact conditional
-law of the hidden state given the observed increments on the sampling grid,
-under the explicit single-step discretization. They agree only to first
+<code><a href="aci_online.html">aci_online()</a></code> and the lag table's reference smoother: the published
+leading-order Theorem 3 updates composed on the sampling grid, under the
+explicit single-step discretization. Neither scheme returns the exact
+posterior of an Euler-sampled record at a finite step; both approximate the
+same continuous-time conditional distribution. They agree only to first
 order in the step, so <code><a href="aci_online.html">aci_online()</a></code> at <code>lag = Inf</code> does not reproduce
 <code><a href="aci_smoother.html">aci_smoother()</a></code>, and the gap grows with the length of the record rather than
 settling to a constant. See the Scheme section of <code><a href="aci_online.html">aci_online()</a></code> for the

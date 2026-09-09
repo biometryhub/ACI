@@ -40,7 +40,7 @@ m <- aci_dyad_model()
 sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
 ob <- as_obs(sim)
 tb <- lag_table(m, ob, mode = "forward")
-#> Warning: No init$cov supplied; using a diffuse prior. Discard an initial burn-in window when interpreting results.
+#> Warning: No init$cov supplied; using a diffuse prior. Its opening steps are prior-dominated; a prior far wider than the hidden state's own scale can also destabilise the explicit step, which is a refusal rather than a window to discard.
 head(lt_row(tb, 1))
 #> [1] 1.7308809 2.3055094 1.8721223 2.1967183 1.0153139 0.7241675
 ```
