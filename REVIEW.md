@@ -1,9 +1,9 @@
 # Review policy
 
-This applies to every pull request into `acir-package` and `main`, and to
-every reviewer, human or automated. A review is a list of findings ranked by
-severity. Approval is a separate act, by an author who did not write the
-change, and branch protection requires it before a merge.
+This applies to every pull request into `main`, and to every reviewer, human
+or automated. A review is a list of findings ranked by severity. Approval is
+a separate act, by an author who did not write the change, and branch
+protection requires it before a merge.
 
 ## Three passes
 
