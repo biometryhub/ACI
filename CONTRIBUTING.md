@@ -28,10 +28,10 @@ author.
 ## Review
 
 Every pull request is reviewed under `REVIEW.md` and needs one approving
-review from an author who did not write it. Branch protection on `main` is the intended
-enforcement mechanism for that rule and for the required checks; this
-repository does not record the host configuration, so confirm it on the
-repository before relying on it.
+review from an author who did not write it. Branch protection on `main` enforces this: a pull request is
+required, one approving code-owner review, the ten required checks green, and
+no force push or deletion. Administrators may bypass, so the rule binds the
+ordinary workflow rather than every possible push.
 
 ## Reporting
 
