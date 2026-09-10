@@ -638,8 +638,8 @@ aci_model_from_affine <- function(f_full, g_full, Sx, Sy_hidden, k, l,
 #'   that there is a state to restore, and the caller is left holding it. An
 #'   unseeded call draws from, and advances, the caller's stream as usual.
 #' @param t_end Positive 1-length numeric total simulated time, excluding
-#'   burn-in. Called `T` before 0.1.0; that name is accepted with a warning
-#'   until 0.2.0.
+#'   burn-in. Called `T` before 0.1.0; that deprecated name remains accepted
+#'   with a warning. Use `t_end` in new code.
 #' @param dt Positive 1-length numeric integration step.
 #' @param ic Optional list with elements `x0` and `y0` giving the initial state;
 #'   `NULL` uses the model's default initial condition.
@@ -661,14 +661,14 @@ simulate.stochastic_model <- function(object, nsim = 1, seed = NULL,
                                       keep_hidden = TRUE, keep_noise = TRUE, ...) {
   dots <- list(...)
   ## The horizon was called `T` until 0.1.0. That name shadows R's `TRUE`
-  ## alias, so it is retired; it is still accepted here, with a warning, until
-  ## 0.2.0, and never together with `t_end`.
+  ## alias, so it is retired; it remains accepted with a warning, and never
+  ## together with `t_end`.
   if (!is.null(dots$T)) {
     if (!missing(t_end))
       aci_abort("aci_error_dims",
                 "Supply t_end only; T is the retired name of that argument.")
     retired <- paste("simulate(): the argument T is now t_end. T is accepted",
-                     "with this warning until acir 0.2.0.")
+                     "with this warning for compatibility; use t_end in new code.")
     aci_warn("aci_warning_deprecated", retired)
     t_end <- dots$T
     dots$T <- NULL

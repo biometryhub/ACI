@@ -31,8 +31,8 @@ that there is a state to restore, and the caller is left holding it. An
 unseeded call draws from, and advances, the caller's stream as usual.}
 
 \item{t_end}{Positive 1-length numeric total simulated time, excluding
-burn-in. Called \code{T} before 0.1.0; that name is accepted with a warning
-until 0.2.0.}
+burn-in. Called \code{T} before 0.1.0; that deprecated name remains accepted
+with a warning. Use \code{t_end} in new code.}
 
 \item{dt}{Positive 1-length numeric integration step.}
 
