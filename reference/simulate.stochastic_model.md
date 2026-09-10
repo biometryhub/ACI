@@ -46,8 +46,8 @@ simulate(
 - t_end:
 
   Positive 1-length numeric total simulated time, excluding burn-in.
-  Called `T` before 0.1.0; that name is accepted with a warning until
-  0.2.0.
+  Called `T` before 0.1.0; that deprecated name remains accepted with a
+  warning. Use `t_end` in new code.
 
 - dt:
 
