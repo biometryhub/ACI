@@ -1,9 +1,7 @@
 # ------------------------------------------------
 # CITATION.cff file created with {cffr} R package
 # See also: https://docs.ropensci.org/cffr/
-# The version and the R floor below describe the 0.1.0 release. This file and
-# codemeta.json are regenerated at release, so between releases they can trail
-# DESCRIPTION.
+# Keep the release version and R requirement aligned with DESCRIPTION.
 # ------------------------------------------------
  
 cff-version: 1.2.0
@@ -12,7 +10,7 @@ type: software
 license: MIT
 title: 'acir: Closed-Form Assimilative Causal Inference for Conditional Gaussian Nonlinear
   Systems'
-version: 0.1.0
+version: 0.2.0
 abstract: Causal inference as a Bayesian inverse problem via data assimilation, restricted
   to the closed-form conditional-Gaussian (CGNS) engine. Implements the assimilative
   causal inference (ACI) metric, closed-form CGNS filtering and smoothing, the Theorem
@@ -40,7 +38,7 @@ preferred-citation:
     given-names: Max
     orcid: https://orcid.org/0000-0001-9680-8474
   year: '2026'
-  notes: R package version 0.1.0
+  notes: R package version 0.2.0
   url: https://github.com/biometryhub/ACI
 repository-code: https://github.com/biometryhub/ACI
 url: https://biometryhub.github.io/ACI/
@@ -73,7 +71,7 @@ references:
     name: R Foundation for Statistical Computing
     address: Vienna, Austria
   year: '2026'
-  version: '>= 4.0.0'
+  version: '>= 4.1.0'
 - type: software
   title: stats
   abstract: 'R: A Language and Environment for Statistical Computing'
@@ -174,4 +172,3 @@ references:
     orcid: https://orcid.org/0000-0003-3925-190X
   year: '2026'
   doi: 10.32614/CRAN.package.rmarkdown
-

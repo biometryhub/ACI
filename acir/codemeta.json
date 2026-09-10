@@ -8,13 +8,12 @@
   "codeRepository": "https://github.com/biometryhub/ACI",
   "issueTracker": "https://github.com/biometryhub/ACI/issues",
   "license": "https://spdx.org/licenses/MIT",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "programmingLanguage": {
     "@type": "ComputerLanguage",
     "name": "R",
     "url": "https://r-project.org"
   },
-  "runtimePlatform": "R version 4.5.2 (2025-10-31)",
   "author": [
     {
       "@type": "Person",
@@ -100,7 +99,7 @@
       "@type": "SoftwareApplication",
       "identifier": "R",
       "name": "R",
-      "version": ">= 4.0.0"
+      "version": ">= 4.1.0"
     },
     "2": {
       "@type": "SoftwareApplication",
@@ -119,7 +118,6 @@
     },
     "SystemRequirements": null
   },
-  "fileSize": "6264.242KB",
   "citation": [
     {
       "@type": "SoftwareSourceCode",
@@ -138,7 +136,7 @@
       ],
       "name": "acir: Closed-Form Assimilative Causal Inference for Conditional Gaussian Nonlinear Systems",
       "url": "https://github.com/biometryhub/ACI",
-      "description": "R package version 0.1.0"
+      "description": "R package version 0.2.0"
     },
     {
       "@type": "ScholarlyArticle",
@@ -176,7 +174,7 @@
       }
     }
   ],
-  "releaseNotes": "https://github.com/biometryhub/ACI/blob/main/NEWS.md",
-  "readme": "https://github.com/biometryhub/ACI/blob/main/README.md",
+  "releaseNotes": "https://github.com/biometryhub/ACI/blob/main/acir/NEWS.md",
+  "readme": "https://github.com/biometryhub/ACI/blob/main/acir/README.md",
   "contIntegration": "https://github.com/biometryhub/ACI/actions/workflows/R-CMD-check.yaml"
 }

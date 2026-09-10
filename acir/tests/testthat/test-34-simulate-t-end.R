@@ -1,5 +1,5 @@
 # The horizon argument is `t_end`; the retired name `T` is accepted with a
-# typed warning until 0.2.0, gives the same draws, and is refused beside
+# typed warning, gives the same draws, and is refused beside
 # `t_end`.
 
 test_that("t_end and the retired T give identical draws, T with a warning", {

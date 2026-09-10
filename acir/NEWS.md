@@ -1,4 +1,12 @@
-# acir 0.1.0.9000
+# acir 0.2.0
+
+## Release
+
+* The corrections below are released as 0.2.0. Citation metadata now agrees
+  with the package version and its R 4.1.0 requirement.
+* The deprecated simulation argument `T` remains accepted with a warning in
+  this release. Use `t_end`; no removal version is scheduled here. Supplying
+  both arguments remains an error.
 
 ## Breaking changes
 
