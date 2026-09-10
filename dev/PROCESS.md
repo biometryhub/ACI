@@ -22,7 +22,7 @@ this process applies from 2026-09-02.
 | Design | `spec.md`: requirements, design, flagged concerns | same directory; the package-level specification is `dev/specification.md` | flagged concerns resolved before engineering starts; the other author signs off | the authors |
 | Build | `plan.md`: files that change, order of work, risks, proof | same directory, committed before code; a departure is recorded in the same commit as the change that causes it | a reader unfamiliar with the change could implement it from the plan alone | the author of the change |
 | Test | the diff, its tests, the evidence register | `acir/tests/`, `acir/inst/evidence/register.csv`, `.github/workflows/` | the four gates below, locally before the pull request and again in CI | CI, deterministically |
-| Deploy | review findings ranked by severity | the pull-request thread, under `REVIEW.md` | one approving review from an author who did not write the change; branch protection is the intended enforcement, see the correspondence table below | the reviewing author |
+| Deploy | review findings ranked by severity | the pull-request thread, under `REVIEW.md` | one approving review from an author who did not write the change; branch protection enforces it, see the correspondence table below | the reviewing author |
 | Maintain | incident record | a new `intent.md` | a bench breach or a numerical disagreement re-enters at Plan | the authors |
 
 ## The four gates
@@ -90,7 +90,7 @@ and is a review finding in its own right.
 | Feedback loop before reporting done | the four gates, run locally and in CI | in use |
 | Continuous evaluation of agent configuration | not applicable to the repository | not used |
 | Review loop under a written policy | `REVIEW.md`; approval by a human author is required | in use |
-| Hooks as approval gates | intended branch protection on `main`: pull request required, one approving review, the required checks green, no force push | intended; the host configuration is not recorded in this repository and has not been verified here |
+| Hooks as approval gates | branch protection on `main`: pull request required, one approving code-owner review, ten required checks green, no force push or deletion | in use, enabled 2026-09-10 and read back from the host API; administrators may bypass |
 | An agent inside CI/CD | not used; CI is deterministic | not used |
 | Control bands in maintenance | `bench.yaml` compares every run with `baseline.csv`; a breach is triaged by the authors and re-enters as an intent | in use, with a manual response |
 | Recurring security scans | not used; the package opens no network connection (`SECURITY.md`) | not used |
