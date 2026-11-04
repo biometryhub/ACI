@@ -1,3 +1,22 @@
+# acir 0.2.1
+
+## Bug fixes
+
+* **`aci_range()` on a result saved without its paths now says when it
+  rebuilds the range on the explicit single-step filter.** `aci()` records
+  `stepper` and `nsub` in `meta`, the settings its filter and smoother ran
+  under (`"explicit"` and `1L` for a result built on a reused table). When a
+  result computed with `stepper = "implicit"` or `nsub > 1` is passed to
+  `aci_range()` with no retained paths (`keep = "none"`), the range is, as
+  before, computed from a recomputed explicit single-step filter and smoother,
+  since the lag-table recursions are defined for that discretization only;
+  the rebuild is now reported by one `aci_warn_stepper` warning naming the
+  recorded settings, as the `keep = "paths"` route already did off its
+  retained filter and the `keep = "table"` route does while the table is
+  built. Range values are unchanged on every route. A result saved by an
+  earlier release with `keep = "none"` carries no record of its settings, so
+  it cannot report the rebuild; `?aci_range` states the behaviour.
+
 # acir 0.2.0
 
 ## Release

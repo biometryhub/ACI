@@ -10,7 +10,7 @@ type: software
 license: MIT
 title: 'acir: Closed-Form Assimilative Causal Inference for Conditional Gaussian Nonlinear
   Systems'
-version: 0.2.0
+version: 0.2.1
 abstract: Causal inference as a Bayesian inverse problem via data assimilation, restricted
   to the closed-form conditional-Gaussian (CGNS) engine. Implements the assimilative
   causal inference (ACI) metric, closed-form CGNS filtering and smoothing, the Theorem
@@ -38,7 +38,7 @@ preferred-citation:
     given-names: Max
     orcid: https://orcid.org/0000-0001-9680-8474
   year: '2026'
-  notes: R package version 0.2.0
+  notes: R package version 0.2.1
   url: https://github.com/biometryhub/ACI
 repository-code: https://github.com/biometryhub/ACI
 url: https://biometryhub.github.io/ACI/
