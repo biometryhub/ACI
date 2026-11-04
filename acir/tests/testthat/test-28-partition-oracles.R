@@ -416,9 +416,10 @@ test_that("the declared reduced estimand is the explicit prescribed-forcing run"
 
 test_that("the two conditional strategies are the same operator on this model", {
   # gxx is diagonal and gyx is zero here, so masking the non-target rows of the
-  # Gram inverse gives exactly the gain deleting those channels gives.  Pinned
-  # as an identity rather than a tolerance: the C3 measurement was identical(),
-  # max difference 0, on every one of the five series.
+  # Gram inverse gives the gain deleting those channels gives.  The two routes
+  # do different floating-point arithmetic, so they are held to the register's
+  # round-off class rather than to the last bit, which varies with the machine.
+  # Set ACI_BITWISE_REFERENCE to require bit equality as well.
   #
   # Both arms are built on the five-channel model, because a model that
   # declares its own reduction will not accept either specification.
@@ -431,7 +432,10 @@ test_that("the two conditional strategies are the same operator on this model", 
     "tau", "full", signal,
     aci_conditional(given = c("u", "hW"), method = "mask")
   )
-  expect_identical(.partition_series(reduced), .partition_series(inflated))
+  a <- .partition_series(reduced)
+  b <- .partition_series(inflated)
+  for (k in names(a)) expect_lt(max(abs(a[[k]] - b[[k]])), 1e-12, label = k)
+  if (nzchar(Sys.getenv("ACI_BITWISE_REFERENCE"))) expect_identical(a, b)
 })
 
 
