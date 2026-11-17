@@ -2,20 +2,35 @@
 
 ## Bug fixes
 
-* **`aci_range()` on a result saved without its paths now says when it
-  rebuilds the range on the explicit single-step filter.** `aci()` records
-  `stepper` and `nsub` in `meta`, the settings its filter and smoother ran
-  under (`"explicit"` and `1L` for a result built on a reused table). When a
+* **`aci_range()` reports explicit single-step provenance on every retention
+  route.** `aci()` records
+  `stepper` and `nsub` in `meta`, recording the filter's integration settings
+  (`"explicit"` and `1L` for a result built on a reused table). The backward
+  smoother inherits `nsub` and remains explicit. When a
   result computed with `stepper = "implicit"` or `nsub > 1` is passed to
   `aci_range()` with no retained paths (`keep = "none"`), the range is, as
   before, computed from a recomputed explicit single-step filter and smoother,
   since the lag-table recursions are defined for that discretization only;
   the rebuild is now reported by one `aci_warn_stepper` warning naming the
   recorded settings, as the `keep = "paths"` route already did off its
-  retained filter and the `keep = "table"` route does while the table is
-  built. Range values are unchanged on every route. A result saved by an
+  retained filter. With `keep = "table"`, `aci()` warns while building the
+  table and every subsequent `aci_range()` call warns once about using that
+  explicit single-step table, including after `saveRDS()`/`readRDS()`.
+  Older retained-table results use the settings on their retained filter.
+  Range values are unchanged on every route. A result saved by an
   earlier release with `keep = "none"` carries no record of its settings, so
   it cannot report the rebuild; `?aci_range` states the behaviour.
+
+## Tests and documentation
+
+* The retention and serialization checks now include a correlated
+  matrix-observation model. The range help states the common inputs and
+  settings needed for comparing routes and allows floating-point differences.
+* The conditional reduction/masking comparison requires all five complete,
+  finite series with matching names and lengths. Its maximum absolute
+  difference limit remains `1e-12`. CI records the per-series differences
+  and runtime details. The advanced vignette no longer promises bit-for-bit
+  agreement across platforms.
 
 # acir 0.2.0
 

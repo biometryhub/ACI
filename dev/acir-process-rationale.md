@@ -1704,13 +1704,16 @@ so that a later change cannot quietly close it and be read as a fix. A fidelity
 claim about the tau partition must say which observation set it reproduces.
 
 **Related exact result.** On this model family the two conditioning strategies,
-prescribed forcing and precision masking, are the same operator: results are
-bit-identical. That holds because the observation-noise Gram is exactly
+prescribed forcing and precision masking, are the same operator in exact
+arithmetic. That holds because the observation-noise Gram is exactly
 diagonal and the noise cross-term is exactly zero, so zeroing the non-target
 rows of the inverse gives exactly the gain that deleting those channels gives.
 The equivalence is model-specific rather than general, so both routes are kept
-and the reduction keeps its cross-noise admissibility guard. It was re-measured
-on the `T_C` partition too, at 2.776e-16 on ACI.
+and the reduction keeps its cross-noise admissibility guard. The recorded tau
+comparison on the shared record gave zero differences, while the `T_C` comparison gave
+2.776e-16 on ACI. These are measured floating-point results, not a guarantee of
+bit-for-bit agreement on every platform. The two implementations perform
+different floating-point operations.
 
 ### 6.2 The first-slice conditional convention is a verification requirement
 

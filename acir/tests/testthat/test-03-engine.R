@@ -418,10 +418,10 @@ test_that("aci_range() reports the explicit single-step rebuild once on every ro
         expect_identical(built$n, 0L, info = label)
         expect_identical(ranged$n, 0L, info = label)
       } else if (keep == "table") {
-        # the table is built, and the rebuild reported, while aci() runs;
-        # aci_range() then reads the explicit single-step table silently
+        # aci() reports the rebuild, and each aci_range() call independently
+        # reports that the retained table uses different integration settings.
         expect_identical(built$n, 1L, info = label)
-        expect_identical(ranged$n, 0L, info = label)
+        expect_identical(ranged$n, 1L, info = label)
       } else {
         expect_identical(built$n, 0L, info = label)
         expect_identical(ranged$n, 1L, info = label)
@@ -477,12 +477,17 @@ test_that("aci_result records its integration settings and keeps them through sa
       unlink(f)
       expect_identical(back$meta$stepper, st$stepper, info = label)
       expect_identical(back$meta$nsub, st$nsub, info = label)
-      # the reloaded object reports exactly what the live one does
+      # Assert the required count, not merely equality of two silent calls.
+      expected <- as.integer(!identical(st$stepper, "explicit") || st$nsub != 1L)
       live <- .count_stepper_warnings(.prov_range(res))
       reloaded <- .count_stepper_warnings(.prov_range(back))
-      expect_identical(reloaded$n, live$n, info = label)
+      repeated <- .count_stepper_warnings(.prov_range(back))
+      expect_identical(live$n, expected, info = label)
+      expect_identical(reloaded$n, expected, info = label)
+      expect_identical(repeated$n, expected, info = label)
       expect_equal(reloaded$value$tau, live$value$tau, tolerance = 1e-12,
                    info = label)
+      expect_identical(repeated$value, reloaded$value, info = label)
     }
   }
   # a double nsub is stored as the integer the filter ran with
@@ -519,7 +524,78 @@ test_that("keep = 'table' with a non-default setting warns while aci() builds th
     from_table <- aci_range(res$table, min_M = 0, epsilon = c(0.02, 0.2))
     expect_equal(from_table$tau, direct$tau, tolerance = 1e-12, info = setting)
     expect_equal(from_table$M, direct$M, tolerance = 1e-12, info = setting)
+    # Reusing a stored table does not recompute it during aci_range().
+    expect_warning(.prov_range(res), class = "aci_warn_stepper",
+                   regexp = "retained lag table")
   }
+})
+
+test_that("matrix-observation ranges retain values and warnings on every route", {
+  old <- options(aci.default_tol = 0)
+  on.exit(options(old), add = TRUE)
+  ds <- .compiled_cir_matrix_setup()
+  range <- function(x) aci_range(x, min_M = 0, epsilon = c(1e-8, 1e-6))
+  baseline <- range(aci(ds$model, ds$obs, init = ds$init, keep = "paths"))
+  expect_true(any(is.finite(baseline$tau)))
+  expect_true(any(baseline$subjective > 0))
+
+  for (setting in names(.prov_settings)) {
+    st <- .prov_settings[[setting]]
+    expected <- as.integer(!identical(st$stepper, "explicit") || st$nsub != 1L)
+    for (keep in .prov_keeps) {
+      label <- paste("matrix", setting, keep)
+      built <- .count_stepper_warnings(
+        aci(ds$model, ds$obs, init = ds$init, keep = keep,
+            stepper = st$stepper, nsub = st$nsub))
+      expect_identical(built$n, if (keep == "table") expected else 0L,
+                       info = label)
+      res <- built$value
+      expect_identical(res$meta$stepper, st$stepper, info = label)
+      expect_identical(res$meta$nsub, st$nsub, info = label)
+      f <- tempfile(fileext = ".rds")
+      saveRDS(res, f)
+      back <- readRDS(f)
+      unlink(f)
+      expect_identical(back$meta, res$meta, info = label)
+      live <- .count_stepper_warnings(range(res))
+      reloaded <- .count_stepper_warnings(range(back))
+      repeated <- .count_stepper_warnings(range(back))
+      expect_identical(live$n, expected, info = label)
+      expect_identical(reloaded$n, expected, info = label)
+      expect_identical(repeated$n, expected, info = label)
+      expect_identical(reloaded$value, live$value, info = label)
+      expect_identical(repeated$value, reloaded$value, info = label)
+      cell <- live$value
+      expect_identical(cell$t, baseline$t, info = label)
+      for (field in c("tau", "M", "interval", "subjective")) {
+        a <- cell[[field]]
+        b <- baseline[[field]]
+        expect_identical(dim(a), dim(b), info = paste(label, field))
+        expect_identical(length(a), length(b), info = paste(label, field))
+        expect_identical(is.na(a), is.na(b), info = paste(label, field))
+        finite <- !is.na(b)
+        expect_true(all(is.finite(a[finite])), info = paste(label, field))
+        # A maximum absolute comparison, not an averaged/scaled tolerance.
+        # Earlier measurements on this fixture were below 1e-14.
+        expect_lt(max(abs(a[finite] - b[finite])), 1e-12,
+                  label = paste(label, field))
+      }
+      expect_identical(cell$status, baseline$status, info = label)
+      expect_identical(cell$meta, baseline$meta, info = label)
+    }
+  }
+})
+
+test_that("older retained-table results report the settings on their filter", {
+  r <- .prov_record()
+  res <- suppressWarnings(aci(r$m, r$obs, init = r$ini,
+                               keep = "table", nsub = 4L))
+  old <- res
+  old$meta$stepper <- NULL
+  old$meta$nsub <- NULL
+  out <- .count_stepper_warnings(.prov_range(old))
+  expect_identical(out$n, 1L)
+  expect_identical(out$value, suppressWarnings(.prov_range(res)))
 })
 
 test_that("a result saved before the settings were recorded cannot report its provenance", {

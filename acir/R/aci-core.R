@@ -834,12 +834,17 @@ print.cir_result <- function(x, ...) {
 #' The lag-table recursions are defined for the explicit single-step filter
 #' and smoother. An `aci_result` computed with `stepper = "implicit"` or
 #' `nsub > 1` therefore has its range computed from a recomputed explicit
-#' single-step filter and smoother, under the result's own prior, and one
-#' `aci_warn_stepper` warning says so: read off the retained filter when the
-#' result kept its paths (`keep = "paths"`), off the result's own
-#' `meta$stepper` and `meta$nsub` when it kept none (`keep = "none"`), and at
-#' [aci()] time, while the table is built, when it kept the table
-#' (`keep = "table"`). The range values are the same on every route. A result
+#' single-step filter and smoother, under the result's own prior. Each
+#' [aci_range()] call reports this with one `aci_warn_stepper` warning,
+#' using the retained filter's settings or the result's own `meta$stepper`
+#' and `meta$nsub`. With `keep = "table"`, [aci()] also warns when building
+#' the table; [aci_range()] later reports reuse of that explicit single-step
+#' table without recomputing it. Older table results can supply their settings
+#' through the retained filter. With the same model, observations, initial
+#' distribution, covariance policy, lag-table tolerance and range arguments,
+#' all routes use the explicit single-step construction. Floating-point
+#' rounding may differ between retained and streamed calculations.
+#' A result
 #' saved by acir 0.2.0 or earlier with `keep = "none"` records no settings,
 #' so it cannot report that provenance and is treated as the explicit
 #' single-step result it may not be.
@@ -1067,31 +1072,41 @@ aci_range.lag_table <- function(x, direction = c("forward", "backward"),
 #'   when it was not retained. The covariance policy is not re-resolved here:
 #'   it is read off the result's own `meta$regularization`, so re-analysing a
 #'   saved result in a new session cannot silently change it. The integration
-#'   settings are likewise read off the result's own `meta$stepper` and
-#'   `meta$nsub` when no path was retained; see the section above.
+#'   settings are read off the retained filter or the result's own
+#'   `meta$stepper` and `meta$nsub`; see the section above.
 #' @export
 aci_range.aci_result <- function(x, direction = c("forward", "backward"),
                                  ...) {
   .aci_range_direction(direction)
-  if (!is.null(x$table)) return(aci_range(x$table, ...))
-  ## With keep = "paths" the retained filter carries its settings and
-  ## .forward_cir_compiled() reports the rebuild off them. With keep = "none"
-  ## there is no filter to read, so the result's own record is read here and
-  ## the same warning raised once; a result saved before `meta$stepper`
-  ## existed carries no record and stays silent.
-  if (is.null(x$paths$filter) && !is.null(x$meta$stepper)) {
-    nsub <- as.integer(x$meta$nsub %||% 1L)
-    if (!identical(x$meta$stepper, "explicit") || nsub != 1L)
+  has_table <- !is.null(x$table)
+  ## Streamed results with paths are warned about by .forward_cir_compiled().
+  ## Retained tables return before that check, so report their provenance here
+  ## as well as that of path-free results. Older tables still have a filter
+  ## carrying the original settings; older path-free results cannot supply them.
+  settings <- x$meta
+  if (has_table && is.null(settings$stepper))
+    settings <- x$paths$filter$meta
+  if ((has_table || is.null(x$paths$filter)) && !is.null(settings$stepper)) {
+    nsub <- as.integer(settings$nsub %||% 1L)
+    if (!identical(settings$stepper, "explicit") || nsub != 1L) {
+      detail <- if (has_table) paste(
+        "but its retained lag table was computed with the explicit",
+        "single-step filter/smoother required by the Theorem 3 recursions;",
+        "aci_range() uses that retained table."
+      ) else paste(
+        "but kept no paths; lag_table requires the explicit single-step",
+        "filter/smoother (the Theorem 3 recursions are derived for that",
+        "discretization); recomputing both internally."
+      )
       aci_warn(
         "aci_warn_stepper",
         sprintf(paste(
           "This aci_result was computed with stepper = \"%s\" and nsub = %d",
-          "but kept no paths; lag_table requires the explicit single-step",
-          "filter/smoother (the Theorem 3 recursions are derived for that",
-          "discretization); recomputing both internally."),
-          x$meta$stepper, nsub)
+          detail), settings$stepper, nsub)
       )
+    }
   }
+  if (has_table) return(aci_range(x$table, ...))
   bundle <- .compile_cgns_run(
     x$handles$model, x$handles$obs, x$handles$conditional
   )
