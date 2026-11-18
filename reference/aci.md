@@ -103,7 +103,15 @@ aci(
 
 ## Value
 
-An object of class `aci_result`.
+An object of class `aci_result`. Its `meta` records `stepper` and
+`nsub`, the integration settings the filter and smoother ran under
+(`"explicit"` and `1L` for a result built on a reused table, which is
+what
+[`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md)
+admits), beside `engine`, `smoother_scheme` and `regularization`.
+[`aci_range()`](https://biometryhub.github.io/ACI/reference/aci_range.md)
+reads those two fields when the result kept no paths; see its help for
+what it then reports.
 
 ## Details
 

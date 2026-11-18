@@ -710,7 +710,7 @@ t_w15 <- system.time(f_w15 <- aci_range(a_w, anchors = w15))[["elapsed"]]
 
 c(all_401_anchors = t_all, fifteen_anchors = t_w15, ratio = t_all / t_w15)
 #> all_401_anchors fifteen_anchors           ratio 
-#>         0.07500         0.00700        10.71429
+#>           0.044           0.005           8.800
 identical(f_all$tau[w15], f_w15$tau)    # the same values, not a resample
 #> [1] TRUE
 ```
@@ -1067,13 +1067,12 @@ c(total = max(aci(m2, o2, init = init2)$aci),
 #>   0.7190804   0.5099931
 ```
 
-On models whose observation noise *is* diagonal and uncorrelated with
-the hidden noise, the two methods agree. That was verified bit for bit
-across the ENSO partitions on the shared comparison record (development
-record). On the shorter h_W record built here, which the rest of this
-section also uses, the two paths agree to round-off rather than bitwise:
-the arithmetic takes a different route to the same operator, not to a
-second answer.
+When observation noise is diagonal and uncorrelated with the hidden
+noise, the two methods give the same update equations. Their numerical
+results need not be bit-for-bit identical because the implementations
+perform different floating-point operations. The package tests compare
+them on a saved tau record. The shorter h_W record below illustrates
+their numerical agreement and is also used in the rest of this section.
 
 ``` r
 
@@ -1333,7 +1332,7 @@ setNames(sapply(lags, function(L)
   system.time(aci_online(m, ob, lag = L, init = init))[["elapsed"]]),
   paste0("lag_", lags))
 #>   lag_1  lag_20 lag_400 lag_800 
-#>   0.013   0.024   0.024   0.002
+#>   0.008   0.014   0.013   0.001
 ```
 
 An online path carries `kind = "online"`, and that is what keeps it out
