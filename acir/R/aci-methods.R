@@ -25,7 +25,10 @@ plot.aci_result <- function(x, decompose = TRUE, ...) {
   main_kl <- expression(
     ACI(t) == D[KL] * group("(", smoother ~ "||" ~ filter, ")")
   )
-  plot(x$t, x$aci, type = "l", xlab = "t", ylab = "ACI", main = main_kl, ...)
+  args <- utils::modifyList(
+    list(x = x$t, y = x$aci, type = "l", xlab = "t", ylab = "ACI",
+         main = main_kl), list(...), keep.null = TRUE)
+  do.call(graphics::plot, args, quote = TRUE)
   if (decompose && !is.null(x$signal)) {
     graphics::lines(x$t, x$signal, col = 4, lty = 2)
     graphics::lines(x$t, x$dispersion, col = 2, lty = 3)
@@ -47,8 +50,12 @@ plot.aci_result <- function(x, decompose = TRUE, ...) {
 plot.da_path_gaussian <- function(x, component = 1, truth = NULL, ...) {
   mu <- x$mean[, component]; sdv <- sqrt(pmax(x$cov[component, component, ], 0))
   ylim <- range(mu + 2 * sdv, mu - 2 * sdv, truth, na.rm = TRUE)
-  plot(x$t, mu, type = "l", xlab = "t", ylab = bquote(y[.(component)]),
-       ylim = ylim, main = bquote(.(x$kind) ~ "mean" %+-% "2 sd"), ...)
+  args <- utils::modifyList(
+    list(x = x$t, y = mu, type = "l", xlab = "t",
+         ylab = bquote(y[.(component)]), ylim = ylim,
+         main = bquote(.(x$kind) ~ "mean" %+-% "2 sd")),
+    list(...), keep.null = TRUE)
+  do.call(graphics::plot, args, quote = TRUE)
   graphics::lines(x$t, mu + 2 * sdv, lty = 3, col = "grey40")
   graphics::lines(x$t, mu - 2 * sdv, lty = 3, col = "grey40")
   if (!is.null(truth)) graphics::lines(x$t, truth, col = 2)
@@ -64,13 +71,25 @@ plot.da_path_gaussian <- function(x, component = 1, truth = NULL, ...) {
 #' @export
 plot.cir_result <- function(x, ...) {
   if (length(x$tau) > 1) {
-    plot(x$t, x$tau, type = "l", xlab = "t",
-         ylab = bquote(tau[.(substr(x$direction, 1, 1))]),
-         main = sprintf("%s CIR (%s)", x$direction, x$method), ...)
+    args <- utils::modifyList(
+      list(x = x$t, y = x$tau, type = "l", xlab = "t",
+           ylab = bquote(tau[.(substr(x$direction, 1, 1))]),
+           main = sprintf("%s CIR (%s)", x$direction, x$method)),
+      list(...), keep.null = TRUE)
+    do.call(graphics::plot, args, quote = TRUE)
   } else {
     graphics::plot.new()
-    graphics::title(main = sprintf("%s CIR at t = %.4g: tau = %.4g",
-                                   x$direction, x$t, x$tau))
+    ## A single anchor keeps the title-only display. Plot-window controls
+    ## are not arguments to title(), so retain only title/graphics settings.
+    supplied <- list(...)
+    plot_controls <- setdiff(names(formals(graphics::plot.default)),
+                             c("main", "sub", "xlab", "ylab", "..."))
+    supplied <- supplied[!names(supplied) %in% plot_controls]
+    args <- utils::modifyList(
+      list(main = sprintf("%s CIR at t = %.4g: tau = %.4g",
+                          x$direction, x$t, x$tau)),
+      supplied, keep.null = TRUE)
+    do.call(graphics::title, args, quote = TRUE)
   }
   invisible(x)
 }

@@ -608,13 +608,79 @@
     aci_abort("aci_error_spd", "Matrix (R_p) must be positive definite.")
   Lq <- sqrt(R_q)
   signal <- 0.5 * ((mu_q - mu_p) / Lq)^2
-  ## Cancellation-resistant dispersion. The algebraically equivalent
-  ## R_p/R_q - 1 - log(R_p/R_q) subtracts two O(delta) quantities to leave an
-  ## O(delta^2) one; writing it in delta = R_p/R_q - 1 and log1p keeps the
-  ## relative error at ~eps/delta instead of ~eps/delta^2. See
-  ## test-21-kl-arithmetic.R.
-  delta <- R_p / R_q - 1
-  dispersion <- 0.5 * (delta - log1p(delta))
+  if (is.infinite(max(signal, 0, na.rm = TRUE))) {
+    j <- which(is.infinite(signal))
+    half_difference <- 0.5 * (mu_q[j] - mu_p[j])
+    large_difference <- is.infinite(half_difference)
+    half_difference[large_difference] <-
+      0.5 * mu_q[j[large_difference]] - 0.5 * mu_p[j[large_difference]]
+    # Halve before squaring. Divide first only when that square would overflow.
+    square_first <- abs(half_difference) <= sqrt(.Machine$double.xmax)
+    h <- half_difference[square_first]
+    signal[j[square_first]] <- 2 * ((h * h) / R_q[j[square_first]])
+    h <- half_difference[!square_first]
+    signal[j[!square_first]] <- 2 * ((h / R_q[j[!square_first]]) * h)
+
+    # Rounding near the finite limit can still cross the overflow boundary.
+    # Compare the scaled squared difference with that boundary, retaining
+    # addition/product residuals (Ogita, Rump & Oishi, 2005, Algorithms 3.1-3.3,
+    # doi:10.1137/030601818). Ordinary finite signals never enter this branch.
+    near <- !is.finite(signal[j]) |
+      signal[j] > .Machine$double.xmax * (1 - 4 * .Machine$double.eps)
+    if (any(near)) {
+      j <- j[near]
+      scale <- 2^floor(floor(log2(R_q[j])) / 2)
+      a <- (0.5 * mu_q[j] / scale) / 2^512
+      b <- (-0.5 * mu_p[j] / scale) / 2^512
+      x <- a + b
+      keep <- is.finite(x) & abs(x) >= 0.25 & abs(x) <= 2
+      if (any(keep)) {
+        j <- j[keep]
+        scale <- scale[keep]
+        a <- a[keep]
+        b <- b[keep]
+        x <- x[keep]
+        tail <- x - a
+        x_error <- (a - (x - tail)) + (b - tail)
+        v <- (R_q[j] / scale) / scale
+        product <- x * x
+        split <- 134217729 * x # 2^27 + 1, the binary64 splitting factor.
+        hi <- split - (split - x)
+        lo <- x - hi
+        error <- lo * lo - (((product - hi * hi) - lo * hi) - hi * lo)
+        remainder <- 2 * error + 4 * x * x_error + 2 * x_error * x_error
+        # The round-to-nearest overflow midpoint, divided by 2^1024.
+        gap <- (2 * product - v) + (remainder + v * 2^-54)
+        overflow <- gap >= 0
+        signal[j[overflow]] <- Inf
+        recover <- j[!overflow & !is.finite(signal[j])]
+        signal[recover] <- .Machine$double.xmax
+      }
+    }
+  }
+  ## Take the logarithm before subtracting one so small ratios survive.
+  ## Separate variance logs retain precision if the ratio is subnormal
+  ## or underflows, without slowing the ordinary path with a second log.
+  ratio <- R_p / R_q
+  ratio_min <- min(ratio, 1)
+  ratio_max <- max(ratio, 0)
+  if (ratio_min == 1 && ratio_max == 1) {
+    # Exactly unit represented ratios already give zero dispersion.
+    dispersion <- ratio - 1
+  } else {
+    log_ratio <- log(ratio)
+    if (ratio_min < .Machine$double.xmin) {
+      subnormal <- ratio < .Machine$double.xmin
+      log_ratio[subnormal] <- log(R_p[subnormal]) - log(R_q[subnormal])
+    }
+    dispersion <- 0.5 * ((ratio - 1) - log_ratio)
+    if (is.infinite(ratio_max)) {
+      overflow <- is.infinite(ratio)
+      # The half-ratio can be finite even when the ratio overflows.
+      dispersion[overflow] <- (0.5 * R_p[overflow]) / R_q[overflow] -
+        0.5 * (1 + log(R_p[overflow]) - log(R_q[overflow]))
+    }
+  }
   signal <- pmax(signal, 0); dispersion <- pmax(dispersion, 0)
   total <- signal + dispersion
   if (isTRUE(getOption("aci.debug_assert", FALSE)) && any(total < -1e-10))

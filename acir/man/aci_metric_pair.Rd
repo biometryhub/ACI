@@ -42,8 +42,8 @@ including \code{l = 1}. That form loses relative precision to cancellation as th
 two covariances approach each other: measured against the exact series at
 \code{R_q = 1}, \code{R_p = 1 + delta}, its relative error is 4.5e-05 at
 \code{delta = 1e-06}, 1.2e-02 at 1e-07 and a factor of two from 1e-08 down.
-\code{\link[=aci_metric]{aci_metric()}} instead routes a one-dimensional hidden state through a
-cancellation-resistant \code{log1p} form, so the two public routes disagree on
+\code{\link[=aci_metric]{aci_metric()}} instead evaluates the scalar dispersion directly from the
+variance ratio, avoiding the Cholesky-based trace calculation, so the two routes can disagree on
 identical one-dimensional inputs in that regime. The absolute error stays
 below 3e-17 nats across that sweep, because the quantity itself is quadratic
 in \code{delta}, so this is a precision boundary and not a demonstrated accuracy

@@ -40,8 +40,8 @@
 #' two covariances approach each other: measured against the exact series at
 #' `R_q = 1`, `R_p = 1 + delta`, its relative error is 4.5e-05 at
 #' `delta = 1e-06`, 1.2e-02 at 1e-07 and a factor of two from 1e-08 down.
-#' [aci_metric()] instead routes a one-dimensional hidden state through a
-#' cancellation-resistant `log1p` form, so the two public routes disagree on
+#' [aci_metric()] instead evaluates the scalar dispersion directly from the
+#' variance ratio, avoiding the Cholesky-based trace calculation, so the two routes can disagree on
 #' identical one-dimensional inputs in that regime. The absolute error stays
 #' below 3e-17 nats across that sweep, because the quantity itself is quadratic
 #' in `delta`, so this is a precision boundary and not a demonstrated accuracy
@@ -125,13 +125,24 @@ aci_metric_pair <- function(mu_p, R_p, mu_q, R_q, decompose = TRUE) {
 #' common grid. Gaussian relative entropy is oriented as smoother relative to
 #' filter.
 #'
-#' A one-dimensional hidden state is evaluated with the cancellation-resistant
-#' `log1p` form `0.5 * (delta - log1p(delta))`, `delta = R_p / R_q - 1`; two or
-#' more hidden components use the trace and log-difference form, whose relative
+#' For a one-dimensional hidden state, dispersion is evaluated as
+#' `0.5 * ((r - 1) - log(r))`, where \code{r = R_p / R_q}. Taking the logarithm
+#' of `r` directly avoids losing a small positive ratio when subtracting one.
+#' Ratios below `.Machine$double.xmin` instead use
+#' `log(R_p) - log(R_q)` to avoid loss of relative precision or underflow. If
+#' the ratio overflows, its half is computed as `(0.5 * R_p) / R_q`, with the
+#' logarithm again obtained from the separate variance logs. This retains finite
+#' dispersion when it is representable, even if the ratio is not.
+#' Two or more hidden components use the trace and log-difference form, whose relative
 #' precision on the dispersion degrades as the two covariances approach each
 #' other. [aci_metric_pair()] documents that boundary with the measured
 #' figures, and uses the trace form at every dimension, so it and this function
 #' need not agree in the last digits on one-dimensional inputs.
+#'
+#' If the initial one-dimensional signal calculation overflows, a scaled
+#' calculation avoids overflow of the intermediate mean difference or square.
+#' Signals that exceed the rounding range of double precision remain infinite.
+#' This fallback does not apply to [aci_metric_pair()] or multivariate paths.
 #'
 #' @param p A `da_path_gaussian` object, the integrating distribution.
 #' @param q A `da_path_gaussian` object on the same time grid.
@@ -713,23 +724,17 @@ as.data.frame.aci_result <- function(x, ...) {
 #'
 #' Four outcomes, checked in this order.
 #'
-#' `"insufficient"`: fewer than three observations from the anchor onwards, so
-#' no range is supported at all.
+#' `"insufficient"`: fewer than three observation times, including the anchor.
+#' This status does not itself mask the computed range.
 #'
-#' `"below_threshold"`: the peak divergence is under the strength floor - the
-#' same predicate that masks the range.
+#' `"below_threshold"`: the peak divergence is under the strength floor.
+#' Masking is applied separately by the caller.
 #'
-#' `"censored"`: the exceedance runs into the end of the record. The last cell
-#' of a complete row is identically zero, because the online estimate given the
-#' whole record is the smoother it is scored against, so a range can never
-#' formally reach the end of the row and testing the last cell alone would
-#' never fire (measured: on the pinned 2001-point dyad record the last
-#' exceedance of the 1e-5 floor is never later than the second-to-last cell,
-#' at any anchor). The test is instead between two parts of the same row: the
-#' record left after the last exceedance, against the exceedance itself. A
-#' record that does not outlast the influence it measured did not resolve it,
-#' and the reported range is a lower bound. No margin or horizon is taken from
-#' the caller; the comparison is scale-free and entirely row-derived.
+#' `"censored"`: the last divergence above the strength floor lies in the
+#' second half of the available row. This flags possible horizon sensitivity.
+#' It does not establish a lower bound for a longer record, which also changes
+#' the reference smoother used in each divergence. No margin or horizon is
+#' taken from the caller. The check uses only the available row.
 #'
 #' `"resolved"`: everything else.
 #'
