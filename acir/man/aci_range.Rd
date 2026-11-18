@@ -134,9 +134,32 @@ rather than returning a forward answer under a backward label.
 \item \code{aci_range(aci_result)}: Forward range from an ACI result, building the table
 when it was not retained. The covariance policy is not re-resolved here:
 it is read off the result's own \code{meta$regularization}, so re-analysing a
-saved result in a new session cannot silently change it.
+saved result in a new session cannot silently change it. The integration
+settings are read off the retained filter or the result's own
+\code{meta$stepper} and \code{meta$nsub}; see the section above.
 
 }}
+\section{Integration settings and provenance}{
+
+The lag-table recursions are defined for the explicit single-step filter
+and smoother. An \code{aci_result} computed with \code{stepper = "implicit"} or
+\code{nsub > 1} therefore has its range computed from a recomputed explicit
+single-step filter and smoother, under the result's own prior. Each
+\code{\link[=aci_range]{aci_range()}} call reports this with one \code{aci_warn_stepper} warning,
+using the retained filter's settings or the result's own \code{meta$stepper}
+and \code{meta$nsub}. With \code{keep = "table"}, \code{\link[=aci]{aci()}} also warns when building
+the table; \code{\link[=aci_range]{aci_range()}} later reports reuse of that explicit single-step
+table without recomputing it. Older table results can supply their settings
+through the retained filter. With the same model, observations, initial
+distribution, covariance policy, lag-table tolerance and range arguments,
+all routes use the explicit single-step construction. Floating-point
+rounding may differ between retained and streamed calculations.
+A result
+saved by acir 0.2.0 or earlier with \code{keep = "none"} records no settings,
+so it cannot report that provenance and is treated as the explicit
+single-step result it may not be.
+}
+
 \examples{
 m <- aci_dyad_model()
 sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)

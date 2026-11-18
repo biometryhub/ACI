@@ -61,7 +61,12 @@ unchanged.}
 \item{...}{Must be empty; unused arguments are an error.}
 }
 \value{
-An object of class \code{aci_result}.
+An object of class \code{aci_result}. Its \code{meta} records \code{stepper} and
+\code{nsub}, the integration settings the filter and smoother ran under
+(\code{"explicit"} and \code{1L} for a result built on a reused table, which is
+what \code{\link[=lag_table]{lag_table()}} admits), beside \code{engine}, \code{smoother_scheme} and
+\code{regularization}. \code{\link[=aci_range]{aci_range()}} reads those two fields when the result
+kept no paths; see its help for what it then reports.
 }
 \description{
 Runs the filter and smoother for a model and observed record and scores each
