@@ -129,9 +129,11 @@ re-validation, as in <code><a href="aci_smoother.html">aci_smoother()</a></code>
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>An assimilation path of kind <code>"online"</code>, carrying <code>meta$lag</code>, the
-per-anchor <code>meta$lag_effective</code>, <code>meta$saturated</code> and <code>meta$scheme</code>. Its
-kind is what keeps it out of the places a complete smoother is required:
+    <p>An assimilation path of kind <code>"online"</code>, carrying <code>meta$lag</code>,
+<code>meta$scheme</code> and the per-anchor vector <code>meta$lag_effective</code>.
+<code>meta$saturated</code> is a single logical flag that is <code>TRUE</code> when every
+anchor's window reaches the end of the record. The path's kind keeps it
+out of the places a complete smoother is required:
 <code>lag_table(smoother = )</code> rejects it with <code>aci_error_dims</code>.</p>
     </div>
     <div class="section level2">

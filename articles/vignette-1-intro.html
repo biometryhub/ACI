@@ -227,13 +227,11 @@ how many. <code>status</code> carries that reading and three others:</p>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt;        resolved        censored below_threshold    insufficient </span></span>
 <span><span class="co">#&gt;              20              20               0               1</span></span></code></pre></div>
-<p>Here 20 of the 41 anchors come back <code>censored</code>, a property
-of a short record rather than of the model: after an anchor late in a
-five-unit series there is not always enough future left to resolve the
-influence it planted, and a censored range is a lower bound. The decline
-of the range at the end of the plot is the same finite-record effect.
-<em>The closed-form ACI engine</em> gives the full status vocabulary and
-the conventions each number is computed under.</p>
+<p>Here 20 of the 41 anchors have status <code>censored</code>. This
+flags possible sensitivity of the range to the end of the observation
+record. It does not establish a lower bound for the range computed from
+a longer record. <em>The closed-form ACI engine</em> gives the full
+status vocabulary and the conventions each number is computed under.</p>
 </div>
 <div class="section level2">
 <h2 id="scope-of-this-release">6. Scope of this release<a class="anchor" aria-label="anchor" href="#scope-of-this-release"></a>

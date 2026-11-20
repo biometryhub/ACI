@@ -710,7 +710,7 @@ t_w15 <- system.time(f_w15 <- aci_range(a_w, anchors = w15))[["elapsed"]]
 
 c(all_401_anchors = t_all, fifteen_anchors = t_w15, ratio = t_all / t_w15)
 #> all_401_anchors fifteen_anchors           ratio 
-#>           0.044           0.005           8.800
+#>           0.044           0.004          11.000
 identical(f_all$tau[w15], f_w15$tau)    # the same values, not a resample
 #> [1] TRUE
 ```
@@ -856,9 +856,12 @@ a factor of up to 1.9 on the shared fixture. Read `method`, `bound` and
 `meta$quadrature` off the result rather than trusting a remembered
 default.
 
-The first and third are the *same* functional on different axes. The
-compatibility mode carries a quadrature error that the exact sum does
-not, and refining its grid moves it towards the exact value:
+The compatibility mode approximates the threshold integral numerically.
+Unlike the exact sum, it integrates only over the interval covered by
+`epsilon_grid`. Adding nodes can reduce quadrature error within that
+interval, but cannot recover contributions outside it. The following
+comparison keeps the threshold interval fixed and increases its
+resolution:
 
 ``` r
 
@@ -983,33 +986,30 @@ sum(is.na(fc$tau))
 #> [1] 1
 ```
 
-`status` classifies each anchor, and the four levels are not four grades
-of the same thing: two of them report a range and two of them decline
-to.
+`status` classifies each anchor’s forward divergence row, including any
+zero padding. The checks are applied in this order:
 
-- `resolved`: the record comfortably outlasts the influence it measured,
-  so the reported range is supported by the observations that follow the
-  anchor.
-- `censored`: it does not. The last exceedance of the strength floor
-  sits in the later half of the row, leaving less record after the
-  influence than the influence itself occupied, and the reported range
-  should be read as a lower bound. The test is scale-free and taken
-  entirely from the row, with no horizon or margin supplied by the
-  caller.
-- `below_threshold`: the row’s peak divergence never cleared the floor,
-  so the range is masked rather than reported as an inflated number.
-- `insufficient`: fewer than three observations follow the anchor. The
-  final anchor is always `insufficient`.
+- `insufficient`: fewer than three observation times are available,
+  including the anchor. The final anchor is always `insufficient`. This
+  status does not itself mask the computed range.
+- `below_threshold`: among rows with at least three observation times,
+  the peak divergence is below the strength floor. The range is `NA` by
+  default.
+- `censored`: the last divergence above the strength floor lies in the
+  second half of the row.
+- `resolved`: none of the preceding conditions applies.
 
 Censoring is judged inside the row, not against a caller-supplied
-horizon. The obvious test, “did the exceedance run into the last cell”,
-can never fire: the last cell of a complete row is identically zero,
-because given the whole record the online estimate is the smoother it is
-scored against. The test used instead compares the record remaining
-after the last exceedance against the extent of the exceedance itself. A
-record that does not outlast the influence it measured did not resolve
-it, and its range is a lower bound. The decline in \tau_f at the end of
-a record is the same finite-record artefact seen from the other side.
+horizon. Testing only the last cell would not help: at the end of a
+complete row, the online estimate and the reference smoother use the
+same complete observation record, so their divergence is zero in exact
+arithmetic. The second-half check instead uses the location of the last
+exceedance.
+
+This check is a heuristic, not a numerical-accuracy test. Extending the
+record also changes the reference smoother used in each divergence. A
+`censored` range is therefore not guaranteed to be a lower bound for a
+longer record, and `resolved` does not guarantee an unchanged range.
 
 Masking is not smoothing. `min_M` masks anchors whose peak divergence is
 too small for the ratio to mean anything, `masked_value = "na"` keeps
@@ -1019,13 +1019,17 @@ zero influence.
 
 ### Row length
 
-`anchors` caps how many rows are formed. It does not cap how far forward
-each of them looks, and on a long record the far tail of a row
-contributes nothing but cost. On the streamed route, row length is
-governed by the truncation rule through `options(aci.default_tol = )`.
-On a retained table it is `max_lag`, which applies to the whole table
-rather than per anchor. `lag_table(window = )` means something else, the
-consecutive-steps-below-`tol` freeze rule of the previous section.
+On the streamed route, `anchors` caps how many rows are formed. With a
+retained table, it selects rows that have already been computed. It does
+not cap how far forward each row looks. The streamed route uses the
+truncation tolerance in `options(aci.default_tol = )`, a window of three
+consecutive steps and no maximum lag. For a retained table in
+`mode = "forward"`,
+[`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md)
+accepts `tol`, `window` and `max_lag`. `max_lag` caps the number of
+future steps, while `window` sets the consecutive-steps-below-`tol`
+freeze rule described above. `mode = "full"` keeps every lag, ignores
+`tol` and `window`, and requires `max_lag = Inf`.
 
 ## 4. Conditional ACI
 
@@ -1275,17 +1279,20 @@ on
 #> <da_path_gaussian> kind = online, l = 1, N+1 = 801
 on$meta$lag
 #> [1] 20
-c(saturated_anchors = sum(on$meta$saturated),
+steps_to_end <- length(on$t) - seq_along(on$t)
+c(saturated_anchors = sum(on$meta$lag_effective == steps_to_end),
   lag_at_the_start  = on$meta$lag_effective[1],
   lag_at_the_end    = utils::tail(on$meta$lag_effective, 1))
 #> saturated_anchors  lag_at_the_start    lag_at_the_end 
-#>                 0                20                 0
+#>                21                20                 0
 ```
 
-The requested lag is not always the lag obtained: the last anchors have
-no record left to condition on, so `lag_effective` falls away to zero
-and `saturated` marks where it did. Nothing is padded or extrapolated to
-hide that.
+Near the end of the record, fewer future observation steps are available
+than the requested lag. `lag_effective` records the number actually
+used, reaching zero at the final anchor. The comparison above counts the
+anchors whose windows reach the end of the record. `meta$saturated` is a
+single flag that is `TRUE` only when every anchor’s window does so.
+Nothing is padded or extrapolated.
 
 The two ends are the definite ones, and they are definite against
 different things. `lag = 0` returns the filter moments value for value,
@@ -1332,7 +1339,7 @@ setNames(sapply(lags, function(L)
   system.time(aci_online(m, ob, lag = L, init = init))[["elapsed"]]),
   paste0("lag_", lags))
 #>   lag_1  lag_20 lag_400 lag_800 
-#>   0.008   0.014   0.013   0.001
+#>   0.008   0.014   0.014   0.002
 ```
 
 An online path carries `kind = "online"`, and that is what keeps it out

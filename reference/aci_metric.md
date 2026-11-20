@@ -35,15 +35,28 @@ record the input paths were computed under.
 
 ## Details
 
-A one-dimensional hidden state is evaluated with the
-cancellation-resistant `log1p` form `0.5 * (delta - log1p(delta))`,
-`delta = R_p / R_q - 1`; two or more hidden components use the trace and
-log-difference form, whose relative precision on the dispersion degrades
-as the two covariances approach each other.
+For a one-dimensional hidden state, dispersion is evaluated as
+`0.5 * ((r - 1) - log(r))`, where `r = R_p / R_q`. Taking the logarithm
+of `r` directly avoids losing a small positive ratio when subtracting
+one. Ratios below `.Machine$double.xmin` instead use
+`log(R_p) - log(R_q)` to avoid loss of relative precision or underflow.
+If the ratio overflows, its half is computed as `(0.5 * R_p) / R_q`,
+with the logarithm again obtained from the separate variance logs. This
+retains finite dispersion when it is representable, even if the ratio is
+not. Two or more hidden components use the trace and log-difference
+form, whose relative precision on the dispersion degrades as the two
+covariances approach each other.
 [`aci_metric_pair()`](https://biometryhub.github.io/ACI/reference/aci_metric_pair.md)
 documents that boundary with the measured figures, and uses the trace
 form at every dimension, so it and this function need not agree in the
 last digits on one-dimensional inputs.
+
+If the initial one-dimensional signal calculation overflows, a scaled
+calculation avoids overflow of the intermediate mean difference or
+square. Signals that exceed the rounding range of double precision
+remain infinite. This fallback does not apply to
+[`aci_metric_pair()`](https://biometryhub.github.io/ACI/reference/aci_metric_pair.md)
+or multivariate paths.
 
 ## See also
 

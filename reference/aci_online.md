@@ -87,9 +87,11 @@ aci_online(model, obs, lag, ...)
 
 ## Value
 
-An assimilation path of kind `"online"`, carrying `meta$lag`, the
-per-anchor `meta$lag_effective`, `meta$saturated` and `meta$scheme`. Its
-kind is what keeps it out of the places a complete smoother is required:
+An assimilation path of kind `"online"`, carrying `meta$lag`,
+`meta$scheme` and the per-anchor vector `meta$lag_effective`.
+`meta$saturated` is a single logical flag that is `TRUE` when every
+anchor's window reaches the end of the record. The path's kind keeps it
+out of the places a complete smoother is required:
 `lag_table(smoother = )` rejects it with `aci_error_dims`.
 
 ## Details

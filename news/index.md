@@ -4,6 +4,19 @@
 
 ### Bug fixes
 
+- Scalar
+  [`aci_metric()`](https://biometryhub.github.io/ACI/reference/aci_metric.md)
+  dispersion retains small positive variance ratios and avoids
+  intermediate ratio overflow when the dispersion is representable. The
+  scalar signal calculation also recovers finite results when its
+  initial squared standardised mean difference overflows. Ordinary
+  finite signal calculations retain their previous arithmetic.
+
+- Plot methods for ACI results, Gaussian paths and causal influence
+  ranges honour caller-supplied labels without passing duplicate
+  arguments to the plotting function. A single-anchor range plot retains
+  its default title.
+
 - **[`aci_range()`](https://biometryhub.github.io/ACI/reference/aci_range.md)
   reports explicit single-step provenance on every retention route.**
   [`aci()`](https://biometryhub.github.io/ACI/reference/aci.md) records
@@ -33,10 +46,19 @@
 
 ### Tests and documentation
 
+- The range status descriptions distinguish length and strength checks
+  from possible sensitivity to the end of the record. Lag-storage
+  controls and threshold coverage are clarified. The online-smoother
+  example counts anchors whose windows reach the end of the record.
+
+- Scalar KL regression tests cover small variance ratios and
+  intermediate dispersion and signal overflow.
+
 - The retention and serialization checks now include a correlated
   matrix-observation model. The range help states the common inputs and
   settings needed for comparing routes and allows floating-point
   differences.
+
 - The conditional reduction/masking comparison requires all five
   complete, finite series with matching names and lengths. Its maximum
   absolute difference limit remains `1e-12`. CI records the per-series

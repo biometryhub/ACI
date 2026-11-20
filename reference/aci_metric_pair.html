@@ -97,8 +97,8 @@ including <code>l = 1</code>. That form loses relative precision to cancellation
 two covariances approach each other: measured against the exact series at
 <code>R_q = 1</code>, <code>R_p = 1 + delta</code>, its relative error is 4.5e-05 at
 <code>delta = 1e-06</code>, 1.2e-02 at 1e-07 and a factor of two from 1e-08 down.
-<code><a href="aci_metric.html">aci_metric()</a></code> instead routes a one-dimensional hidden state through a
-cancellation-resistant <code>log1p</code> form, so the two public routes disagree on
+<code><a href="aci_metric.html">aci_metric()</a></code> instead evaluates the scalar dispersion directly from the
+variance ratio, avoiding the Cholesky-based trace calculation, so the two routes can disagree on
 identical one-dimensional inputs in that regime. The absolute error stays
 below 3e-17 nats across that sweep, because the quantity itself is quadratic
 in <code>delta</code>, so this is a precision boundary and not a demonstrated accuracy

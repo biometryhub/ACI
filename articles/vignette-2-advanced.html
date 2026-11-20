@@ -660,7 +660,7 @@ afterwards, and the values it returns are the same ones to the bit:</p>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>all_401_anchors <span class="op">=</span> <span class="va">t_all</span>, fifteen_anchors <span class="op">=</span> <span class="va">t_w15</span>, ratio <span class="op">=</span> <span class="va">t_all</span> <span class="op">/</span> <span class="va">t_w15</span><span class="op">)</span></span>
 <span><span class="co">#&gt; all_401_anchors fifteen_anchors           ratio </span></span>
-<span><span class="co">#&gt;           0.044           0.005           8.800</span></span>
+<span><span class="co">#&gt;           0.044           0.004          11.000</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">f_all</span><span class="op">$</span><span class="va">tau</span><span class="op">[</span><span class="va">w15</span><span class="op">]</span>, <span class="va">f_w15</span><span class="op">$</span><span class="va">tau</span><span class="op">)</span>    <span class="co"># the same values, not a resample</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
 <p>The saving is on the streamed route only. <code><a href="../reference/lag_table.html">lag_table()</a></code>
@@ -801,10 +801,12 @@ quantities that differ by a factor of up to 1.9 on the shared fixture.
 Read <code>method</code>, <code>bound</code> and
 <code>meta$quadrature</code> off the result rather than trusting a
 remembered default.</p>
-<p>The first and third are the <em>same</em> functional on different
-axes. The compatibility mode carries a quadrature error that the exact
-sum does not, and refining its grid moves it towards the exact
-value:</p>
+<p>The compatibility mode approximates the threshold integral
+numerically. Unlike the exact sum, it integrates only over the interval
+covered by <code>epsilon_grid</code>. Adding nodes can reduce quadrature
+error within that interval, but cannot recover contributions outside it.
+The following comparison keeps the threshold interval fixed and
+increases its resolution:</p>
 <div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mg</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/aci_range.html">aci_range</a></span><span class="op">(</span><span class="va">a</span>, anchors <span class="op">=</span> <span class="va">anchors</span>, quadrature <span class="op">=</span> <span class="st">"matlab_eps_grid"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; Warning in .forward_cir_compiled(bundle, filter = x$paths$filter, init =</span></span>
@@ -917,38 +919,36 @@ refuses the combination outright:</p>
 <span><span class="co">#&gt;              55              45               0               1</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">fc</span><span class="op">$</span><span class="va">tau</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 1</span></span></code></pre></div>
-<p><code>status</code> classifies each anchor, and the four levels are
-not four grades of the same thing: two of them report a range and two of
-them decline to.</p>
+<p><code>status</code> classifies each anchor’s forward divergence row,
+including any zero padding. The checks are applied in this order:</p>
 <ul>
 <li>
-<code>resolved</code>: the record comfortably outlasts the influence
-it measured, so the reported range is supported by the observations that
-follow the anchor.</li>
+<code>insufficient</code>: fewer than three observation times are
+available, including the anchor. The final anchor is always
+<code>insufficient</code>. This status does not itself mask the computed
+range.</li>
 <li>
-<code>censored</code>: it does not. The last exceedance of the
-strength floor sits in the later half of the row, leaving less record
-after the influence than the influence itself occupied, and the reported
-range should be read as a lower bound. The test is scale-free and taken
-entirely from the row, with no horizon or margin supplied by the
-caller.</li>
+<code>below_threshold</code>: among rows with at least three
+observation times, the peak divergence is below the strength floor. The
+range is <code>NA</code> by default.</li>
 <li>
-<code>below_threshold</code>: the row’s peak divergence never
-cleared the floor, so the range is masked rather than reported as an
-inflated number.</li>
+<code>censored</code>: the last divergence above the strength floor
+lies in the second half of the row.</li>
 <li>
-<code>insufficient</code>: fewer than three observations follow the
-anchor. The final anchor is always <code>insufficient</code>.</li>
+<code>resolved</code>: none of the preceding conditions
+applies.</li>
 </ul>
 <p>Censoring is judged inside the row, not against a caller-supplied
-horizon. The obvious test, “did the exceedance run into the last cell”,
-can never fire: the last cell of a complete row is identically zero,
-because given the whole record the online estimate is the smoother it is
-scored against. The test used instead compares the record remaining
-after the last exceedance against the extent of the exceedance itself. A
-record that does not outlast the influence it measured did not resolve
-it, and its range is a lower bound. The decline in <span class="math inline">\tau_f</span> at the end of a record is the same
-finite-record artefact seen from the other side.</p>
+horizon. Testing only the last cell would not help: at the end of a
+complete row, the online estimate and the reference smoother use the
+same complete observation record, so their divergence is zero in exact
+arithmetic. The second-half check instead uses the location of the last
+exceedance.</p>
+<p>This check is a heuristic, not a numerical-accuracy test. Extending
+the record also changes the reference smoother used in each divergence.
+A <code>censored</code> range is therefore not guaranteed to be a lower
+bound for a longer record, and <code>resolved</code> does not guarantee
+an unchanged range.</p>
 <p>Masking is not smoothing. <code>min_M</code> masks anchors whose peak
 divergence is too small for the ratio to mean anything,
 <code>masked_value = "na"</code> keeps that visible, and
@@ -959,15 +959,19 @@ zero influence.</p>
 <div class="section level3">
 <h3 id="row-length">Row length<a class="anchor" aria-label="anchor" href="#row-length"></a>
 </h3>
-<p><code>anchors</code> caps how many rows are formed. It does not cap
-how far forward each of them looks, and on a long record the far tail of
-a row contributes nothing but cost. On the streamed route, row length is
-governed by the truncation rule through
-<code>options(aci.default_tol = )</code>. On a retained table it is
-<code>max_lag</code>, which applies to the whole table rather than per
-anchor. <code>lag_table(window = )</code> means something else, the
-consecutive-steps-below-<code>tol</code> freeze rule of the previous
-section.</p>
+<p>On the streamed route, <code>anchors</code> caps how many rows are
+formed. With a retained table, it selects rows that have already been
+computed. It does not cap how far forward each row looks. The streamed
+route uses the truncation tolerance in
+<code>options(aci.default_tol = )</code>, a window of three consecutive
+steps and no maximum lag. For a retained table in
+<code>mode = "forward"</code>, <code><a href="../reference/lag_table.html">lag_table()</a></code> accepts
+<code>tol</code>, <code>window</code> and <code>max_lag</code>.
+<code>max_lag</code> caps the number of future steps, while
+<code>window</code> sets the consecutive-steps-below-<code>tol</code>
+freeze rule described above. <code>mode = "full"</code> keeps every lag,
+ignores <code>tol</code> and <code>window</code>, and requires
+<code>max_lag = Inf</code>.</p>
 </div>
 </div>
 <div class="section level2">
@@ -1186,15 +1190,19 @@ result records per anchor:</p>
 <span><span class="co">#&gt; &lt;da_path_gaussian&gt; kind = online, l = 1, N+1 = 801</span></span>
 <span><span class="va">on</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">lag</span></span>
 <span><span class="co">#&gt; [1] 20</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>saturated_anchors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">on</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">saturated</span><span class="op">)</span>,</span>
+<span><span class="va">steps_to_end</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">on</span><span class="op">$</span><span class="va">t</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_along</a></span><span class="op">(</span><span class="va">on</span><span class="op">$</span><span class="va">t</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>saturated_anchors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">on</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">lag_effective</span> <span class="op">==</span> <span class="va">steps_to_end</span><span class="op">)</span>,</span>
 <span>  lag_at_the_start  <span class="op">=</span> <span class="va">on</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">lag_effective</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span>,</span>
 <span>  lag_at_the_end    <span class="op">=</span> <span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">tail</a></span><span class="op">(</span><span class="va">on</span><span class="op">$</span><span class="va">meta</span><span class="op">$</span><span class="va">lag_effective</span>, <span class="fl">1</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; saturated_anchors  lag_at_the_start    lag_at_the_end </span></span>
-<span><span class="co">#&gt;                 0                20                 0</span></span></code></pre></div>
-<p>The requested lag is not always the lag obtained: the last anchors
-have no record left to condition on, so <code>lag_effective</code> falls
-away to zero and <code>saturated</code> marks where it did. Nothing is
-padded or extrapolated to hide that.</p>
+<span><span class="co">#&gt;                21                20                 0</span></span></code></pre></div>
+<p>Near the end of the record, fewer future observation steps are
+available than the requested lag. <code>lag_effective</code> records the
+number actually used, reaching zero at the final anchor. The comparison
+above counts the anchors whose windows reach the end of the record.
+<code>meta$saturated</code> is a single flag that is <code>TRUE</code>
+only when every anchor’s window does so. Nothing is padded or
+extrapolated.</p>
 <p>The two ends are the definite ones, and they are definite against
 different things. <code>lag = 0</code> returns the filter moments value
 for value, and <code>lag = Inf</code> composes the Theorem 3 updates
@@ -1230,7 +1238,7 @@ modelling decision and not a budget:</p>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu"><a href="../reference/aci_online.html">aci_online</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, lag <span class="op">=</span> <span class="va">L</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span><span class="op">)</span><span class="op">[[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"lag_"</span>, <span class="va">lags</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   lag_1  lag_20 lag_400 lag_800 </span></span>
-<span><span class="co">#&gt;   0.008   0.014   0.013   0.001</span></span></code></pre></div>
+<span><span class="co">#&gt;   0.008   0.014   0.014   0.002</span></span></code></pre></div>
 <p>An online path carries <code>kind = "online"</code>, and that is what
 keeps it out of the places a complete smoother is required:
 <code>lag_table(smoother = )</code> rejects it rather than treating a

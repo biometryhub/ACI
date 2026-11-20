@@ -190,12 +190,10 @@ table(fc$status)
 #>              20              20               0               1
 ```
 
-Here 20 of the 41 anchors come back `censored`, a property of a short
-record rather than of the model: after an anchor late in a five-unit
-series there is not always enough future left to resolve the influence
-it planted, and a censored range is a lower bound. The decline of the
-range at the end of the plot is the same finite-record effect. *The
-closed-form ACI engine* gives the full status vocabulary and the
+Here 20 of the 41 anchors have status `censored`. This flags possible
+sensitivity of the range to the end of the observation record. It does
+not establish a lower bound for the range computed from a longer record.
+*The closed-form ACI engine* gives the full status vocabulary and the
 conventions each number is computed under.
 
 ## 6. Scope of this release
