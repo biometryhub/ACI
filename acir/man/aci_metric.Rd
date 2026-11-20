@@ -36,9 +36,9 @@ Ratios below \code{.Machine$double.xmin} instead use
 the ratio overflows, its half is computed as \code{(0.5 * R_p) / R_q}, with the
 logarithm again obtained from the separate variance logs. This retains finite
 dispersion when it is representable, even if the ratio is not.
-Two or more hidden components use the trace and log-difference form, whose relative
-precision on the dispersion degrades as the two covariances approach each
-other. \code{\link[=aci_metric_pair]{aci_metric_pair()}} documents that boundary with the measured
+Two or more hidden components use the trace and log-difference form, whose
+relative precision on the dispersion degrades as the two covariances approach
+each other. \code{\link[=aci_metric_pair]{aci_metric_pair()}} documents that boundary with the measured
 figures, and uses the trace form at every dimension, so it and this function
 need not agree in the last digits on one-dimensional inputs.
 

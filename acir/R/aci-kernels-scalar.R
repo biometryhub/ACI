@@ -593,6 +593,74 @@
 }
 
 
+#' Error-free sum of two doubles (internal)
+#'
+#' Knuth's TwoSum (Ogita, Rump & Oishi, 2005, Algorithm 3.1,
+#' doi:10.1137/030601818): `s` is the rounded sum and `e` its rounding error,
+#' so that `s + e` equals `a + b` exactly.
+#'
+#' @param a,b Numeric vectors of equal length whose sums stay finite.
+#' @returns A list with elements `s` and `e`.
+#' @noRd
+.two_sum <- function(a, b) {
+  s <- a + b
+  t <- s - a
+  list(s = s, e = (a - (s - t)) + (b - t))
+}
+
+
+#' Error-free product of two doubles (internal)
+#'
+#' Dekker's TwoProduct with Veltkamp's splitting (Ogita, Rump & Oishi, 2005,
+#' Algorithms 3.2 and 3.3): `p` is the rounded product and `e` its rounding
+#' error, so that `p + e` equals `a * b` exactly unless `e` underflows.
+#'
+#' @param a,b Numeric vectors of equal length, small enough that their
+#'   products, and their products with `2^27 + 1`, stay finite.
+#' @returns A list with elements `p` and `e`.
+#' @noRd
+.two_product <- function(a, b) {
+  p <- a * b
+  split_a <- 134217729 * a # 2^27 + 1, the binary64 splitting factor.
+  a_hi <- split_a - (split_a - a)
+  a_lo <- a - a_hi
+  split_b <- 134217729 * b
+  b_hi <- split_b - (split_b - b)
+  b_lo <- b - b_hi
+  list(p = p,
+       e = a_lo * b_lo - (((p - a_hi * b_hi) - a_lo * b_hi) - a_hi * b_lo))
+}
+
+
+#' Sign of the exact sum of doubles (internal)
+#'
+#' Adds the terms one at a time by Shewchuk's Grow-Expansion, which keeps
+#' each rounding error as a further component, so the components always sum
+#' exactly to the terms added so far. The components do not overlap and
+#' increase in magnitude, so the largest nonzero component has the sign of
+#' the sum (Shewchuk, 1997, doi:10.1007/PL00009321).
+#'
+#' @param terms List of numeric vectors of equal length whose partial sums
+#'   stay finite.
+#' @returns Numeric vector of -1, 0 and 1, the sign of each exact sum.
+#' @noRd
+.exact_sum_sign <- function(terms) {
+  parts <- list()
+  for (term in terms) {
+    carry <- term
+    for (k in seq_along(parts)) {
+      step <- .two_sum(carry, parts[[k]])
+      parts[[k]] <- step$e
+      carry <- step$s
+    }
+    parts[[length(parts) + 1L]] <- carry
+  }
+  out <- numeric(length(terms[[1L]]))
+  for (part in parts) out[part != 0] <- sign(part[part != 0])
+  out
+}
+
+
 #' Scalar Gaussian KL path arithmetic (internal)
 #'
 #' @param mu_p,mu_q Numeric mean paths.
@@ -606,10 +674,27 @@
     aci_abort("aci_error_spd", "Matrix (R_q) must be positive definite.")
   if (any(R_p <= 0))
     aci_abort("aci_error_spd", "Matrix (R_p) must be positive definite.")
+  n <- length(mu_p)
+  if (length(R_p) != n || length(mu_q) != n || length(R_q) != n) {
+    ## The branches below index single elements, so recycle the arguments to
+    ## the longest length first, or to length zero if any is empty.
+    n <- max(n, length(R_p), length(mu_q), length(R_q))
+    if (min(length(mu_p), length(R_p), length(mu_q), length(R_q)) == 0L)
+      n <- 0L
+    if (length(mu_p) != n) mu_p <- rep_len(mu_p, n)
+    if (length(R_p) != n) R_p <- rep_len(R_p, n)
+    if (length(mu_q) != n) mu_q <- rep_len(mu_q, n)
+    if (length(R_q) != n) R_q <- rep_len(R_q, n)
+  }
   Lq <- sqrt(R_q)
   signal <- 0.5 * ((mu_q - mu_p) / Lq)^2
   if (is.infinite(max(signal, 0, na.rm = TRUE))) {
     j <- which(is.infinite(signal))
+    ## A finite standardised difference above 2^514 gives a signal above
+    ## 2^1027, which no rounding brings back into the double range, so only
+    ## the other overflows need the work below.
+    z <- (mu_q[j] - mu_p[j]) / Lq[j]
+    j <- j[!(is.finite(z) & abs(z) > 2^514)]
     half_difference <- 0.5 * (mu_q[j] - mu_p[j])
     large_difference <- is.infinite(half_difference)
     half_difference[large_difference] <-
@@ -621,10 +706,10 @@
     h <- half_difference[!square_first]
     signal[j[!square_first]] <- 2 * ((h / R_q[j[!square_first]]) * h)
 
-    # Rounding near the finite limit can still cross the overflow boundary.
-    # Compare the scaled squared difference with that boundary, retaining
-    # addition/product residuals (Ogita, Rump & Oishi, 2005, Algorithms 3.1-3.3,
-    # doi:10.1137/030601818). Ordinary finite signals never enter this branch.
+    # Rounding near the finite limit can still cross the overflow boundary,
+    # so compare the scaled squared difference with that boundary exactly,
+    # with the error-free sums and products above. Ordinary finite signals
+    # never enter this branch.
     near <- !is.finite(signal[j]) |
       signal[j] > .Machine$double.xmax * (1 - 4 * .Machine$double.eps)
     if (any(near)) {
@@ -640,17 +725,24 @@
         a <- a[keep]
         b <- b[keep]
         x <- x[keep]
-        tail <- x - a
-        x_error <- (a - (x - tail)) + (b - tail)
+        x_error <- .two_sum(a, b)$e
         v <- (R_q[j] / scale) / scale
-        product <- x * x
-        split <- 134217729 * x # 2^27 + 1, the binary64 splitting factor.
-        hi <- split - (split - x)
-        lo <- x - hi
-        error <- lo * lo - (((product - hi * hi) - lo * hi) - hi * lo)
-        remainder <- 2 * error + 4 * x * x_error + 2 * x_error * x_error
-        # The round-to-nearest overflow midpoint, divided by 2^1024.
-        gap <- (2 * product - v) + (remainder + v * 2^-54)
+        # The signal overflows when 2 * (x + x_error)^2 / v reaches
+        # 1 - 2^-54, the round-to-nearest overflow midpoint divided by 2^1024.
+        # Expand the square into exact products and take the sign of the whole
+        # difference 2 * (x + x_error)^2 - v * (1 - 2^-54).
+        square <- .two_product(x, x)
+        cross <- .two_product(4 * x, x_error)
+        error_square <- .two_product(2 * x_error, x_error)
+        gap <- .exact_sum_sign(list(
+          -v, v * 2^-54, 2 * square$p, 2 * square$e, cross$p, cross$e,
+          error_square$p, error_square$e
+        ))
+        # A half that underflowed to zero decides an exact tie by its sign.
+        lost_a <- gap == 0 & a == 0 & mu_q[j] != 0
+        lost_b <- gap == 0 & b == 0 & mu_p[j] != 0
+        gap[lost_a] <- sign(x[lost_a]) * sign(mu_q[j[lost_a]])
+        gap[lost_b] <- -sign(x[lost_b]) * sign(mu_p[j[lost_b]])
         overflow <- gap >= 0
         signal[j[overflow]] <- Inf
         recover <- j[!overflow & !is.finite(signal[j])]
@@ -664,13 +756,18 @@
   ratio <- R_p / R_q
   ratio_min <- min(ratio, 1)
   ratio_max <- max(ratio, 0)
+  if (is.na(ratio_min)) {
+    # Two infinite variances give a NaN ratio, which stays NaN below.
+    ratio_min <- min(ratio, 1, na.rm = TRUE)
+    ratio_max <- max(ratio, 0, na.rm = TRUE)
+  }
   if (ratio_min == 1 && ratio_max == 1) {
-    # Exactly unit represented ratios already give zero dispersion.
+    # Every ratio is exactly 1 or NaN, so ratio - 1 is the dispersion.
     dispersion <- ratio - 1
   } else {
     log_ratio <- log(ratio)
     if (ratio_min < .Machine$double.xmin) {
-      subnormal <- ratio < .Machine$double.xmin
+      subnormal <- which(ratio < .Machine$double.xmin)
       log_ratio[subnormal] <- log(R_p[subnormal]) - log(R_q[subnormal])
     }
     dispersion <- 0.5 * ((ratio - 1) - log_ratio)

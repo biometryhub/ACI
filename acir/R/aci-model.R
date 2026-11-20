@@ -124,7 +124,7 @@ validate_stochastic <- function(m, n_probe = 5) {
     }
     if (!dx_width || !dy_width)
       aci_abort("aci_error_model_contract", "Sx and Sy must each expose at least one Wiener channel.")
-    # SPEC-04 contract: Gx SPD; Sx has no y argument by signature already.
+    # The contract requires an SPD Gx. Sx has no y argument by signature.
     Gx <- Sx1 %*% t(Sx1)
     rc <- rcond(Gx)
     if (!is.finite(rc) || rc < .ACI_GRAM_RCOND_MIN)
@@ -324,7 +324,7 @@ aci_model <- function(Lx, fx, Ly, fy, Sx1, Sx2 = NULL, Sy1 = NULL, Sy2,
   obj <- list(Lx = Lx, fx = fx, Ly = Ly, fy = fy,
               Sx1 = Sx1, Sx2 = Sx2, Sy1 = Sy1, Sy2 = Sy2,
               k = k, l = l, name = name %||% "cgns_model", meta = meta)
-  # derived parent drifts so every CGNS runs on the ensemble engine (SPEC-05 s2.2)
+  # derived parent drifts so every CGNS runs on the ensemble engine
   obj$f <- function(t, x, y) drop(fx(t, x) + as.matrix(Lx(t, x)) %*% y)
   obj$g <- function(t, x, y) drop(fy(t, x) + as.matrix(Ly(t, x)) %*% y)
   obj$Sx <- function(t, x) cbind(as.matrix(Sx1(t, x)), as.matrix(obj$Sx2(t, x)))
@@ -442,7 +442,7 @@ validate_cgns <- function(m, n_probe = 5) {
     if (is.null(widths)) widths <- now_widths else if (!identical(now_widths, widths))
       aci_abort("aci_error_model_contract",
                 "CGNS shared-channel counts must remain constant over state and time.")
-    # Affinity probe on the model drifts (defense-in-depth, SPEC-05 s2.2).
+    # Affinity probe on the model drifts.
     ya <- sin(seq_len(m$l) * (i + 0.7))
     yc <- cos(seq_len(m$l) * (i + 1.3)); yb <- (ya + yc) / 2
     sc <- max(1, sum(abs(m$f(t, x, ya))) + sum(abs(m$f(t, x, yc))))

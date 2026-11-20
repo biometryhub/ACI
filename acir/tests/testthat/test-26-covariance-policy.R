@@ -6,7 +6,7 @@
 ## index and the time. `regularize = "floor"` is the previous behaviour, and
 ## every floor it takes is recorded in the result's `meta$regularization`.
 ##
-## The three firing cases below are the only ones in this workspace where a
+## The three firing cases below are the only ones in the measured runs where a
 ## floor is taken at all: O1 counted 29 events in 4 371 482 floor-capable
 ## invocations across 47 runs, and every one of the 29 was in one of these
 ## three deliberately broken probes.

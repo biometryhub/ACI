@@ -426,7 +426,7 @@ spd_floor <- function(R, eps = 1e-12) {
 #'
 #' Reached only after a factorisation has already failed, which the fire-count
 #' evidence puts at 29 events in 4.37e6 invocations across every standard case
-#' and every stress probe in the workspace.
+#' and every stress probe that was run.
 #'
 #' @param S Symmetric matrix that failed its Cholesky factorisation.
 #' @param rec Recorder.

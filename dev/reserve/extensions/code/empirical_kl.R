@@ -28,7 +28,7 @@
 empirical_kl <- function(A, B, estimator = c("gaussian", "knn")) {
   estimator <- match.arg(estimator)
   if (estimator == "knn")
-    aci_abort("aci_error_not_implemented", "knn estimator is a v0.2 stub (SPEC-02).")
+    aci_abort("aci_error_not_implemented", "knn estimator is a v0.2 stub.")
   A <- as.matrix(A); B <- as.matrix(B)
   if (nrow(A) < 2L || nrow(B) < 2L || ncol(A) != ncol(B) ||
       ncol(A) < 1L || any(!is.finite(c(A, B))))

@@ -94,7 +94,7 @@ order-sensitive statistic, which changes the fixture's sha256.
 
 The producer adapter is written by reading the parent's `NAMESPACE` and sources
 only. The parent is not executed. A static adapter does not establish
-reproduction; only an authorised run of the pinned producer, compared with the
+reproduction. Only a run of the pinned producer, compared with the
 six shipped fixtures, does. That is stated in the script and in the intent.
 
 ### Wording (requirements 5-7)
@@ -108,7 +108,7 @@ roxygen, the vignette and the register together, so the four statements of each
 property agree. `dev/specification.md` is annotated additively and dated, its
 existing lines left verbatim, because it is the record of what was specified.
 
-`vignette-1-intro.Rmd` is human-written introductory prose. Its edits are
+`vignette-1-intro.Rmd` is the introductory vignette. Its edits are
 sentence-level, presented one at a time before they are applied, and nothing
 else in that file changes.
 
@@ -190,7 +190,7 @@ The four gates in `dev/PROCESS.md`, plus what is specific to this round.
 - **`aci_warn_regularized` is a compatibility-sensitive signal change.** Code
   under `options(warn = 2)` that reaches a firing floor now errors where it
   previously returned a value. This cannot be made invisible and still be a
-  signal. It is proposed in the uncommitted diff, with the two existing tests
+  signal. It is proposed with the two existing tests
   that observe regularization warnings updated to assert both classes, and is
   left for the authors' decision rather than assumed.
 - **Two new error classes replace returned numbers.** `aci_error_gram_path`
@@ -205,11 +205,11 @@ The four gates in `dev/PROCESS.md`, plus what is specific to this round.
 - **`NEWS.md` and `inst/evidence/register.csv` are each touched by several
   items in this round.** Their entries are collected and applied once, so each
   file has a single coherent state rather than a sequence of partial edits.
-- **The producer repair is unexecuted.** Without an authorised run against a
+- **The producer repair is unexecuted.** Without a run against a
   library holding `aci` 0.0.30, item 4 closes as a documented evidence
   limitation and not as a pass. That must be stated wherever regeneration is
   described.
-- **Host branch protection is disputed.** The supplied feedback reports that
-  the host has no branch protection; no host response and no remote CI record
-  was captured here. Neither side of the fact is asserted; the text records
+- **Host branch protection is disputed.** It was reported that the host has no
+  branch protection, and no host response or remote CI record was available
+  to check the report. Neither side of the fact is asserted. The text records
   the intent and says it is unverified.

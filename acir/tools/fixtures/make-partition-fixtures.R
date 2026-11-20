@@ -26,7 +26,7 @@
 ##
 ## Optional regeneration proof.  The original run also re-derived the C3
 ## comparison outputs in their original layout and compared their SHA-256
-## against the C3 originals.  Those originals live in the comparison workspace,
+## against the C3 originals.  Those originals are kept with the comparison run,
 ## not in this repository, so the proof step is opt-in:
 ##
 ##   ACIR_FIXTURE_C3_DIR=/path/to/comparison/c3 Rscript ... <outdir>
@@ -41,8 +41,8 @@
 ## names in three places.  The mapping below was written by reading that
 ## package's NAMESPACE and R sources; the producer has NOT been executed and
 ## the adapter has NOT been run against it.  Nothing in this file therefore
-## establishes that `aci` 0.0.30 reproduces the shipped bytes: only an
-## authorised run of the pinned producer, followed by comparison of the six
+## establishes that `aci` 0.0.30 reproduces the shipped bytes: only a
+## run of the pinned producer, followed by comparison of the six
 ## regenerated outputs with the shipped fixtures, would.  Under
 ## PRODUCER = "acir" every mapping is the identity and the script behaves as
 ## it did before the adapter was added.
@@ -218,7 +218,7 @@ summarise <- function(part, d) {
 }
 
 ## Bit-for-bit regeneration proof against a C3 original. Skipped, and reported
-## as skipped, when the comparison workspace is not on hand.
+## as skipped, when the comparison outputs are not on hand.
 verify <- function(df, name) {
   if( !nzchar(C3) ) { cat(sprintf("  regen %-34s SKIPPED\n", name)); return(NA) }
   f <- file.path(VER, name)

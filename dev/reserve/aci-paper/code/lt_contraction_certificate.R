@@ -2,7 +2,7 @@
 ## Origin: aci/R/assimilation.R:613-683
 ## Source package: aci 0.0.30, git tree 97f6b124
 ## Category: aci-paper
-## Intended release: 0.1.x, TBD with the supervisor/collaborators
+## Intended release: 0.1.x, to be decided by the authors and collaborators
 ## Reason: andreou2026smoother eqs. 3.18-3.19; paper-derived with no ACI_code MATLAB backing.
 ## Verbatim excision from the acir 0.1.0 mainline from the aci 0.0.30 sources; not modified.
 ## Note: andreou2026smoother eqs. 3.18-3.19; paper-derived with no ACI_code MATLAB backing (plan section 3.3).
