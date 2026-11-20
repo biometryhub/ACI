@@ -148,9 +148,9 @@ because `NEWS.md` is the changelog of the installed package.
   than the step at which the divergence began. That is the trade taken for not
   paying a per-step test on the hottest loops.
 - **The wording edits change meaning where none was intended.** The
-  introductory vignette is human-written prose; its diff is presented sentence
-  by sentence. The specification is annotated additively and its existing lines
-  are left verbatim.
+  introductory vignette's diff is presented sentence by sentence. The
+  specification is annotated additively and its existing lines are left
+  verbatim.
 - **Several items share `NEWS.md`, the register and both kernels.** Each of
   those files is brought to its final state once, and the register's untouched
   rows are enumerated so a stray edit is visible in review.
@@ -302,7 +302,7 @@ Recorded in the same commit as the change that causes them. Empty at approval.
   units sentence between the KL display and the sentence beginning "and it
   splits into". That sentence grammatically continued the sentence the display
   interrupted, so the insertion forces "and it splits into" to become "It
-  splits into". This is the only change to existing human wording beyond the
+  splits into". This is the only change to existing wording beyond the
   seven itemised edits, and is reversible by placing V5 after the
   decomposition sentence instead.
 - **NUM-01b's vignette-1 clause not added.** A clause at

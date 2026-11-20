@@ -1,18 +1,15 @@
 # PR #29: warning provenance and numerical comparisons
 
-## Scope and authority
+## Scope
 
-The author approved completing the supervisor's four follow-ups on PR #29
-(a679cbbb5f47868be8661a9eb9479a384a960e58, acir 0.2.1). Prepare changes,
-tests and evidence without committing, pushing or posting. The usual
-commit-before-code convention is represented by saved plans and source
-identities because no commit is authorised. Preserve the current paper and
-its package snapshot. No engine, API, dependency, default or fixture changes.
+This plan completes the four review follow-ups on PR #29
+(a679cbbb5f47868be8661a9eb9479a384a960e58, acir 0.2.1). Preserve the current
+paper and its package snapshot. No engine, API, dependency, default or fixture
+changes.
 
 The original retained-table warning fix and its verification were completed
-first. The author then approved the wording and matrix-test recommendations
-and asked for a better round-off policy. This plan records the final scope.
-The initial plan and prior evidence remain preserved outside this checkout.
+first. The wording and matrix-test recommendations were then adopted, with a
+better round-off policy. This plan records the final scope.
 
 ## Implementation
 

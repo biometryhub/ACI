@@ -2,26 +2,25 @@
 
 - Use the existing scalar Gaussian signal `(mu_q - mu_p)^2 / (2 * R_q)`.
   Change evaluation only when the existing signal is infinite. Retain finite
-  signal values bit for bit, and leave the approved dispersion results
-  unchanged by this additional correction.
-- Recover finite signals in the reported square-overflow case, overflow of
-  the full mean difference and the tested subnormal-variance cases. Preserve
+  signal values bit for bit, and leave the dispersion results unchanged by
+  this additional correction.
+- Recover finite signals in the square-overflow case, overflow of the full
+  mean difference and the tested subnormal-variance cases. Preserve
   infinity when the result exceeds the rounding range of double precision.
   Test the overflow boundary explicitly. This is not a claim of universal
   correctly rounded Gaussian KL evaluation.
 - Preserve return names, dimensions, decomposition and errors. The scope is
   the scalar path calculation. `aci_metric_pair()` and multivariate arithmetic
   retain their existing numerical limits.
-- Keep the 20 approved default proposals. Exclude optional near-equality
-  items N1.1–N1.5 and their test file from this batch.
+- Exclude the optional near-equality series and its tests from this batch.
 - Run the complete suite with saved MATLAB comparisons enabled. Require the
   existing moment tolerance below 1e-12 and component tolerance below 1e-11.
   Require before/after differences at most 1e-12 and identical moment bytes.
-  Do not describe this as a new MATLAB execution.
+  MATLAB itself is not run.
 - Check exact represented-input high-precision references separately from
   source agreement. Preserve and report adverse boundary results.
-- Compare helper cost and all nine benchmark stages against the approved and
-  maintained baselines. Repository stage timing is advisory. Investigate a
+- Compare helper cost and all nine benchmark stages against the base commit.
+  Repository stage timing is advisory. Investigate a
   new helper slowdown over 25% on previously valid workloads. Timings of
   formerly incorrect overflow cases are reported separately.
 - Run available fixture provenance, package build and local as-cran checks.

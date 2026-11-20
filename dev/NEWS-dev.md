@@ -284,7 +284,7 @@
   taken under `"floor"` is recorded in the result's `meta$regularization`,
   which is always present and reports `fired = FALSE` with a zero-row site
   table on a clean run. Nothing in the ACI_code scope is affected: across 47
-  runs covering every fixture in this workspace, a floor fired 29 times in
+  runs covering every fixture, a floor fired 29 times in
   4 371 482 opportunities, and all 29 were inside three deliberately broken
   stress probes. The exported `spd_floor()` and `safe_chol()` are unchanged and
   remain the implementation of the opt-in. `forward_cir()` on an `aci_result`

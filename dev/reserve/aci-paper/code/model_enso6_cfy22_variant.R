@@ -2,7 +2,7 @@
 ## Origin: aci/R/benchmark_models.R:513-654
 ## Source package: aci 0.0.30, git tree 97f6b124
 ## Category: aci-paper
-## Intended release: 0.1.x, TBD with the supervisor/collaborators
+## Intended release: 0.1.x, to be decided by the authors and collaborators
 ## Reason: Whole aci model_enso6 body; the default 'cfy22' arm is a chen2022enso transcription, not the ACI_code MATLAB.
 ## Verbatim excision from the acir 0.1.0 mainline from the aci 0.0.30 sources; not modified.
 ## Note: The whole aci 0.0.30 model_enso6 body, retained so the chen2022enso 'cfy22' transcription arms (parameter preset, c1f/c2f/beta0/zonal advection, coefficient provenance and initial condition) can be re-applied verbatim. The acir mainline keeps only variant 'aci_code'.

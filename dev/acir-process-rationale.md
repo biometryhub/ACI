@@ -1,12 +1,12 @@
 # How `acir` 0.1.0 was built, and why
 
-**Audience.** The supervisor and collaborators, and anyone who later asks why a
+**Audience.** The authors and collaborators, and anyone who later asks why a
 particular line of `aci` or `aciR` did or did not survive into the joint
 package. It reads end to end without the working documents, but every
 consequential claim carries a pointer to the record that holds the measurement.
 
 **Status of the numbers.** Every figure in this document was produced by code
-run in this workspace. An earlier draft carried fifteen provisional markers on
+run during this work. An earlier draft carried fifteen provisional markers on
 figures that later work could move; all fifteen are resolved here, and no
 figure is now provisional. Two kinds of figure are closed and will not move:
 those from the comparison of the two frozen packages (`aci` 0.0.30 against
@@ -67,7 +67,7 @@ package, closed form throughout, with a different components schema and a
 different set of numerical policies. Both are graded against the same MATLAB
 reference codebase, `ACI_code-main/`.
 
-The supervisor's direction settled two things at once: the joint artefact is a
+The agreed direction settled two things at once: the joint artefact is a
 new package rather than an integration into either existing tree, and the
 engine package should carry only closed-form solutions, taken from `aci` where
 possible.
@@ -1579,7 +1579,7 @@ are now closed one way or another.
 
 ### 5.3 In the MATLAB reference source
 
-Three findings, all verified directly against the source in this workspace.
+Three findings, all verified directly against the source.
 
 **`f_y_s` is used but never defined, in the tau script only.**
 `ENSO_model_cond_ACI_tau_unobs.m` reads `f_y_s` at lines 1455 and 1484 inside
@@ -2057,7 +2057,7 @@ source-derived rather than authors-source in the manifest and in the tests.
 **D8. Name and attribution.** *Decision: the package name is `acir`, final.*
 The rationale is that the name should be fixed before any release, since
 renaming later is expensive. The CRAN case-insensitivity consequence against
-the existing `aciR` stands and should be raised with the supervisor. The
+the existing `aciR` stands and is for the authors to decide. The
 collision also bit locally during construction: the working filesystem is
 case-insensitive, so a directory named `acir` beside the existing `aciR` tree
 *is* that directory. The package therefore sat one level down and installed to
@@ -2103,7 +2103,7 @@ Recorded plainly rather than closed by assertion.
    `aciR`'s kernels on `aci`-realised arrays through an adapter and an in-process
    shim.
 5. **FBCIR author-output parity** needs MATLAB to run the supplied generator, or
-   an independent transcription of it. Not available in this workspace.
+   an independent transcription of it. Neither was available.
 6. **EnKBS verification breadth** across the other benchmark systems is later
    work; only the dyad grade travels with the patch today.
 
@@ -2116,8 +2116,7 @@ Recorded plainly rather than closed by assertion.
    the extraction**: five decisions recorded there as "not yet implemented" are
    implemented, and the `T_C` row records an item that is now closed. Both are
    annotated inline in the register (section 7.2).
-9. **The introductory vignette is being reworked** on the author's own
-   human-written prose, which is the authorship policy for the vignettes; the
+9. **The introductory vignette is being reworked** by the author. The
    version in the tree at HEAD is the integrated draft, fully executed and
    check-clean, not the final text.
 10. **The version string is `0.0.0.9000`**, not `0.1.0`. Stamping the release
@@ -2128,7 +2127,7 @@ Recorded plainly rather than closed by assertion.
     entries and left untouched each time as out of scope; it needs a pass of
     its own.
 
-**Decisions for the supervisor or the package author**
+**Decisions for the package authors**
 
 12. **Whether to consult the reference authors** about the two source defects
     before publishing a divergence note.
@@ -2165,7 +2164,7 @@ Recorded plainly rather than closed by assertion.
 
 ## 10. Provenance: what is measured, what is quoted, what is unverified
 
-**Measured in this workspace.** Every number in sections 3, 4, 5.3, 5.4, 6 and
+**Measured.** Every number in sections 3, 4, 5.3, 5.4, 6 and
 7.2, and every agreement figure in the comparison tables. The scripts, result
 files and per-entry harnesses are in the evidence archive described at the end
 of this document, one directory per study and one per change entry.

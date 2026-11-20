@@ -130,12 +130,11 @@ header comments of two workflows.
 
 - Whether `aci_warn_regularized` should ship in this release at all, given that
   it can turn a previously returning call into an error under
-  `options(warn = 2)`. The proposal is in the uncommitted diff for that
-  decision to be made on.
+  `options(warn = 2)`.
 - Whether to raise the declared R floor to 4.1.0, or to keep 4.0.0 and add a
   passing R 4.0 job to the check matrix. No R 4.0 build has ever run, so
   neither compatibility nor incompatibility at 4.0 is demonstrated.
-- Whether an authorised run of the pinned fixture producer against a library
+- Whether a run of the pinned fixture producer against a library
   holding `aci` 0.0.30 is available. Without it the producer repair is a
   static, unexecuted adapter and reproduction remains a documented limitation.
 - When the benchmark harness is repaired and its baseline re-recorded, which

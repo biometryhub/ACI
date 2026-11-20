@@ -202,7 +202,7 @@ as.data.frame.da_path_gaussian <- function(x, ...) {
 .default_init <- function(m, co0) {
   # Weakly-informative default: ~5x the OU stationary scale gyy / (2|Ly|).
   # A 100x-diffuse prior destabilizes the explicit-Euler Riccati when Lx is
-  # strongly state-dependent (R^2 Lx' gxx^{-1} Lx dt >> R); see SPEC-01 s8.
+  # strongly state-dependent (R^2 Lx' gxx^{-1} Lx dt >> R).
   c0 <- 5 * max(mean(diag(co0$gyy)), 1e-8) /
         max(2 * mean(abs(diag(as.matrix(co0$Ly)))), 1e-4)
   list(mean = rep(0, m$l), cov = diag(c0, m$l), diffuse = TRUE)
@@ -767,7 +767,9 @@ lag_table <- function(model, obs, mode = c("forward", "full"),
 #' @param model A `cgns_model` object.
 #' @param obs An `obs_traj` object.
 #' @param conditional Optional conditional tag the table must have been
-#'   built with.
+#'   built with. When it is `NULL`, the table must carry the specification
+#'   the model declares in `meta$estimand_nontarget`, if it declares one,
+#'   because [lag_table()] builds such a model's tables with it.
 #' @param init Optional prior the table must have been built with.
 #' @returns Invisibly `TRUE`; called for its error conditions.
 #' @noRd
@@ -788,6 +790,7 @@ lag_table <- function(model, obs, mode = c("forward", "full"),
       !identical(table$meta$source_model, model))
     aci_abort("aci_error_model_contract",
               "The supplied lag table was computed with a different model object.")
+  if (is.null(conditional)) conditional <- .model_estimand_spec(model, NULL)
   if (!identical(conditional %||% NULL, table$meta$conditional %||% NULL))
     aci_abort("aci_error_nontarget",
               paste("The supplied lag table used a different",
@@ -1176,7 +1179,7 @@ aci_conditional_reduce <- function(model, obs, spec) {
   if (obs$k != model$k)
     aci_abort("aci_error_dims", "Observation dimension does not match the CGNS model.")
   ix <- .nt_indices(spec, obs); A <- ix$A; B <- ix$B
-  # Admissibility (SPEC-01 s6 S1): the A-B cross-block must vanish along
+  # Admissibility: the A-B cross-block must vanish along
   # the entire prescribed path, not only at its initial point.
   bad_cross <- any(vapply(seq_along(obs$t), function(j) {
     co <- eval_coefs(model, obs$t[j], obs$x[j, ])

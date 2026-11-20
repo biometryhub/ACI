@@ -790,10 +790,10 @@ retained table, it selects rows that have already been computed. It does not
 cap how far forward each row looks. The streamed route uses the truncation
 tolerance in `options(aci.default_tol = )`, a window of three consecutive
 steps and no maximum lag. For a retained table in `mode = "forward"`,
-`lag_table()` accepts `tol`, `window` and `max_lag`. `max_lag` caps the number of future
-steps, while `window` sets the consecutive-steps-below-`tol` freeze rule
-described above. `mode = "full"` keeps every lag, ignores `tol` and `window`,
-and requires `max_lag = Inf`.
+`lag_table()` accepts `tol`, `window` and `max_lag`. `max_lag` caps the number
+of future steps, and `window` is the number of consecutive steps a row must stay
+below `tol` before it is frozen, as described above. `mode = "full"` keeps every
+lag, ignores `tol` and `window`, and requires `max_lag = Inf`.
 
 
 ## 4. Conditional ACI

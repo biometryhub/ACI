@@ -35,7 +35,7 @@ generator_command: >
   tools/ is build-ignored, so the generator ships in the repository and not in
   the tarball.  <outdir> is required and must be outside the package: fixtures
   are never regenerated in place.  The C3 regeneration proof is opt-in through
-  ACIR_FIXTURE_C3_DIR, because the comparison workspace it reads is not part
+  ACIR_FIXTURE_C3_DIR, because the comparison outputs it reads are not part
   of this repository; it is reported as skipped when unset.
 producer:
   package: aci
@@ -88,7 +88,7 @@ signal:
   generator_settings: >
     aci_enso_model(variant = "aci_code", hidden = c("u", "hW", "tau")) then
     simulate(seed = 42, T = 20, dt = 0.005), the settings recorded in the
-    comparison workspace's inputs/make_inputs.R.  All six state variables are
+    comparison run's inputs/make_inputs.R.  All six state variables are
     carried, because each partition observes five of them and takes its
     initial filter mean and its truth column from the sixth.
   regeneration: >
@@ -445,7 +445,7 @@ refresh:
     producer change shows up as a hash mismatch on the coefficient arrays
     before it reaches the shipped files.
   regeneration_proof: >
-    Verified on 2026-08-27 under aci 0.0.30, with the C3 comparison workspace
+    Verified on 2026-08-27 under aci 0.0.30, with the C3 comparison outputs
     on hand.  The four realised coefficient arrays regenerate BYTE-FOR-BYTE,
     identical SHA-256, against the originals written by the C3 comparison run.
     The five output series per partition regenerate bit-for-bit through the

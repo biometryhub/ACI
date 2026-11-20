@@ -2,51 +2,23 @@
 
 ## Bug fixes
 
-* Scalar `aci_metric()` dispersion retains small positive variance ratios and
-  avoids intermediate ratio overflow when the dispersion is representable.
-  The scalar signal calculation also recovers finite results when its initial
-  squared standardised mean difference overflows. Ordinary finite signal
-  calculations retain their previous arithmetic.
-* Plot methods for ACI results, Gaussian paths and causal influence ranges
-  honour caller-supplied labels without passing duplicate arguments to the
-  plotting function. A single-anchor range plot retains its default title.
+* `aci()` and `aci_metric()` keep the KL dispersion accurate when the
+  variance ratio is very small, and return finite values where an
+  intermediate step overflowed, for models and paths with one hidden
+  component. 0.2.0 lost precision or returned `Inf` or `NaN` in these cases.
+* Plot methods accept `main`, `xlab`, `ylab` and `type`, and `ylim` for a
+  Gaussian path. In 0.2.0 these stopped with a duplicate argument error.
+* `aci()` accepts a lag table that `lag_table()` built for a model that
+  declares its own estimand, such as `aci_enso_model(hidden = "tau")`.
+* `aci_range()` warns on every retention route when it uses an explicit
+  single-step filter for a result computed with `stepper = "implicit"` or
+  `nsub > 1`. `aci()` now records both settings in `meta`. Range values are
+  unchanged.
 
-* **`aci_range()` reports explicit single-step provenance on every retention
-  route.** `aci()` records
-  `stepper` and `nsub` in `meta`, recording the filter's integration settings
-  (`"explicit"` and `1L` for a result built on a reused table). The backward
-  smoother inherits `nsub` and remains explicit. When a
-  result computed with `stepper = "implicit"` or `nsub > 1` is passed to
-  `aci_range()` with no retained paths (`keep = "none"`), the range is, as
-  before, computed from a recomputed explicit single-step filter and smoother,
-  since the lag-table recursions are defined for that discretization only;
-  the rebuild is now reported by one `aci_warn_stepper` warning naming the
-  recorded settings, as the `keep = "paths"` route already did off its
-  retained filter. With `keep = "table"`, `aci()` warns while building the
-  table and every subsequent `aci_range()` call warns once about using that
-  explicit single-step table, including after `saveRDS()`/`readRDS()`.
-  Older retained-table results use the settings on their retained filter.
-  Range values are unchanged on every route. A result saved by an
-  earlier release with `keep = "none"` carries no record of its settings, so
-  it cannot report the rebuild; `?aci_range` states the behaviour.
+## Documentation
 
-## Tests and documentation
-
-* The range status descriptions distinguish length and strength checks from
-  possible sensitivity to the end of the record. Lag-storage controls and
-  threshold coverage are clarified. The online-smoother example counts
-  anchors whose windows reach the end of the record.
-* Scalar KL regression tests cover small variance ratios and intermediate
-  dispersion and signal overflow.
-
-* The retention and serialization checks now include a correlated
-  matrix-observation model. The range help states the common inputs and
-  settings needed for comparing routes and allows floating-point differences.
-* The conditional reduction/masking comparison requires all five complete,
-  finite series with matching names and lengths. Its maximum absolute
-  difference limit remains `1e-12`. CI records the per-series differences
-  and runtime details. The advanced vignette no longer promises bit-for-bit
-  agreement across platforms.
+* The help and vignettes no longer describe a censored range as a lower
+  bound.
 
 # acir 0.2.0
 

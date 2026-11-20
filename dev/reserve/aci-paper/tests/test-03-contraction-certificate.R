@@ -2,7 +2,7 @@
 ## Origin: aci/tests/testthat/test-03-engine.R:353-378
 ## Source package: aci 0.0.30, git tree 97f6b124
 ## Category: aci-paper
-## Intended release: 0.1.x, TBD with the supervisor/collaborators
+## Intended release: 0.1.x, to be decided by the authors and collaborators
 ## Reason: Tests lt_contraction_certificate, which leaves the 0.1.0 surface.
 ## Verbatim excision from the acir 0.1.0 mainline from the aci 0.0.30 sources; not modified.
 ## Note: lt_contraction_certificate diagnostics (andreou2026smoother eqs. 3.18-3.19); the function is dropped from the 0.1.0 surface.

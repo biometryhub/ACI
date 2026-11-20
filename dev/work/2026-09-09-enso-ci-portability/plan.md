@@ -49,9 +49,8 @@ new independent numerical grade for the unstable ENSO result.
 
 ## Verification and limits
 
-Record the untouched source hashes, installation, environment, five supplied
-logs and numerical probes under
-`outputs/implementation/20260909-enso-ci-portability/` in the review workspace.
+Record the untouched source hashes, installation, environment, five logs and
+numerical probes.
 Verify the replacement checks under small controlled perturbations of the
 first floored covariance, applied only in disposable diagnostic processes.
 Use deliberate recorder/metric defects to check that the new assertions fail.
@@ -61,6 +60,4 @@ fixture provenance, a fresh build and installation, and `R CMD check --as-cran`.
 Compare source hashes and installed baseline/candidate numerical outputs.
 Report unavailable checks and any existing advisory benchmark result. Actual
 Windows/Linux candidate verification requires a new CI run; local sensitivity
-experiments do not replace it. No staging, committing or pushing is authorized
-for this work session, so the plan and implementation remain an uncommitted
-diff for review.
+experiments do not replace it.

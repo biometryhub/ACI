@@ -13,7 +13,8 @@
 
 \item{truth}{Optional numeric vector of true hidden values to overlay.}
 
-\item{...}{Passed to the underlying base-graphics calls.}
+\item{...}{Further arguments to \code{\link[=plot]{plot()}}, which draws the mean. A \code{type},
+\code{xlab}, \code{ylab}, \code{ylim} or \code{main} given here replaces the default.}
 }
 \value{
 \code{x}, invisibly; called for the plot it draws.
