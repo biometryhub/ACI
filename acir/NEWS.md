@@ -2,6 +2,15 @@
 
 ## Bug fixes
 
+* Scalar `aci_metric()` dispersion retains small positive variance ratios and
+  avoids intermediate ratio overflow when the dispersion is representable.
+  The scalar signal calculation also recovers finite results when its initial
+  squared standardised mean difference overflows. Ordinary finite signal
+  calculations retain their previous arithmetic.
+* Plot methods for ACI results, Gaussian paths and causal influence ranges
+  honour caller-supplied labels without passing duplicate arguments to the
+  plotting function. A single-anchor range plot retains its default title.
+
 * **`aci_range()` reports explicit single-step provenance on every retention
   route.** `aci()` records
   `stepper` and `nsub` in `meta`, recording the filter's integration settings
@@ -22,6 +31,13 @@
   it cannot report the rebuild; `?aci_range` states the behaviour.
 
 ## Tests and documentation
+
+* The range status descriptions distinguish length and strength checks from
+  possible sensitivity to the end of the record. Lag-storage controls and
+  threshold coverage are clarified. The online-smoother example counts
+  anchors whose windows reach the end of the record.
+* Scalar KL regression tests cover small variance ratios and intermediate
+  dispersion and signal overflow.
 
 * The retention and serialization checks now include a correlated
   matrix-observation model. The range help states the common inputs and

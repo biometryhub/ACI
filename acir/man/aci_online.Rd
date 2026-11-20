@@ -56,9 +56,11 @@ reconstruction.}
 re-validation, as in \code{\link[=aci_smoother]{aci_smoother()}}.}
 }
 \value{
-An assimilation path of kind \code{"online"}, carrying \code{meta$lag}, the
-per-anchor \code{meta$lag_effective}, \code{meta$saturated} and \code{meta$scheme}. Its
-kind is what keeps it out of the places a complete smoother is required:
+An assimilation path of kind \code{"online"}, carrying \code{meta$lag},
+\code{meta$scheme} and the per-anchor vector \code{meta$lag_effective}.
+\code{meta$saturated} is a single logical flag that is \code{TRUE} when every
+anchor's window reaches the end of the record. The path's kind keeps it
+out of the places a complete smoother is required:
 \code{lag_table(smoother = )} rejects it with \code{aci_error_dims}.
 }
 \description{

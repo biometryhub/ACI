@@ -1,5 +1,10 @@
 ## Conditioning of the scalar dispersion term.
 ##
+## The current kernel evaluates log(R_p/R_q) directly. These tests retain
+## the same near-equality series and accuracy budget. The log1p measurements
+## below describe the earlier implementation, not a new measurement of the
+## current calculation.
+##
 ## dispersion = 0.5 * (R_p/R_q - 1 - log(R_p/R_q)) is an O(delta^2) quantity
 ## built from O(delta) pieces, so how it is written decides how much of it
 ## survives near R_p == R_q -- the operating point of every converged ACI run.
@@ -9,7 +14,8 @@
 ## At |d| <= 1e-4 the d^6 and d^7 terms are below the double-precision
 ## resolution of the sum: adding them changes no bit of the four-term value at
 ## any delta used here (verified, max relative change exactly 0). The four-term
-## series is therefore the exact answer for these inputs, not an approximation.
+## series agrees with the longer series on this grid. That agreement does not
+## make the truncated series mathematically exact or prove correct rounding.
 ##
 ## Measured relative error against that reference (scratch, R 4.5.2,
 ## aarch64-apple-darwin20), R_q = 1, R_p = 1 + delta:
@@ -44,7 +50,7 @@ kl_disp <- function(R_p, R_q) {
   )$dispersion
 }
 
-## Four-term series; see the header for why it is exact at these deltas.
+## Four-term series, with the truncation limitation stated in the header.
 disp_series <- function(d) {
   0.5 * (d^2 / 2 - d^3 / 3 + d^4 / 4 - d^5 / 5)
 }

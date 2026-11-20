@@ -28,13 +28,24 @@ common grid. Gaussian relative entropy is oriented as smoother relative to
 filter.
 }
 \details{
-A one-dimensional hidden state is evaluated with the cancellation-resistant
-\code{log1p} form \code{0.5 * (delta - log1p(delta))}, \code{delta = R_p / R_q - 1}; two or
-more hidden components use the trace and log-difference form, whose relative
+For a one-dimensional hidden state, dispersion is evaluated as
+\code{0.5 * ((r - 1) - log(r))}, where \code{r = R_p / R_q}. Taking the logarithm
+of \code{r} directly avoids losing a small positive ratio when subtracting one.
+Ratios below \code{.Machine$double.xmin} instead use
+\code{log(R_p) - log(R_q)} to avoid loss of relative precision or underflow. If
+the ratio overflows, its half is computed as \code{(0.5 * R_p) / R_q}, with the
+logarithm again obtained from the separate variance logs. This retains finite
+dispersion when it is representable, even if the ratio is not.
+Two or more hidden components use the trace and log-difference form, whose relative
 precision on the dispersion degrades as the two covariances approach each
 other. \code{\link[=aci_metric_pair]{aci_metric_pair()}} documents that boundary with the measured
 figures, and uses the trace form at every dimension, so it and this function
 need not agree in the last digits on one-dimensional inputs.
+
+If the initial one-dimensional signal calculation overflows, a scaled
+calculation avoids overflow of the intermediate mean difference or square.
+Signals that exceed the rounding range of double precision remain infinite.
+This fallback does not apply to \code{\link[=aci_metric_pair]{aci_metric_pair()}} or multivariate paths.
 }
 \examples{
 m <- aci_dyad_model()
