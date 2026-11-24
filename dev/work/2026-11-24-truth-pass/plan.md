@@ -58,3 +58,11 @@ Empty at approval.
 - **Two bullets.** The documentation corrections and the evidence
   corrections are listed separately under 0.2.2, because the second changes
   what the register claims.
+
+### 2026-11-24, the same claim in other files
+
+- `acir/README.md` (the Status paragraph and the sentence on source-derived
+  runs), `acir/API_STABILITY.md` and the `lt_row` row of the register carry
+  the same corrections: the fixtures come from MATLAB harnesses adapted from
+  the authors' scripts, six source-derived rows are graded against `aci`
+  0.0.30, and a table row starts at lag 0.
