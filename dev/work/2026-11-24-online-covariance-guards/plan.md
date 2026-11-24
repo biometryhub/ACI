@@ -75,3 +75,47 @@ Empty at approval.
   check at every anchor added about 30% to a fixed-lag run on a 4,001-point
   scalar record (0.050 s to 0.066 s). With the inline test the time is
   0.050 s again and every value is unchanged.
+
+### 2026-11-25, tight prior: a warning keyed to the step ratio
+
+This replaces "no guard" above. The fault has no usable boundary in the
+output and a sharp one in the input.
+
+- **Cause.** To leading order the Theorem 3 update factor is the identity
+  minus `Q Rf^-1 dt`, with `Rf` the filter covariance at the start of the
+  interval and `Q = gyy - gyx gxx^-1 gxy` the hidden noise covariance given
+  the observed increment. The exact factor stays positive. The leading-order
+  one changes sign in a direction once the largest eigenvalue of
+  `Q Rf^-1 dt`, the step ratio, passes 1.
+- **Measured, 168 cases whose filter runs.** The ratio is above 1 in 79, at
+  the first interval only in every one. Of the 73 cases with a smoothed variance above the filter
+  variance, 72 have a ratio above 1. The other is the three-component
+  finite-lag case at 4.7e-05, with a ratio of 0.57, which this change does
+  not cover. Seven cases above 1 show no excess; all have a ratio of 1.1 or
+  less, and their first-anchor variance is 1.3% to 23% above the exact
+  discrete value.
+- **Correlated noise.** The boundary follows `Q`, not `gyy`. On the
+  two-component closure model `gyy Rf^-1 dt` passes 1 at a prior of 0.0068
+  and nothing is wrong up to 1.59; the excess starts between step ratios of
+  0.997 and 1.031.
+- **Change.** `.thmD1_aux_compiled()` and `.online_aux_scalar()`, the two
+  places every Theorem 3 update is formed, compute the step ratio and call a
+  new `.aci_step_ratio_warn()`, which raises one `aci_warn_leading_order`
+  per public call through a latch on the recorder. With several hidden
+  components the trace of `Q Rf^-1 dt` bounds the ratio from above, and the
+  eigenvalues are taken only on an interval the trace does not clear. The
+  scalar helpers take the recorder as a last argument. The threshold is 1,
+  the point where the factor changes sign, and is not tuned.
+- **Not changed.** Every returned value. The call does not stop: seven of
+  the 79 cases return a variance the method allows. A lag table reused
+  through `aci(table = )` forms no update and raises nothing.
+- **Files added to the list above.** `acir/R/aci-online-scalar.R`,
+  `acir/R/aci-cir.R` (one call site), `acir/man/lag_table.Rd`; a second
+  NEWS bullet.
+- **Proof added.** In `test-48-online-covariance-guards.R`: one warning per
+  call on `aci_online()` at `lag = Inf` and at a finite lag, `lag_table()`
+  and `aci_range()`, with one and several hidden components, a library
+  model and a closure model, and a filter read back from a saved copy; the
+  ratio and index the condition carries; no warning just below 1; and the
+  correlated-noise pair on each side of the boundary, which a ratio built
+  from `gyy` alone gets wrong.
