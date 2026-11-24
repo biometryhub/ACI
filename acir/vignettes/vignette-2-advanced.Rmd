@@ -763,14 +763,19 @@ padding. The checks are applied in this order:
 * `below_threshold`: among rows with at least three observation times, the
   peak divergence is below the strength floor. The range is `NA` by default.
 * `censored`: the last divergence above the strength floor lies in the second
-  half of the row.
+  half of the row, or the row was cut by `max_lag` while its last kept
+  divergence was still above the strength floor.
 * `resolved`: none of the preceding conditions applies.
 
-Censoring is judged inside the row, not against a caller-supplied
-horizon. Testing only the last cell would not help: at the end of a complete
-row, the online estimate and the reference smoother use the same complete
-observation record, so their divergence is zero in exact arithmetic. The
-second-half check instead uses the location of the last exceedance.
+For a row that runs to the end of the record, censoring is judged inside the
+row, not against a caller-supplied horizon. Testing only the last cell would
+not help there: at the end of a complete row, the online estimate and the
+reference smoother use the same complete observation record, so their
+divergence is zero in exact arithmetic. The second-half check instead uses
+the location of the last exceedance. A row cut by `max_lag` stops before the
+record does, so its last kept cell is not zero by construction, and a value
+above the strength floor there shows that the divergence had not decayed
+when the row was cut.
 
 This check is a heuristic, not a numerical-accuracy test. Extending the
 record also changes the reference smoother used in each divergence. A

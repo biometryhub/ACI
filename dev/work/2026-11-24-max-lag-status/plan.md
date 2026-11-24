@@ -39,4 +39,8 @@ unchanged. The full suite and the series identity comparison.
 
 ## Departures
 
-Empty at approval.
+- `acir/vignettes/vignette-2-advanced.Rmd` also changes. Its list of statuses
+  said that censoring is judged inside the row and never against a horizon,
+  which the new rule for a row cut by `max_lag` makes incomplete. The
+  `censored` entry and the paragraph after the list now state the rule for a
+  cut row. No code chunk changes.
