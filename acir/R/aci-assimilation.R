@@ -117,6 +117,24 @@ aci_smoother <- function(model, obs, ...) UseMethod("aci_smoother")
 #' The one exact boundary is the other end: at `lag = 0` the returned moments
 #' are the filter moments, unchanged value for value.
 #'
+#' @section Range of the scheme:
+#' The leading-order update depends on the ratio of one step of hidden noise
+#' to the filter variance at the start of each interval: the largest
+#' eigenvalue of `Q Rf^-1 dt`, with `Rf` the filter covariance and `Q` the
+#' hidden noise covariance given the observed increment. The exact update
+#' factor stays positive for every ratio. The leading-order factor changes
+#' sign once the ratio passes 1, and the smoothed covariance at and before
+#' that interval can then exceed the filter covariance, which no smoother
+#' allows. This happens with a prior variance below one step of hidden noise,
+#' and on a record whose filter variance falls that low. `aci_online()` and
+#' [lag_table()], and [aci()] and [aci_range()] when they build a table, raise
+#' one `aci_warn_leading_order` per call when a ratio is above 1. The
+#' condition carries `ratio`, `index` and `time` for the interval it reports.
+#' The returned values are those the scheme gives. A smaller `dt` lowers the
+#' ratio, and at the first interval a wider prior does too. A table already
+#' built forms no update when it is passed to [aci()] or [aci_range()], and
+#' raises nothing more.
+#'
 #' @param model A `cgns_model` or `stochastic_model` object.
 #' @param obs An observed trajectory, or anything [as_obs()] accepts.
 #' @param lag Number of future steps each estimate may condition on. A
@@ -680,6 +698,9 @@ aci_online.stochastic_model <- function(model, obs, lag, ...)
 #' smoother as its reference. That reference costs O(N) time-point work; table
 #' construction then costs work proportional to the retained lag cells, with
 #' O(N^2) cells for a full table in the worst case.
+#'
+#' The reference inherits the range of that scheme. The section on it in
+#' [aci_online()] describes the `aci_warn_leading_order` warning.
 #'
 #' @param model A `cgns_model` object.
 #' @param obs An observed trajectory, or anything [as_obs()] accepts.

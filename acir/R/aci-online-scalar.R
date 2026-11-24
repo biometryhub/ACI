@@ -60,11 +60,14 @@
 #' @param bundle A compiled CGNS bundle with `l = 1`.
 #' @param filt A compatible explicit single-step filter path.
 #' @param from First interval to form; intervals before it are not computed.
+#' @param rec Covariance-policy recorder; it carries the latch of
+#'   `.aci_step_ratio_warn()`.
 #' @returns A list with `idx` (the intervals formed), `E`, `b`, `P` (numeric,
 #'   one per formed interval) and `F` (a matrix, one row per formed
 #'   interval), or `NULL`.
 #' @noRd
-.online_aux_scalar <- function(bundle, filt, from = 1L) {
+.online_aux_scalar <- function(bundle, filt, from = 1L,
+                               rec = .aci_reg_for(NULL, bundle$t)) {
   N <- bundle$N
   k <- bundle$k
   dt <- bundle$dt
@@ -85,6 +88,10 @@
   ## .thmD1_aux_compiled(), interval by interval, as vectors
   ch <- sqrt(Rf)
   Rfi <- (1 / ch) / ch
+  ## Step ratio at every interval; see `.aci_step_ratio_warn()`.
+  ratio <- (gyy - rowSums(.scalar_aux_vecmat(gyx, Gi) * gyx)) * Rfi * dt
+  w <- which.max(ratio)
+  if (isTRUE(ratio[w] > 1)) .aci_step_ratio_warn(rec, ratio[w], idx[w])
   Gx <- Lx + gyx * Rfi
   Gy <- Ly + gyy * Rfi
   K <- .scalar_aux_matvec(Gi, Gx)
@@ -122,13 +129,15 @@
 #' @param bundle A compiled CGNS bundle with `l = 1`.
 #' @param filt A compatible explicit single-step filter path.
 #' @param from First interval needed.
+#' @param rec Covariance-policy recorder, passed to `.online_aux_scalar()`.
 #' @returns A list with `E` (`1 x 1` matrices, `NULL` before `from`), `dmu`
 #'   (`N x 1`), `dR` (`1 x 1` matrices), `one_mu` (`N x 1`), `one_R` (`1 x 1`
 #'   matrices) and the norms `s_n`, `r_n`, `e_n` (length `N`, zero before
 #'   `from`), or `NULL`.
 #' @noRd
-.forward_primitives_scalar <- function(bundle, filt, from = 1L) {
-  aux <- .online_aux_scalar(bundle, filt, from = from)
+.forward_primitives_scalar <- function(bundle, filt, from = 1L,
+                                      rec = .aci_reg_for(NULL, bundle$t)) {
+  aux <- .online_aux_scalar(bundle, filt, from = from, rec = rec)
   if (is.null(aux)) return(NULL)
   N <- bundle$N
   idx <- aux$idx
@@ -170,10 +179,12 @@
 #'
 #' @param bundle A compiled CGNS bundle with `l = 1`.
 #' @param filt A compatible explicit single-step filter path.
+#' @param rec Covariance-policy recorder, passed to `.online_aux_scalar()`.
 #' @returns A list with `mu` and `cv` (length `N + 1`), or `NULL`.
 #' @noRd
-.smoother_thmD1_scalar_moments <- function(bundle, filt) {
-  aux <- .online_aux_scalar(bundle, filt)
+.smoother_thmD1_scalar_moments <- function(bundle, filt,
+                                           rec = .aci_reg_for(NULL, bundle$t)) {
+  aux <- .online_aux_scalar(bundle, filt, rec = rec)
   if (is.null(aux)) return(NULL)
   N1 <- bundle$N1
   mu <- cv <- numeric(N1)

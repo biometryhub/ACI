@@ -46,6 +46,14 @@
   aci_warn_riccati_stiff = function(w) invokeRestart("muffleWarning")
 )
 
+## On that record the filter variance also falls below one step of hidden
+## noise at the fourth interval, which the Theorem 3 routes report before they
+## stop; the tests of the stop muffle that warning, and only that one.
+.ocg_quiet_range <- function(expr) withCallingHandlers(
+  expr,
+  aci_warn_leading_order = function(w) invokeRestart("muffleWarning")
+)
+
 .ocg_min_eig <- function(p) apply(p$cov, 3L, function(R)
   min(eigen(R, symmetric = TRUE, only.values = TRUE)$values))
 
@@ -65,9 +73,9 @@ test_that("a finite lag stops on a covariance that is not positive definite", {
     runs <- list(list(r$model, NULL), list(r$model, f),
                  list(rt$model, rt$filter))
     for (run in runs) {
-      e <- .ocg_err(.ocg_quiet_stiff(aci_online(
+      e <- .ocg_err(.ocg_quiet_range(.ocg_quiet_stiff(aci_online(
         run[[1L]], r$obs, lag = cs$lag, filter = run[[2L]], init = r$init
-      )))
+      ))))
       expect_s3_class(e, "aci_error_covariance_not_spd")
       expect_s3_class(e, "aci_error_spd")
       expect_identical(e$site, "smoother_window")
@@ -171,10 +179,22 @@ test_that("lags next to the failing one run and report nothing", {
   expect_identical(fl6$cov, on6$cov)
   expect_identical(fl6$mean, on6$mean)
 
-  ## the dyad record: lag 1 runs where lag 2 stops
+  ## the dyad record: lag 1 runs where lag 2 stops, and reports the interval
+  ## at which the filter variance is below one step of hidden noise
   d <- .ocg_dyad()
   fd <- .ocg_quiet_stiff(aci_filter(d$model, d$obs, init = d$init))
-  on1 <- expect_no_warning(aci_online(d$model, d$obs, lag = 1, filter = fd))
+  ws <- list()
+  on1 <- withCallingHandlers(
+    aci_online(d$model, d$obs, lag = 1, filter = fd),
+    warning = function(w) {
+      ws[[length(ws) + 1L]] <<- w
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_length(ws, 1L)
+  expect_s3_class(ws[[1L]], "aci_warn_leading_order")
+  expect_identical(ws[[1L]]$index, 4L)
+  expect_equal(ws[[1L]]$time, 0.3)
   expect_false(on1$meta$regularization$fired)
   expect_true(all(on1$cov > 0))
 })
@@ -190,4 +210,171 @@ test_that("the check returns the symmetric part unchanged when it passes", {
     expect_identical(.cov_guard(S, rec, "smoother_window"), sym(S))
   }
   expect_identical(rec$n, 0L)
+})
+
+
+# A Theorem 3 update outside its range ----------------------------------------
+
+## One step of the dyad's hidden noise is 0.01 at this step; `ratio` is that
+## over the prior variance.
+.ocg_tight <- function(ratio) {
+  m <- aci_dyad_model()
+  s <- simulate(m, seed = 1, t_end = 0.5, dt = 0.01)
+  list(model = m, obs = s$obs,
+       init = list(mean = s$hidden[1, 1], cov = matrix(0.01 / ratio)))
+}
+
+## A linear record that `aci()` accepts with a step ratio of 1.02.
+.ocg_accepted <- function() {
+  m <- aci_linear_model(lambda_x = 5, lambda_y = -0.5, fx = 0, fy = 0,
+                        sigma_x = 0.1, sigma_y = 1)
+  s <- simulate(m, seed = 3, t_end = 1, dt = 0.01, ic = list(x0 = 0, y0 = 0.3))
+  list(model = m, obs = s$obs, init = list(mean = 0.3, cov = matrix(0.01 / 1.02)))
+}
+
+## Two hidden components with correlated hidden and observed noise.
+.ocg_correlated <- function(prior) {
+  m <- .compiled_oracle_mv_model()
+  s <- simulate(m, seed = 1, t_end = 0.2, dt = 0.01)
+  list(model = m, obs = as_obs(s),
+       init = list(mean = c(0.8, 0.2), cov = diag(prior, 2)))
+}
+
+.ocg_n_range <- function(expr) {
+  n <- 0L
+  withCallingHandlers(expr, warning = function(w) {
+    if (inherits(w, "aci_warn_leading_order")) n <<- n + 1L
+    invokeRestart("muffleWarning")
+  })
+  n
+}
+
+
+test_that("a step ratio above 1 warns once on every Theorem 3 route", {
+  r <- .ocg_tight(10)
+  f <- aci_filter(r$model, r$obs, init = r$init)
+  rt <- unserialize(serialize(list(model = r$model, filter = f), NULL))
+  expect_identical(.ocg_n_range(
+    aci_online(r$model, r$obs, lag = Inf, init = r$init)), 1L)
+  expect_identical(.ocg_n_range(
+    aci_online(r$model, r$obs, lag = Inf, filter = f)), 1L)
+  expect_identical(.ocg_n_range(
+    aci_online(rt$model, r$obs, lag = Inf, filter = rt$filter)), 1L)
+  expect_identical(.ocg_n_range(
+    aci_online(r$model, r$obs, lag = 5, init = r$init)), 1L)
+  expect_identical(.ocg_n_range(
+    lag_table(r$model, r$obs, init = r$init)), 1L)
+  expect_identical(.ocg_n_range(
+    lag_table(r$model, r$obs, init = r$init, mode = "full")), 1L)
+
+  ## a closure model takes the same route
+  cl <- .ocg_closure()
+  cl$init <- list(mean = 0, cov = matrix(0.05^2 * 0.09 / 4))
+  expect_identical(.ocg_n_range(
+    aci_online(cl$model, cl$obs, lag = Inf, init = cl$init)), 1L)
+
+  ## a record aci() accepts: the table it builds, and each range route
+  a <- .ocg_accepted()
+  expect_identical(.ocg_n_range(
+    aci(a$model, a$obs, init = a$init, keep = "table")), 1L)
+  for (keep in c("none", "paths")) {
+    res <- aci(a$model, a$obs, init = a$init, keep = keep)
+    expect_identical(.ocg_n_range(aci_range(res)), 1L)
+  }
+})
+
+
+test_that("the warning names the interval and carries the ratio", {
+  r <- .ocg_tight(10)
+  w <- tryCatch(aci_online(r$model, r$obs, lag = Inf, init = r$init),
+                warning = function(w) w)
+  expect_s3_class(w, "aci_warn_leading_order")
+  expect_s3_class(w, "aci_warning")
+  expect_equal(w$ratio, 10, tolerance = 1e-12)
+  expect_identical(w$index, 1L)
+  expect_equal(w$time, 0)
+  expect_match(conditionMessage(w), "index 1 (time 0)", fixed = TRUE)
+
+  ## the call still returns, and the first anchor shows what the warning is
+  ## about: a smoothed variance above the filter variance
+  f <- aci_filter(r$model, r$obs, init = r$init)
+  on <- suppressWarnings(aci_online(r$model, r$obs, lag = Inf, filter = f))
+  expect_s3_class(on, "da_path_gaussian")
+  expect_gt(on$cov[1L, 1L, 1L], 100 * f$cov[1L, 1L, 1L])
+})
+
+
+test_that("a step ratio below 1 raises nothing", {
+  for (r in list(.ocg_tight(0.99), .ocg_tight(0.1))) {
+    expect_identical(.ocg_n_range(
+      aci_online(r$model, r$obs, lag = Inf, init = r$init)), 0L)
+    expect_identical(.ocg_n_range(
+      aci_online(r$model, r$obs, lag = 5, init = r$init)), 0L)
+    expect_identical(.ocg_n_range(
+      lag_table(r$model, r$obs, init = r$init)), 0L)
+  }
+  ## the boundary is between 0.99 and 1.01
+  r <- .ocg_tight(1.01)
+  expect_identical(.ocg_n_range(
+    aci_online(r$model, r$obs, lag = Inf, init = r$init)), 1L)
+  ## the automatic prior
+  r <- .ocg_tight(1)
+  expect_identical(.ocg_n_range(aci_online(r$model, r$obs, lag = Inf)), 0L)
+  expect_identical(.ocg_n_range(lag_table(r$model, r$obs)), 0L)
+})
+
+
+test_that("with correlated noise the ratio uses the conditional hidden noise", {
+  ## `gyy Rf^-1 dt` alone is 1.18 here, and nothing is wrong
+  below <- .ocg_correlated(0.006)
+  expect_identical(.ocg_n_range(
+    aci_online(below$model, below$obs, lag = Inf, init = below$init)), 0L)
+  expect_identical(.ocg_n_range(
+    aci_online(below$model, below$obs, lag = 5, init = below$init)), 0L)
+  expect_identical(.ocg_n_range(
+    lag_table(below$model, below$obs, init = below$init)), 0L)
+
+  above <- .ocg_correlated(0.004)
+  expect_identical(.ocg_n_range(
+    aci_online(above$model, above$obs, lag = 5, init = above$init)), 1L)
+  expect_identical(.ocg_n_range(
+    lag_table(above$model, above$obs, init = above$init)), 1L)
+  w <- tryCatch(
+    aci_online(above$model, above$obs, lag = Inf, init = above$init),
+    warning = function(w) w
+  )
+  expect_s3_class(w, "aci_warn_leading_order")
+  expect_identical(w$index, 1L)
+  b <- .compile_cgns_run(above$model, above$obs, NULL)
+  co <- .compiled_co(b, 1L)
+  Q <- co$gyy - co$gyx %*% .compiled_ginv(b, 1L) %*% t(co$gyx)
+  want <- max(eigen(Q, symmetric = TRUE, only.values = TRUE)$values) *
+    b$dt / 0.004
+  expect_gt(want, 1)
+  expect_equal(w$ratio, want, tolerance = 1e-12)
+})
+
+
+test_that("the scalar and per-interval kernels report the same ratio once", {
+  r <- .ocg_tight(10)
+  b <- .compile_cgns_run(r$model, as_obs(r$obs), NULL)
+  f <- aci_filter(r$model, r$obs, init = r$init)
+  rec <- .aci_reg_new("none", b$t)
+  w1 <- tryCatch(.online_aux_scalar(b, f, rec = rec), warning = function(w) w)
+  expect_s3_class(w1, "aci_warn_leading_order")
+  expect_true(rec$step_warned)
+  ## the latch: the same recorder is silent afterwards, on either kernel
+  expect_no_warning(.online_aux_scalar(b, f, rec = rec))
+  expect_no_warning(.thmD1_aux_compiled(b, 1L, f$cov[, , 1L], rec = rec))
+  w2 <- tryCatch(
+    .thmD1_aux_compiled(b, 1L, f$cov[, , 1L], rec = .aci_reg_new("none", b$t)),
+    warning = function(w) w
+  )
+  expect_s3_class(w2, "aci_warn_leading_order")
+  expect_equal(w2$ratio, w1$ratio, tolerance = 1e-12)
+  expect_identical(w2$index, w1$index)
+  ## an interval below 1 is silent on a fresh recorder
+  expect_no_warning(
+    .thmD1_aux_compiled(b, 2L, f$cov[, , 2L], rec = .aci_reg_new("none", b$t))
+  )
 })

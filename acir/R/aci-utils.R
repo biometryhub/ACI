@@ -218,6 +218,8 @@ spd_floor <- function(R, eps = 1e-12) {
   ## its filter, smoother, table and metric work, so the latch is what makes
   ## the report once per call rather than once per kernel.
   e$warned <- FALSE
+  ## Latch for `.aci_step_ratio_warn()`, on the same grounds.
+  e$step_warned <- FALSE
   e
 }
 
@@ -351,6 +353,40 @@ spd_floor <- function(R, eps = 1e-12) {
       (!is.finite(s$worst_value) || value < s$worst_value))
     s$worst_value <- value
   rec$sites[[site]] <- s
+  invisible(NULL)
+}
+
+
+#' Warn once when a Theorem 3 update is outside its range (internal)
+#'
+#' To leading order the Theorem 3 update factor is the identity minus
+#' `Q Rf^-1 dt`, with `Rf` the filter covariance at the start of the interval
+#' and `Q` the hidden noise covariance given the observed increment. The step
+#' ratio is the largest eigenvalue of `Q Rf^-1 dt`. The exact factor stays
+#' positive; above a ratio of 1 the leading-order one changes sign in that
+#' direction, and the smoothed covariance can exceed the filter covariance.
+#' The latch lives on the recorder, as for `.aci_reg_report()`, and one public
+#' call warns once, for the first interval a kernel reports.
+#'
+#' @param rec A recorder from `.aci_reg_new()`.
+#' @param ratio Step ratio at the interval, above 1.
+#' @param index Interval index.
+#' @returns Invisibly `NULL`; called for the warning it raises.
+#' @noRd
+.aci_step_ratio_warn <- function(rec, ratio, index) {
+  if (isTRUE(rec$step_warned)) return(invisible(NULL))
+  rec$step_warned <- TRUE
+  time <- rec$tgrid[index]
+  aci_warn(
+    "aci_warn_leading_order",
+    sprintf(paste(
+      "The Theorem 3 update is outside its range at index %d (time %g): one",
+      "step of hidden noise is %.3g times the filter variance there, and the",
+      "leading-order update holds only below 1. The smoothed covariance at",
+      "and before that index can exceed the filter covariance. Reduce dt, or",
+      "at index 1 use a prior variance of at least one step of hidden noise."),
+      index, time, ratio),
+    ratio = ratio, index = index, time = time)
   invisible(NULL)
 }
 

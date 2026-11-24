@@ -25,6 +25,14 @@
   dt <- bundle$dt
   Rfi <- chol_solve(Rf, diag(l), "Rf", rec, "onelag_filter_cov")
   gxy <- t(co$gyx)
+  ## Step ratio; see `.aci_step_ratio_warn()`. The trace bounds the largest
+  ## eigenvalue from above, and the eigenvalues are taken only on an interval
+  ## the trace does not clear.
+  QR <- (co$gyy - co$gyx %*% Gi %*% gxy) %*% Rfi
+  if (isTRUE(sum(diag(QR)) * dt > 1)) {
+    ratio <- max(Re(eigen(QR, only.values = TRUE)$values)) * dt
+    if (ratio > 1) .aci_step_ratio_warn(rec, ratio, j)
+  }
   Gx <- co$Lx + gxy %*% Rfi
   Gy <- co$Ly + co$gyy %*% Rfi
   K <- Gi %*% Gx
@@ -82,7 +90,8 @@
   ## A scalar hidden state takes the auxiliaries as vectors and runs the
   ## backward recursion on them; the per-interval route below is kept for
   ## the case where the covariance policy has something to record.
-  sc <- if (l == 1L) .smoother_thmD1_scalar_moments(bundle, filt) else NULL
+  sc <- if (l == 1L) .smoother_thmD1_scalar_moments(bundle, filt, rec) else
+    NULL
   if (!is.null(sc)) {
     MU[, 1L] <- sc$mu
     CV[1L, 1L, ] <- sc$cv
@@ -141,7 +150,8 @@
   E <- array(NA_real_, c(l, l, N))
   dmu <- matrix(NA_real_, N, l)
   dR <- array(NA_real_, c(l, l, N))
-  sc <- if (l == 1L) .forward_primitives_scalar(bundle, filt) else NULL
+  sc <- if (l == 1L) .forward_primitives_scalar(bundle, filt, rec = rec) else
+    NULL
   if (!is.null(sc)) {
     E[1L, 1L, ] <- sc$E_v
     dmu[, 1L] <- sc$dmu[, 1L]
@@ -435,7 +445,8 @@
   OLmu <- matrix(NA_real_, N, l)
   OLR <- vector("list", N)
   s_n <- r_n <- e_n <- numeric(N)
-  sc <- if (l == 1L) .forward_primitives_scalar(bundle, filt) else NULL
+  sc <- if (l == 1L) .forward_primitives_scalar(bundle, filt, rec = rec) else
+    NULL
   if (!is.null(sc)) {
     Ehist <- sc$E
     OLmu <- sc$one_mu

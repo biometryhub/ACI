@@ -25,7 +25,8 @@
   one_R <- vector("list", N)
   s_n <- r_n <- e_n <- numeric(N)
 
-  sc <- if (l == 1L) .forward_primitives_scalar(bundle, filter, from) else NULL
+  sc <- if (l == 1L) .forward_primitives_scalar(bundle, filter, from, rec) else
+    NULL
   if (!is.null(sc)) {
     E <- sc$E
     dmu <- sc$dmu

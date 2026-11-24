@@ -69,6 +69,10 @@ smoother as its reference. That reference costs O(N) time-point work; table
 construction then costs work proportional to the retained lag cells, with
 O(N^2) cells for a full table in the worst case.
 }
+\details{
+The reference inherits the range of that scheme. The section on it in
+\code{\link[=aci_online]{aci_online()}} describes the \code{aci_warn_leading_order} warning.
+}
 \examples{
 m <- aci_dyad_model()
 sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)

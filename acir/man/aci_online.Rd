@@ -119,6 +119,26 @@ The one exact boundary is the other end: at \code{lag = 0} the returned moments
 are the filter moments, unchanged value for value.
 }
 
+\section{Range of the scheme}{
+
+The leading-order update depends on the ratio of one step of hidden noise
+to the filter variance at the start of each interval: the largest
+eigenvalue of \verb{Q Rf^-1 dt}, with \code{Rf} the filter covariance and \code{Q} the
+hidden noise covariance given the observed increment. The exact update
+factor stays positive for every ratio. The leading-order factor changes
+sign once the ratio passes 1, and the smoothed covariance at and before
+that interval can then exceed the filter covariance, which no smoother
+allows. This happens with a prior variance below one step of hidden noise,
+and on a record whose filter variance falls that low. \code{aci_online()} and
+\code{\link[=lag_table]{lag_table()}}, and \code{\link[=aci]{aci()}} and \code{\link[=aci_range]{aci_range()}} when they build a table, raise
+one \code{aci_warn_leading_order} per call when a ratio is above 1. The
+condition carries \code{ratio}, \code{index} and \code{time} for the interval it reports.
+The returned values are those the scheme gives. A smaller \code{dt} lowers the
+ratio, and at the first interval a wider prior does too. A table already
+built forms no update when it is passed to \code{\link[=aci]{aci()}} or \code{\link[=aci_range]{aci_range()}}, and
+raises nothing more.
+}
+
 \examples{
 m <- aci_dyad_model()
 sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)
