@@ -103,6 +103,7 @@
 
 
 test_that("blocked rows match the recursion on a 100,000-step record", {
+  skip_on_cran()
   rec <- .scalar_rows_record(100000L)
   sfx <- .scalar_rows_suffix(rec)
   for (j in c(1L, 50000L, 95000L, 99999L, 100000L)) {
@@ -207,6 +208,7 @@ test_that("a non-positive variance reaches the covariance policy by cell", {
 
 
 test_that("differenced cumulative logarithms cancel, blocked ones do not", {
+  skip_on_cran()
   ## The ordered products d_k = prod_{i=j}^{k-1} E_i for cells close to a
   ## late anchor, three ways: the sequential product (the recursion's own
   ## arithmetic), the difference of a record-length cumulative logarithm
