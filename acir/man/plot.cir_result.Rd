@@ -9,7 +9,12 @@
 \arguments{
 \item{x}{A \code{cir_result} object.}
 
-\item{...}{Passed to the underlying base-graphics calls.}
+\item{...}{Further arguments to \code{\link[=plot]{plot()}}. A \code{type}, \code{xlab}, \code{ylab} or
+\code{main} given here replaces the default. A range with a single anchor is
+drawn as a title only, so only its \code{main}, \code{sub}, \code{xlab} and \code{ylab} are
+used, by \code{\link[=title]{title()}}. A range with more than one anchor whose values are
+all \code{NA}, as when every anchor is masked, needs a \code{ylim} that is not
+\code{NULL}.}
 }
 \value{
 \code{x}, invisibly; called for the plot it draws.

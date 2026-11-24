@@ -767,7 +767,9 @@ lag_table <- function(model, obs, mode = c("forward", "full"),
 #' @param model A `cgns_model` object.
 #' @param obs An `obs_traj` object.
 #' @param conditional Optional conditional tag the table must have been
-#'   built with.
+#'   built with. When it is `NULL`, the table must carry the specification
+#'   the model declares in `meta$estimand_nontarget`, if it declares one,
+#'   because [lag_table()] builds such a model's tables with it.
 #' @param init Optional prior the table must have been built with.
 #' @returns Invisibly `TRUE`; called for its error conditions.
 #' @noRd
@@ -788,6 +790,7 @@ lag_table <- function(model, obs, mode = c("forward", "full"),
       !identical(table$meta$source_model, model))
     aci_abort("aci_error_model_contract",
               "The supplied lag table was computed with a different model object.")
+  if (is.null(conditional)) conditional <- .model_estimand_spec(model, NULL)
   if (!identical(conditional %||% NULL, table$meta$conditional %||% NULL))
     aci_abort("aci_error_nontarget",
               paste("The supplied lag table used a different",

@@ -331,6 +331,31 @@ test_that("a declared estimand refuses to compose with a second one", {
 })
 
 
+test_that("aci() reuses a lag table built for a declared estimand", {
+  ds <- enso_c2c_case("tau")
+  keep <- seq_len(201L)
+  obs <- observed_trajectory(ds$obs$t[keep], ds$obs$x[keep, , drop = FALSE])
+  tb <- lag_table(ds$model, obs, init = ds$init)
+  reused <- aci(ds$model, obs, init = ds$init, table = tb)
+  expect_identical(reused$aci, lt_diag(tb))
+  ## a different specification is still refused
+  expect_error(aci(ds$model, obs, init = ds$init, table = tb,
+                   conditional = aci_conditional(target = "TC",
+                                                 method = "mask")),
+               class = "aci_error_nontarget")
+  ## and on a model that declares none, a table built with a specification
+  ## is still refused without one
+  hw <- enso_c2c_case("hW")
+  obs_hw <- observed_trajectory(hw$obs$t[keep],
+                                hw$obs$x[keep, , drop = FALSE])
+  tb_hw <- lag_table(hw$model, obs_hw, init = hw$init,
+                     conditional = aci_conditional(target = "TC",
+                                                   method = "mask"))
+  expect_error(aci(hw$model, obs_hw, init = hw$init, table = tb_hw),
+               class = "aci_error_nontarget")
+})
+
+
 ################################################################################
 # 5. The recorded conditional estimand is the reference script's (W3e)
 ################################################################################
