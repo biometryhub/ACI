@@ -66,3 +66,12 @@ Empty at approval.
   the prior variance falls below one step of hidden noise: 1.4e-08 on the
   linear model at 1.0051 steps, 3.4e-03 on the dyad at 1.01 steps, 826 on
   the reported dyad record. The fault is left unchanged.
+
+### 2026-11-24, one hidden component
+
+- **An inline test comes before the check.** With one hidden component the
+  window route tests the variance for finite and positive, as the scalar
+  kernels do, and calls the check only when that test fails. Calling the
+  check at every anchor added about 30% to a fixed-lag run on a 4,001-point
+  scalar record (0.050 s to 0.066 s). With the inline test the time is
+  0.050 s again and every value is unchanged.

@@ -239,7 +239,10 @@
     }
     MU[j, ] <- MU[j, ] + agg$s
     rec$j <- j
-    CV[, , j] <- .cov_guard(CV[, , j] + agg$S, rec, "smoother_window")
+    S <- CV[, , j] + agg$S
+    ## One hidden component: a finite positive variance needs no factorisation.
+    CV[, , j] <- if (l == 1L && is.finite(S) && S > 0) S else
+      .cov_guard(S, rec, "smoother_window")
     eff[j] <- hi - j + 1L
     if (nf == 0L) {
       suffix <- NULL
