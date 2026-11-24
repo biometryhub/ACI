@@ -55,3 +55,10 @@ Empty at approval.
   `aci_filter()`, `aci_smoother()`, `aci_online()`, `lag_table()`). The
   internal `@noRd` entries describe arguments that receive a prior already
   checked by the verbs.
+
+### 2026-11-24, `lag_table()` settings
+
+- The help of `lag_table()` said `stepper` may be `"implicit"` and `nsub`
+  any positive whole number. It refuses both with `aci_error_stepper`. The
+  two entries now say so, because the new error from `aci(table = )` sends
+  the reader to `lag_table()` for these settings.

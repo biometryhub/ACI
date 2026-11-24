@@ -47,9 +47,10 @@ it is frozen.}
 other entry is an error, except \code{source}, which a stored \code{meta$init}
 carries.}
 
-\item{stepper}{Either \code{"explicit"} or \code{"implicit"}.}
+\item{stepper}{Must be \code{"explicit"}; any other value raises
+\code{aci_error_stepper}.}
 
-\item{nsub}{Positive whole number of sub-steps taken per observation.}
+\item{nsub}{Must be 1; any other value raises \code{aci_error_stepper}.}
 
 \item{regularize}{Covariance policy for this call; see \code{\link[=aci_filter]{aci_filter()}}. One
 record covers the filter, the Theorem 3 reference smoother and every

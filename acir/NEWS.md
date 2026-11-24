@@ -4,7 +4,8 @@
 
 * `aci(table = )` stops with `aci_error_dims` when `stepper`, `nsub` or
   `regularize` is also supplied. The table already fixes these settings, and
-  the call used to ignore them; give them to `lag_table()`.
+  the call used to ignore them; give them to `lag_table()`. `?lag_table` now
+  says that it takes only `stepper = "explicit"` and `nsub = 1`.
 * An `init` list with an entry other than `mean` and `cov` stops with
   `aci_error_dims` naming the unknown entries. `init = list(m = 5, cov = 1)`
   used to run with prior mean 0. A longer name that R matched to `cov`, as
