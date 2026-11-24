@@ -2,6 +2,13 @@
 
 ## Bug fixes
 
+* `aci(table = )` stops with `aci_error_dims` when `stepper`, `nsub` or
+  `regularize` is also supplied. The table already fixes these settings, and
+  the call used to ignore them; give them to `lag_table()`.
+* An `init` list with an entry other than `mean` and `cov` stops with
+  `aci_error_dims` naming the unknown entries. `init = list(m = 5, cov = 1)`
+  used to run with prior mean 0. The `source` entry of a stored `meta$init`
+  is accepted, so a stored prior can be passed back.
 * Plot methods for ACI results, Gaussian paths and ranges pass extra
   arguments to `plot()` as 0.2.0 did, including unnamed arguments,
   `panel.first` and `panel.last`, and named labels such as `main` still

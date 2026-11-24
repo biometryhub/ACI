@@ -31,14 +31,18 @@ engine for a conditional-Gaussian model.}
 \item{conditional}{Optional \code{aci_conditional_spec}; see \code{\link[=aci_conditional]{aci_conditional()}}.}
 
 \item{table}{Optional precomputed \code{lag_table}, whose online diagonal is used
-in place of the headline smoother.}
+in place of the headline smoother. The table fixes \code{stepper}, \code{nsub} and
+\code{regularize} when \code{\link[=lag_table]{lag_table()}} builds it, so supplying any of them with
+\code{table} is an error; give them to \code{\link[=lag_table]{lag_table()}}.}
 
 \item{keep}{One of \code{"paths"}, \code{"table"} or \code{"none"}, selecting which objects
 are retained on the result. It does not select a smoother.}
 
 \item{decompose}{\code{TRUE} to retain the signal and dispersion parts.}
 
-\item{init}{Optional list with the initial hidden \code{mean} and \code{cov}.}
+\item{init}{Optional list with the initial hidden \code{mean} and \code{cov}. Any
+other entry is an error, except \code{source}, which a stored \code{meta$init}
+carries.}
 
 \item{stepper}{Either \code{"explicit"} or \code{"implicit"}.}
 

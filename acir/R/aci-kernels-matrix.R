@@ -41,6 +41,7 @@
 #' @returns Initial mean/covariance and their provenance.
 #' @noRd
 .compiled_filter_init <- function(bundle, init) {
+  .check_init_names(init)
   co0 <- .compiled_co(bundle, 1L)
   used_default_cov <- is.null(init) || is.null(init$cov)
   if (used_default_cov) {

@@ -30,7 +30,8 @@ aci_filter(model, obs, ...)
 \item{...}{Arguments passed to methods.}
 
 \item{init}{Optional list with the initial hidden \code{mean} and \code{cov}; \code{NULL}
-uses a diffuse prior and warns.}
+uses a diffuse prior and warns. Any other entry is an error, except
+\code{source}, which a stored \code{meta$init} carries.}
 
 \item{conditional}{Optional \code{aci_conditional_spec} selecting a
 conditional ACI

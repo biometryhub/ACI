@@ -36,7 +36,9 @@ aci_smoother(model, obs, ...)
 conditional ACI
 reduction; see \code{\link[=aci_conditional]{aci_conditional()}}.}
 
-\item{init}{Optional list with the initial hidden \code{mean} and \code{cov}.}
+\item{init}{Optional list with the initial hidden \code{mean} and \code{cov}. Any
+other entry is an error, except \code{source}, which a stored \code{meta$init}
+carries.}
 
 \item{stepper}{Either \code{"explicit"} or \code{"implicit"}.}
 

@@ -296,6 +296,7 @@
 #' @returns Initial values and provenance.
 #' @noRd
 .scalar_filter_init <- function(bundle, init) {
+  .check_init_names(init)
   s <- bundle$scalar
   co0 <- list(gyy = matrix(s$gyy[1L], 1L, 1L),
               Ly = matrix(s$Ly[1L], 1L, 1L))

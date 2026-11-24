@@ -48,3 +48,10 @@ passes unchanged.
 ## Departures
 
 Empty at approval.
+
+### 2026-11-24, help text
+
+- Only the five exported `@param init` entries changed (`aci()`,
+  `aci_filter()`, `aci_smoother()`, `aci_online()`, `lag_table()`). The
+  internal `@noRd` entries describe arguments that receive a prior already
+  checked by the verbs.
