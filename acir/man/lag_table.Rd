@@ -53,7 +53,10 @@ it is frozen.}
 record covers the filter, the Theorem 3 reference smoother and every
 relative-entropy denominator the table forms, and is returned in
 \code{meta$regularization}; a call in which a floor fires also raises one
-\code{aci_warn_regularized}. Flooring changes the numerical covariance so that
+\code{aci_warn_regularized}. A supplied \code{filter} that took a floor adds its
+events to that record, which then reads policy \code{"floor"}, and the call
+warns. \code{\link[=aci]{aci()}} and \code{\link[=aci_range]{aci_range()}} carry a table's record and do not warn
+again. Flooring changes the numerical covariance so that
 the recursion can continue; it establishes nothing about the accuracy of
 the divergences the table stores or of anything reduced from them.}
 

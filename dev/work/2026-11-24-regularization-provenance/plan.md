@@ -52,3 +52,9 @@ unfloored objects. The full suite.
 ## Departures
 
 Empty at approval.
+
+### 2026-11-24, help
+
+- The `aci_range()` help for `aci_result` input, in `acir/R/aci-core.R`,
+  also says that a retained floored filter adds its events to the range's
+  record. `acir/man/aci_range.Rd` is regenerated with it.

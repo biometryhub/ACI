@@ -239,6 +239,32 @@ spd_floor <- function(R, eps = 1e-12) {
 }
 
 
+#' Start a recorder from a supplied path's record (internal)
+#'
+#' A call that consumes a filter the caller computed earlier starts its own
+#' record from that filter's. The fired events and policy `"floor"` are added
+#' to the recorder, and the recorder's `strict` flag keeps the call's own
+#' policy for the recursions it runs. A record that took no floor, or a path
+#' with no record, leaves the recorder unchanged. Call it on a fresh recorder
+#' only: a recorder shared with the code that built the path already holds
+#' its events.
+#'
+#' @param rec A recorder from `.aci_reg_new()`.
+#' @param reg A frozen record from `.aci_reg_freeze()`, or `NULL`.
+#' @returns `rec`, invisibly.
+#' @noRd
+.aci_reg_carry <- function(rec, reg) {
+  if (!isTRUE(reg$fired)) return(invisible(rec))
+  rec$policy <- "floor"
+  for (i in seq_len(nrow(reg$sites))) {
+    s <- as.list(reg$sites[i, , drop = FALSE])
+    rec$sites[[s$site]] <- s
+  }
+  rec$n <- rec$n + as.integer(reg$n_events)
+  invisible(rec)
+}
+
+
 #' The zero-row site frame every clean run reports (internal)
 #'
 #' Built once at load. A kernel that took no floor is the overwhelmingly

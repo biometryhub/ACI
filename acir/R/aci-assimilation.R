@@ -483,7 +483,9 @@ aci_filter.cgns_model <- function(model, obs, init = NULL, conditional = NULL,
 #' @param regularize Covariance policy for this call; see [aci_filter()]. One
 #'   record covers the whole call, so a filter recomputed here and the backward
 #'   recursion that consumes it share the `meta$regularization` on the returned
-#'   smoother, and one `aci_warn_regularized` covers both. Flooring changes the
+#'   smoother, and one `aci_warn_regularized` covers both. A supplied `filter`
+#'   that took a floor adds its events to that record, which then reads policy
+#'   `"floor"`. Flooring changes the
 #'   numerical covariance so that the recursion can continue; it establishes
 #'   nothing about the accuracy of the resulting reconstruction.
 #' @export
@@ -526,6 +528,7 @@ aci_smoother.cgns_model <- function(model, obs, filter = NULL,
   if (!is.null(filter) && nsub_supplied &&
       !identical(as.integer(filter$meta$nsub), as.integer(nsub)))
     aci_abort("aci_error_stepper", "The supplied filter uses a different nsub value.")
+  if (!is.null(filter)) .aci_reg_carry(rec, filter$meta$regularization)
   filt <- filter %||% .cgns_filter_compiled(
     bundle, init, stepper = stepper, nsub = nsub, validate = FALSE,
     regularize = rec
@@ -548,7 +551,9 @@ aci_smoother.cgns_model <- function(model, obs, filter = NULL,
 #' @param init Optional list with the initial hidden `mean` and `cov`.
 #' @param regularize Covariance policy for this call; see [aci_filter()]. One
 #'   record covers the whole call, and is returned in `meta$regularization`; a
-#'   call in which a floor fires also raises one `aci_warn_regularized`.
+#'   call in which a floor fires also raises one `aci_warn_regularized`. A
+#'   supplied `filter` that took a floor adds its events to that record, which
+#'   then reads policy `"floor"`, and the call warns.
 #'   Flooring changes the numerical covariance so that the recursion can
 #'   continue; it establishes nothing about the accuracy of the resulting
 #'   reconstruction.
@@ -589,6 +594,7 @@ aci_online.cgns_model <- function(model, obs, lag, filter = NULL,
       !.same_gaussian_init(init, filter$meta$init, bundle$l))
     aci_abort("aci_error_dims",
               "init conflicts with the prior stored on the supplied filter.")
+  if (!is.null(filter)) .aci_reg_carry(rec, filter$meta$regularization)
   filt <- filter %||% .cgns_filter_compiled(
     bundle, init, stepper = "explicit", nsub = 1L, validate = FALSE,
     loglik = FALSE, regularize = rec
@@ -697,7 +703,10 @@ aci_online.stochastic_model <- function(model, obs, lag, ...)
 #'   record covers the filter, the Theorem 3 reference smoother and every
 #'   relative-entropy denominator the table forms, and is returned in
 #'   `meta$regularization`; a call in which a floor fires also raises one
-#'   `aci_warn_regularized`. Flooring changes the numerical covariance so that
+#'   `aci_warn_regularized`. A supplied `filter` that took a floor adds its
+#'   events to that record, which then reads policy `"floor"`, and the call
+#'   warns. [aci()] and [aci_range()] carry a table's record and do not warn
+#'   again. Flooring changes the numerical covariance so that
 #'   the recursion can continue; it establishes nothing about the accuracy of
 #'   the divergences the table stores or of anything reduced from them.
 #' @param ... Must be empty; unused arguments are an error.

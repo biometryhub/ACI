@@ -134,7 +134,9 @@ rather than returning a forward answer under a backward label.
 \item \code{aci_range(aci_result)}: Forward range from an ACI result, building the table
 when it was not retained. The covariance policy is not re-resolved here:
 it is read off the result's own \code{meta$regularization}, so re-analysing a
-saved result in a new session cannot silently change it. The integration
+saved result in a new session cannot silently change it. A retained
+filter that took a floor adds its events to the range's record, and the
+call raises one \code{aci_warn_regularized}. The integration
 settings are read off the retained filter or the result's own
 \code{meta$stepper} and \code{meta$nsub}; see the section above.
 

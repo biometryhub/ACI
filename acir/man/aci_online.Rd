@@ -46,7 +46,9 @@ reduction; see \code{\link[=aci_conditional]{aci_conditional()}}.}
 
 \item{regularize}{Covariance policy for this call; see \code{\link[=aci_filter]{aci_filter()}}. One
 record covers the whole call, and is returned in \code{meta$regularization}; a
-call in which a floor fires also raises one \code{aci_warn_regularized}.
+call in which a floor fires also raises one \code{aci_warn_regularized}. A
+supplied \code{filter} that took a floor adds its events to that record, which
+then reads policy \code{"floor"}, and the call warns.
 Flooring changes the numerical covariance so that the recursion can
 continue; it establishes nothing about the accuracy of the resulting
 reconstruction.}

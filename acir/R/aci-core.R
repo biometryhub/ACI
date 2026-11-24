@@ -1076,7 +1076,9 @@ aci_range.lag_table <- function(x, direction = c("forward", "backward"),
 #' @describeIn aci_range Forward range from an ACI result, building the table
 #'   when it was not retained. The covariance policy is not re-resolved here:
 #'   it is read off the result's own `meta$regularization`, so re-analysing a
-#'   saved result in a new session cannot silently change it. The integration
+#'   saved result in a new session cannot silently change it. A retained
+#'   filter that took a floor adds its events to the range's record, and the
+#'   call raises one `aci_warn_regularized`. The integration
 #'   settings are read off the retained filter or the result's own
 #'   `meta$stepper` and `meta$nsub`; see the section above.
 #' @export
