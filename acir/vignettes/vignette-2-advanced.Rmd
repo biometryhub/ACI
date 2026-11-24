@@ -315,7 +315,11 @@ The backward smoother returns 1.4660115 nats against a true value of zero.
 Nothing was floored: the run is under `regularize = "none"`, every
 covariance stayed positive definite, every quantity is finite and the event
 count is zero. The step alone produced it, and `nsub = 20` on the same
-record leaves 0.0140779. Positive-definite, finite output with no floor
+record leaves 0.0140779. More sub-steps do not remove the rest:
+`nsub = 10000` leaves 0.0121, because the backward pass holds the filter
+mean and covariance at their values at the start of each interval (see
+"Sub-steps and steppers" in `?aci_filter`). Positive-definite, finite output
+with no floor
 event does not certify that the step resolved the problem; it certifies
 only that the recursion did not have to be repaired to continue.
 
@@ -412,7 +416,10 @@ setNames(round(c(exp_tau, imp_tau), 6),
 ```
 
 The explicit sequence settles near 1.813 and the implicit one climbs
-towards it from below. The two schemes are different discretisations and are
+towards it from below. That value is the limit of the sub-stepped scheme,
+not the exact posterior: a larger `nsub` brings the forward filter closer
+to its exact value and leaves the smoother's error, which is proportional
+to `dt`, in place. The two schemes are different discretisations and are
 not required to agree at `nsub = 1`; the gap there is the size of that
 disagreement on this record, and it belongs beside a reported peak rather
 than averaged into it.
@@ -449,7 +456,9 @@ c(min_eigenvalue = min(gram[1, ]), min_rcond = min(gram[2, ]))
 
 That is the distinction the refusal draws. A valid observation model can
 still require a smaller step, more sub-steps, the implicit stepper or a
-tighter prior, and that is what happened here. An observation Gram that is
+tighter prior, and that is what happened here. More sub-steps and the
+implicit stepper make the recursion run. They do not make the smoothed
+result more accurate. An observation Gram that is
 itself singular is a different failure, and it is refused before the
 recursion starts.
 

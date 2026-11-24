@@ -25,7 +25,8 @@
   brings the forward filter closer to its exact value, but not the smoother
   or the ACI. A smaller `dt` brings all three closer. `stepper` applies to the
   forward filter only. `?aci`, `?aci_smoother` and `?aci_online` point to the
-  section.
+  section, and the advanced vignette says the same of its sub-stepped
+  examples.
 * The plot help says which arguments replace the defaults, and when a range
   plot needs `ylim`.
 

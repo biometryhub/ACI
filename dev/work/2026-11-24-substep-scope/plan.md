@@ -73,3 +73,11 @@ Empty at approval.
   order test does not already show.
 - The error message keeps "raise nsub": on the failing case in the new test,
   `nsub = 16` runs to completion.
+
+### 2026-11-24, vignette
+
+- `acir/vignettes/vignette-2-advanced.Rmd` also changes, in three passages
+  that described sub-stepped runs: the uncoupled null, the ENSO sequence
+  that settles near 1.813, and the list of remedies after a refusal. Each
+  now says that more sub-steps do not bring the smoothed result closer to
+  the exact posterior. No code chunk changes.
