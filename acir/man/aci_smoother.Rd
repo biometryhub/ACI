@@ -64,6 +64,10 @@ Generic reconstructing the hidden state from the whole observed record. The
 closed-form method is used for a \code{cgns_model}; a general \code{stochastic_model}
 is out of scope in this release.
 }
+\details{
+The backward pass is explicit and does not become more accurate with a
+larger \code{nsub}; see the section "Sub-steps and steppers" in \code{\link[=aci_filter]{aci_filter()}}.
+}
 \section{Methods (by class)}{
 \itemize{
 \item \code{aci_smoother(cgns_model)}: Closed-form backward-ODE smoother for a

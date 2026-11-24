@@ -275,6 +275,9 @@ aci_metric <- function(p, q, decompose = TRUE) {
 #' records zero floor events, so positive-definite, finite output with no
 #' floor event does not certify that the step resolved the problem.
 #'
+#' A larger `nsub` does not take that null's value to 0; see the section
+#' "Sub-steps and steppers" in [aci_filter()].
+#'
 #' @param model A `cgns_model` object.
 #' @param obs An observed trajectory, or anything [as_obs()] accepts.
 #' @param engine One of `"auto"` or `"cgns"`; `"auto"` selects the closed-form

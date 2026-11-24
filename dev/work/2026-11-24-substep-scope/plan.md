@@ -61,3 +61,15 @@ suite.
 ## Departures
 
 Empty at approval.
+
+### 2026-11-24, build
+
+- The innovation sign reversed in the matrix smoother kernel is already
+  caught by the existing suite (59 failures in eight files), because that
+  kernel has no separate single-step branch. The new smoother test catches it
+  too.
+- The implicit filter is graded only by its order against the exact filter.
+  A separate check against the stationary variance would add nothing the
+  order test does not already show.
+- The error message keeps "raise nsub": on the failing case in the new test,
+  `nsub = 16` runs to completion.

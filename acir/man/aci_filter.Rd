@@ -99,6 +99,28 @@ time. The closed-form method is used for a \code{cgns_model}; a general
 (non-CGNS) stochastic model.
 
 }}
+\section{Sub-steps and steppers}{
+
+\code{nsub} splits each observation interval into \code{nsub} equal steps for the
+forward filter. The observed rate and the model coefficients are held at
+their values at the start of the interval. As \code{nsub} grows, the filter mean
+and covariance approach the exact solution of the filter equations over
+each interval, with an error proportional to \code{dt / nsub}.
+
+A larger \code{nsub} does not bring the smoothed mean and covariance, or the ACI
+computed from them, closer to their exact values. The smoother's backward
+pass takes the same \code{nsub} steps, but it holds the filter mean and
+covariance at their values at the start of each interval. In the uncoupled
+example in \code{\link[=aci]{aci()}}, where the exact ACI is 0, the largest ACI is 0.0141 at
+\code{nsub = 20} and 0.0121 at \code{nsub = 10000}. A smaller \code{dt} reduces this
+error in proportion to \code{dt}.
+
+\code{stepper} applies to the forward filter only. \code{"implicit"} keeps the filter
+covariance positive definite. Its filter error is also proportional to
+\code{dt / nsub}. The smoother's backward pass is explicit under either stepper,
+and it can still fail with \code{aci_error_covariance_not_spd}.
+}
+
 \examples{
 m <- aci_dyad_model()
 sim <- simulate(m, seed = 1, t_end = 2, dt = 0.01)

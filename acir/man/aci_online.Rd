@@ -75,6 +75,9 @@ the estimate at index \code{j} uses the observed record through index \code{j + 
 and saturates at the end of the record. \code{lag = 0} returns the filter
 moments unchanged. \code{lag = Inf} composes the Theorem 3 updates over the whole
 record.
+
+It always uses the explicit filter with \code{nsub = 1}. The section "Sub-steps
+and steppers" in \code{\link[=aci_filter]{aci_filter()}} says what \code{nsub} and \code{stepper} do.
 }
 \section{Methods (by class)}{
 \itemize{
