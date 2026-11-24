@@ -82,8 +82,9 @@ quadrature of the subjective read-out over the threshold grid
 \item{simpson_close}{Closing rule for the leftover interval when a grid has
 an even number of points: \code{"quadratic"} (the default) fits a quadratic
 through the last three points, following \code{simps.m} in the ACI reference
-code; \code{"trapezoid"} is the package's pre-0.0.21 rule and reproduces
-results reported by earlier versions. Odd-length grids are unaffected.}
+code; \code{"trapezoid"} is the rule \code{aci}, the predecessor of \code{acir}, used up to
+version 0.0.20, and reproduces the results it reported. Odd-length grids
+are unaffected.}
 
 \item{anchors}{Optional whole numbers indexing the anchor times to report;
 \code{NULL} (the default) reports every anchor time. Only the requested rows
@@ -122,10 +123,10 @@ reference code; \code{quadrature = "sum"} uses the L1 grid sum instead.
 }
 \details{
 Only \code{direction = "forward"} is in this release. The backward range is a
-\code{FBCIR_code-main} feature: it appears in no ACI_code script, and it is held
-in the development reserve (\verb{reserve/fbcir/}) for the release that brings
-that family in. \code{direction = "backward"} raises \code{aci_error_not_implemented}
-rather than returning a forward answer under a backward label.
+\code{FBCIR_code-main} feature: it appears in no ACI_code script, and \code{acir} does
+not implement it. \code{direction = "backward"} raises
+\code{aci_error_not_implemented}, and never returns a forward answer under a
+backward label.
 }
 \section{Methods (by class)}{
 \itemize{

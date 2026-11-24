@@ -42,10 +42,14 @@ including \code{l = 1}. That form loses relative precision to cancellation as th
 two covariances approach each other: measured against the exact series at
 \code{R_q = 1}, \code{R_p = 1 + delta}, its relative error is 4.5e-05 at
 \code{delta = 1e-06}, 1.2e-02 at 1e-07 and a factor of two from 1e-08 down.
+Unit variance is close to the best case: over \code{R_q} from 1e-03 to 1e+03 the
+relative error reaches 1.9e-03 at \code{delta = 1e-06} and 0.11 at 1e-07, and
+from 1e-08 down it exceeds the value itself.
 \code{\link[=aci_metric]{aci_metric()}} instead evaluates the scalar dispersion directly from the
 variance ratio, avoiding the Cholesky-based trace calculation, so the two
 routes can disagree on identical one-dimensional inputs in that regime. The
-absolute error stays below 3e-17 nats across that sweep, because the quantity
+absolute error stays below 3e-17 nats at unit variance and below 5e-16 nats
+across the wider sweep, because the quantity
 itself is quadratic in \code{delta}, so this is a precision boundary and not a
 demonstrated accuracy failure on ordinary inputs. Positivity is imposed by
 \code{max(., 0)} on each part. That is a guard, not an accuracy proof.

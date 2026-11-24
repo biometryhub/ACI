@@ -40,10 +40,14 @@
 #' two covariances approach each other: measured against the exact series at
 #' `R_q = 1`, `R_p = 1 + delta`, its relative error is 4.5e-05 at
 #' `delta = 1e-06`, 1.2e-02 at 1e-07 and a factor of two from 1e-08 down.
+#' Unit variance is close to the best case: over `R_q` from 1e-03 to 1e+03 the
+#' relative error reaches 1.9e-03 at `delta = 1e-06` and 0.11 at 1e-07, and
+#' from 1e-08 down it exceeds the value itself.
 #' [aci_metric()] instead evaluates the scalar dispersion directly from the
 #' variance ratio, avoiding the Cholesky-based trace calculation, so the two
 #' routes can disagree on identical one-dimensional inputs in that regime. The
-#' absolute error stays below 3e-17 nats across that sweep, because the quantity
+#' absolute error stays below 3e-17 nats at unit variance and below 5e-16 nats
+#' across the wider sweep, because the quantity
 #' itself is quadratic in `delta`, so this is a precision boundary and not a
 #' demonstrated accuracy failure on ordinary inputs. Positivity is imposed by
 #' `max(., 0)` on each part. That is a guard, not an accuracy proof.
@@ -830,10 +834,10 @@ print.cir_result <- function(x, ...) {
 #' reference code; `quadrature = "sum"` uses the L1 grid sum instead.
 #'
 #' Only `direction = "forward"` is in this release. The backward range is a
-#' `FBCIR_code-main` feature: it appears in no ACI_code script, and it is held
-#' in the development reserve (`reserve/fbcir/`) for the release that brings
-#' that family in. `direction = "backward"` raises `aci_error_not_implemented`
-#' rather than returning a forward answer under a backward label.
+#' `FBCIR_code-main` feature: it appears in no ACI_code script, and `acir` does
+#' not implement it. `direction = "backward"` raises
+#' `aci_error_not_implemented`, and never returns a forward answer under a
+#' backward label.
 #'
 #' @section Integration settings and provenance:
 #' The lag-table recursions are defined for the explicit single-step filter
@@ -889,9 +893,7 @@ aci_range <- function(x, direction = c("forward", "backward"), ...)
   if (identical(direction, "backward"))
     aci_abort("aci_error_not_implemented", paste(
       "The backward causal influence range is not in this release: it is a",
-      "FBCIR_code-main feature with no ACI_code counterpart, and is held in",
-      "the development reserve (reserve/fbcir/) for the release that brings",
-      "that family in."))
+      "FBCIR_code-main feature with no ACI_code counterpart."))
   return(direction)
 }
 
@@ -942,8 +944,9 @@ aci_range <- function(x, direction = c("forward", "backward"), ...)
 #' @param simpson_close Closing rule for the leftover interval when a grid has
 #'   an even number of points: `"quadratic"` (the default) fits a quadratic
 #'   through the last three points, following `simps.m` in the ACI reference
-#'   code; `"trapezoid"` is the package's pre-0.0.21 rule and reproduces
-#'   results reported by earlier versions. Odd-length grids are unaffected.
+#'   code; `"trapezoid"` is the rule `aci`, the predecessor of `acir`, used up to
+#'   version 0.0.20, and reproduces the results it reported. Odd-length grids
+#'   are unaffected.
 #' @param anchors Optional whole numbers indexing the anchor times to report;
 #'   `NULL` (the default) reports every anchor time. Only the requested rows
 #'   are formed and reduced, so a handful of anchors on a long record costs a

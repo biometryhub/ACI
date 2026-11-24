@@ -183,7 +183,7 @@ print.da_path_gaussian <- function(x, ...) {
 #' @param x A `da_path_gaussian` object.
 #' @param ... Ignored, for consistency with the generic.
 #' @returns A data frame in long form with one row per time and hidden
-#'   component, carrying the mean and its marginal variance.
+#'   component, carrying the mean and its marginal standard deviation `sd`.
 #' @export
 as.data.frame.da_path_gaussian <- function(x, ...) {
   l <- ncol(x$mean)
@@ -682,8 +682,8 @@ aci_online.stochastic_model <- function(model, obs, lag, ...)
 #' @param obs An observed trajectory, or anything [as_obs()] accepts.
 #' @param mode Either `"forward"` or `"full"`, selecting which cells are
 #'   retained.
-#' @param tol Positive tolerance below which a row is frozen by the adaptive
-#'   storage rule.
+#' @param tol Non-negative tolerance below which a row is frozen by the
+#'   adaptive storage rule; 0 turns freezing off.
 #' @param window Number of consecutive steps a row must stay below `tol` before
 #'   it is frozen.
 #' @param max_lag Maximum positive lag retained, or `Inf` for no cap.
@@ -691,8 +691,9 @@ aci_online.stochastic_model <- function(model, obs, lag, ...)
 #' @param smoother Optional precomputed smoother path.
 #' @param conditional Optional `aci_conditional_spec`; see [aci_conditional()].
 #' @param init Optional list with the initial hidden `mean` and `cov`.
-#' @param stepper Either `"explicit"` or `"implicit"`.
-#' @param nsub Positive whole number of sub-steps taken per observation.
+#' @param stepper Must be `"explicit"`; any other value raises
+#'   `aci_error_stepper`.
+#' @param nsub Must be 1; any other value raises `aci_error_stepper`.
 #' @param regularize Covariance policy for this call; see [aci_filter()]. One
 #'   record covers the filter, the Theorem 3 reference smoother and every
 #'   relative-entropy denominator the table forms, and is returned in
@@ -830,14 +831,15 @@ lt_diag <- function(x) {
 
 #' One row of a lag table
 #'
-#' Accesses the divergences at one anchor time across increasing positive lag,
-#' padding the cells that adaptive storage did not retain.
+#' Accesses the divergences at one anchor time across increasing lag, starting
+#' at lag 0, padding the cells that adaptive storage did not retain.
 #'
 #' @param x A `lag_table` object.
 #' @param j Integer index of the anchor time.
 #' @param pad Either `"zero"` or `"na"`, the value used for cells the table did
 #'   not retain.
-#' @returns Numeric vector of divergences at increasing positive lag.
+#' @returns Numeric vector of divergences at lags 0, 1, 2, and so on; the
+#'   first element is the anchor's zero-lag divergence.
 #'
 #' @seealso [lt_diag()], [aci_range()]
 #'
@@ -921,7 +923,8 @@ print.lag_table <- function(x, ...) {
 #' @param x A `lag_table` object.
 #' @param ... Ignored, for consistency with the generic.
 #' @returns A data frame in long form with one row per retained cell, carrying
-#'   the anchor time, the lag and the divergence.
+#'   the anchor index `j`, the index `n` of the later time (`n - j` is the lag
+#'   in steps) and the divergence `P`.
 #' @export
 as.data.frame.lag_table <- function(x, ...) {
   do.call(rbind, lapply(seq_along(x$rows), function(j)

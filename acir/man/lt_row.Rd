@@ -15,11 +15,12 @@ lt_row(x, j, pad = c("zero", "na"))
 not retain.}
 }
 \value{
-Numeric vector of divergences at increasing positive lag.
+Numeric vector of divergences at lags 0, 1, 2, and so on; the
+first element is the anchor's zero-lag divergence.
 }
 \description{
-Accesses the divergences at one anchor time across increasing positive lag,
-padding the cells that adaptive storage did not retain.
+Accesses the divergences at one anchor time across increasing lag, starting
+at lag 0, padding the cells that adaptive storage did not retain.
 }
 \examples{
 m <- aci_dyad_model()

@@ -29,8 +29,8 @@ lag_table(
 \item{mode}{Either \code{"forward"} or \code{"full"}, selecting which cells are
 retained.}
 
-\item{tol}{Positive tolerance below which a row is frozen by the adaptive
-storage rule.}
+\item{tol}{Non-negative tolerance below which a row is frozen by the
+adaptive storage rule; 0 turns freezing off.}
 
 \item{window}{Number of consecutive steps a row must stay below \code{tol} before
 it is frozen.}
@@ -45,9 +45,10 @@ it is frozen.}
 
 \item{init}{Optional list with the initial hidden \code{mean} and \code{cov}.}
 
-\item{stepper}{Either \code{"explicit"} or \code{"implicit"}.}
+\item{stepper}{Must be \code{"explicit"}; any other value raises
+\code{aci_error_stepper}.}
 
-\item{nsub}{Positive whole number of sub-steps taken per observation.}
+\item{nsub}{Must be 1; any other value raises \code{aci_error_stepper}.}
 
 \item{regularize}{Covariance policy for this call; see \code{\link[=aci_filter]{aci_filter()}}. One
 record covers the filter, the Theorem 3 reference smoother and every

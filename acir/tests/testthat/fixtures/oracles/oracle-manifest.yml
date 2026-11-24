@@ -36,6 +36,18 @@
 # `test-identities.R` and `test-online-smoother.R` do not exist here;
 # inst/evidence/register.csv records where each graded relation actually
 # runs in acir.
+#
+# For the `analytic_oracles` block at the end of this file, which calls
+# itself the primary grounding for the cross-noise path, acir holds:
+#
+#   riccati_fixed_point  no acir test.  The cross-noise terms are graded
+#       here by the independent MATLAB transcriptions pinned above
+#       (test-19-compiled-oracles.R, test-27-online-lag.R) and by the
+#       in-test R transcription of the correlated backward loop in
+#       test-03-engine.R, not by an analytic identity.
+#   terminal_identity  test-28-partition-oracles.R, on the ENSO
+#       partitions, whose cross-noise term is exactly zero.
+#   zero_information  no acir test.
 # =========================================================================
 #
 # Provenance of the independent-oracle fixtures shipped with aciR.

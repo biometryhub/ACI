@@ -617,13 +617,13 @@ max(fc$tail_bound)
 
 `tail_bound` is an estimate, not a certified error bound. In the table
 above it tracks the realised error to within an order of magnitude for the
-`tol` rule, and overstates it for the hard `max_lag` cap. Setting
+`tol` rule, and understates it for the hard `max_lag` cap. Setting
 `options(aci.default_tol = 0)` disables truncation and reproduces the
 untruncated convention of the published figures. Note that the streamed
 route reads `tol` from that option rather than from an argument.
 
-`mode = "full"` retains the negative-lag cells as well, at
-correspondingly more work, and requires `max_lag = Inf`.
+`mode = "full"` stores the same rows as `mode = "forward"` with `tol = 0`,
+ignores `tol` and `window`, and requires `max_lag = Inf`.
 
 ### Three named functionals
 

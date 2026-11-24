@@ -9,8 +9,9 @@ Gaussian nonlinear systems, consolidating the `aci` and `aciR` packages into a
 single implementation.
 
 Its outputs are graded against hash-pinned reference records. The filter, the
-smoother and the total ACI metric are compared with the authors' published
-MATLAB outputs for the dyad and predator-prey systems, and the fixed-lag
+smoother and the total ACI metric are compared with the outputs of MATLAB
+harnesses adapted from the authors' published scripts for the dyad and
+predator-prey systems, and the fixed-lag
 online smoother and the causal influence range with those outputs for the dyad
 record only; the paths those scripts do not exercise (the noise
 cross-covariance terms, the matrix online smoother, the general auxiliary

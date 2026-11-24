@@ -52,3 +52,9 @@ and `test-31`, which read the manifest and the register, a render of
 ## Departures
 
 Empty at approval.
+
+### 2026-11-24, NEWS
+
+- **Two bullets.** The documentation corrections and the evidence
+  corrections are listed separately under 0.2.2, because the second changes
+  what the register claims.

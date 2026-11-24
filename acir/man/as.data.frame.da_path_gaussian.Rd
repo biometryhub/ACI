@@ -13,7 +13,7 @@
 }
 \value{
 A data frame in long form with one row per time and hidden
-component, carrying the mean and its marginal variance.
+component, carrying the mean and its marginal standard deviation \code{sd}.
 }
 \description{
 Coerce a Gaussian assimilation path to a data frame

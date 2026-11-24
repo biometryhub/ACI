@@ -70,6 +70,7 @@ test_that("T3: online-table identities -- diag == ACI == KL; P[j,N] == 0", {
   smoo <- online_smoother(m, s$obs, filt)
   lt <- lag_table(m, s$obs, mode = "full", filter = filt, smoother = smoo)
   a <- aci(m, s$obs, table = lt)
+  # Identity check: aci(table = ) returns the table's own diagonal.
   expect_equal(lt_diag(lt), a$aci, tolerance = 1e-10)
   expect_equal(lt_diag(lt),
                aci_metric(smoo, filt)$total, tolerance = 1e-12)

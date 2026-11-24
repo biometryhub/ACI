@@ -12,9 +12,11 @@ finite scalar or a \code{k} by \code{l} matrix.}
 
 \item{lambda_y}{Hidden self-drift; a finite scalar or an \code{l} by \code{l} matrix.}
 
-\item{fx}{Function of \verb{(t, x)} giving the remaining observed drift.}
+\item{fx}{Function of \verb{(t, x)} giving the remaining observed drift, or a
+finite constant of length 1 or \code{k}.}
 
-\item{fy}{Function of \verb{(t, x)} giving the remaining hidden drift.}
+\item{fy}{Function of \verb{(t, x)} giving the remaining hidden drift, or a
+finite constant of length 1 or \code{l}.}
 
 \item{sigma_x}{Observed noise amplitude.}
 

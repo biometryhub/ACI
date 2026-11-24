@@ -13,7 +13,8 @@
 }
 \value{
 A data frame in long form with one row per retained cell, carrying
-the anchor time, the lag and the divergence.
+the anchor index \code{j}, the index \code{n} of the later time (\code{n - j} is the lag
+in steps) and the divergence \code{P}.
 }
 \description{
 Coerce a lag table to a data frame
