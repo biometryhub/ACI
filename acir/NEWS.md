@@ -7,8 +7,10 @@
   the call used to ignore them; give them to `lag_table()`.
 * An `init` list with an entry other than `mean` and `cov` stops with
   `aci_error_dims` naming the unknown entries. `init = list(m = 5, cov = 1)`
-  used to run with prior mean 0. The `source` entry of a stored `meta$init`
-  is accepted, so a stored prior can be passed back.
+  used to run with prior mean 0. A longer name that R matched to `cov`, as
+  in `covariance =`, used to set the prior covariance and is refused as
+  well. The `source` entry of a stored `meta$init` is accepted, so a stored
+  prior can be passed back.
 * Plot methods for ACI results, Gaussian paths and ranges pass extra
   arguments to `plot()` as 0.2.0 did, including unnamed arguments,
   `panel.first` and `panel.last`, and named labels such as `main` still
