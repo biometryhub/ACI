@@ -1,0 +1,50 @@
+# Plan: refuse ignored table settings and unknown prior entries (from intent.md 2026-11-24)
+
+Status: draft 2026-11-24.
+
+## Files that change
+
+- `acir/R/aci-core.R`: `aci()` refuses `stepper`, `nsub` or `regularize`
+  supplied with `table`, tested with `missing()`; the `@param table` and
+  `@param init` text.
+- `acir/R/aci-assimilation.R`: new internal `.check_init_names()`, called
+  from `.same_gaussian_init()` on the supplied prior; the `@param init` text
+  of `aci_smoother()`, `aci_online()` and `lag_table()`.
+- `acir/R/aci-kernels-scalar.R`: `.scalar_filter_init()` calls
+  `.check_init_names()` first.
+- `acir/R/aci-kernels-matrix.R`: `.compiled_filter_init()` calls
+  `.check_init_names()` first.
+- `acir/R/aci-*.R`: any other `@param init` line, so each names the accepted
+  entries.
+- `acir/man/`: the pages regenerated from that roxygen.
+- `acir/tests/testthat/test-49-ignored-inputs.R`: new.
+- `acir/NEWS.md`: two bullets under `# acir 0.2.2`, `## Bug fixes`.
+
+## Order of work
+
+1. Write the tests and confirm that they fail on `ba3559b`.
+2. Add `.check_init_names()` and its three calls.
+3. Add the table refusal in `aci()`.
+4. Update the help text, regenerate, and keep only the pages that changed
+   for this work.
+5. Run the full suite and the reproduction script on the branch.
+
+## Risks
+
+- A prior the package stores and passes back (`meta$init`, which carries
+  `source`) could be refused. `source` is accepted, and the `aci_range()`
+  rebuild and `keep = "table"` routes, which pass a stored prior, are in the
+  existing suite.
+- An existing call could pass one of the three arguments with a table. A
+  search of `R/`, `tests/`, `vignettes/` and `man/` found none.
+- A number could move. The check runs before any arithmetic and returns
+  nothing; the suite's stored outputs and fixtures are unchanged.
+
+## Proof
+
+`test-49-ignored-inputs.R` fails on `ba3559b` and passes here; the full suite
+passes unchanged.
+
+## Departures
+
+Empty at approval.
