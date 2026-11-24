@@ -13,6 +13,12 @@
 * `aci()` and `aci_metric()` no longer return `Inf` for some KL signals just
   below the overflow limit, for models and paths with one hidden component.
   Results for ordinary inputs are unchanged.
+* `aci_online()` at a finite lag no longer returns a covariance that is not
+  positive definite. Under the default policy it stops with
+  `aci_error_covariance_not_spd` naming the anchor's index and time, as
+  `lag = Inf` and `lag_table()` do; under `regularize = "floor"` it floors
+  the covariance and records the event in `meta$regularization`. Results
+  that were positive definite are unchanged.
 * `aci()` accepts a lag table that `lag_table()` built for a model that
   declares its own estimand, such as `aci_enso_model(hidden = "tau")`.
 

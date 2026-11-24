@@ -379,6 +379,8 @@ spd_floor <- function(R, eps = 1e-12) {
                               where = "backward smoother's filtered-covariance inverse"),
   smoother_onelag      = list(role = "one-lag smoothed covariance",
                               where = "Theorem 3 one-lag statistics"),
+  smoother_window      = list(role = "fixed-lag smoothed covariance",
+                              where = "fixed-lag sum of Theorem 3 updates"),
   onelag_filter_cov    = list(role = "filter covariance",
                               where = "Theorem 3 auxiliary matrices"),
   likelihood_innov     = list(role = "innovation covariance",

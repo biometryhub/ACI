@@ -47,6 +47,9 @@ reduction; see \code{\link[=aci_conditional]{aci_conditional()}}.}
 \item{regularize}{Covariance policy for this call; see \code{\link[=aci_filter]{aci_filter()}}. One
 record covers the whole call, and is returned in \code{meta$regularization}; a
 call in which a floor fires also raises one \code{aci_warn_regularized}.
+At a finite lag the policy also applies to each anchor's fixed-lag
+covariance, the sum of the updates within its window, which can fail to
+be positive definite when every update passes.
 Flooring changes the numerical covariance so that the recursion can
 continue; it establishes nothing about the accuracy of the resulting
 reconstruction.}

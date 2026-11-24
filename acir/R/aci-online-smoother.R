@@ -188,18 +188,19 @@
 #' Slides a window of exactly `L` intervals across the record with a two-stack
 #' aggregation queue, so the cost is O(N) range compositions whatever the lag.
 #'
-#' The accumulated covariance is symmetrized and not otherwise regularised, the
-#' convention `.lagtable_core_compiled()` already uses for the same affine
-#' accumulation. Every increment it sums has been through the covariance policy
-#' inside `.onelag_stats()`.
+#' Each anchor's accumulated covariance goes through the covariance policy:
+#' it stops, or is floored and recorded, when it is not positive definite.
+#' A sum of increments that each passed the policy can still fail it.
 #'
 #' @param bundle A compiled CGNS bundle.
 #' @param filt The forward filter path.
 #' @param aux Auxiliaries from `.online_aux_compiled()`; unused when `L <= 0`.
 #' @param L Whole lag, already capped at `bundle$N`.
+#' @param rec Covariance-policy recorder; its `j` names the anchor index.
 #' @returns A list with `mean`, `cov` and the per-anchor `lag_effective`.
 #' @noRd
-.online_window_compiled <- function(bundle, filt, aux, L) {
+.online_window_compiled <- function(bundle, filt, aux, L,
+                                    rec = .aci_reg_for(NULL, bundle$t)) {
   N <- bundle$N
   l <- bundle$l
   MU <- filt$mean
@@ -237,7 +238,8 @@
       back_agg
     }
     MU[j, ] <- MU[j, ] + agg$s
-    CV[, , j] <- sym(CV[, , j] + agg$S)
+    rec$j <- j
+    CV[, , j] <- .cov_guard(CV[, , j] + agg$S, rec, "smoother_window")
     eff[j] <- hi - j + 1L
     if (nf == 0L) {
       suffix <- NULL
@@ -268,10 +270,12 @@
 #' @param aux Auxiliaries from `.online_aux_compiled()`.
 #' @param j Integer vector of anchor indices.
 #' @param lag Numeric vector of requested lags, recycled from length one.
+#' @param rec Covariance-policy recorder; its `j` names the anchor index.
 #' @returns A list with `mean` (one row per pair), `cov` (one slice per pair)
 #'   and the realised `lag_effective`.
 #' @noRd
-.online_at_compiled <- function(bundle, filt, aux, j, lag) {
+.online_at_compiled <- function(bundle, filt, aux, j, lag,
+                                rec = .aci_reg_for(NULL, bundle$t)) {
   N1 <- bundle$N1
   l <- bundle$l
   j <- as.integer(j)
@@ -286,6 +290,7 @@
   i <- 1L
   while (i <= np) {
     jj <- j[ord[i]]
+    rec$j <- jj
     grp <- i
     while (grp < np && j[ord[grp + 1L]] == jj) grp <- grp + 1L
     idx <- ord[i:grp]
@@ -305,7 +310,7 @@
       cnt <- cnt + 1L
       for (h in which(want == cnt)) {
         mu_out[idx[h], ] <- mu
-        cov_out[, , idx[h]] <- R
+        cov_out[, , idx[h]] <- .cov_guard(R, rec, "smoother_window")
         eff[idx[h]] <- cnt
       }
       D <- D %*% matrix(aux$E[, , n], l, l)
@@ -355,7 +360,7 @@
     ## A lag of zero is the filter itself, and the window route returns its
     ## moments untouched, so the O(N) auxiliary pass is not run for it.
     if (L > 0L) aux <- aux %||% .online_aux_compiled(bundle, filt, rec)
-    res <- .online_window_compiled(bundle, filt, aux, L)
+    res <- .online_window_compiled(bundle, filt, aux, L, rec)
     MU <- res$mean
     CV <- res$cov
     eff <- res$lag_effective

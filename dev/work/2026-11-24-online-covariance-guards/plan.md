@@ -55,3 +55,14 @@ The full suite at 0 failures.
 ## Departures
 
 Empty at approval.
+
+### 2026-11-24, tight prior
+
+- **No guard for the tight-prior fault.** Step 2 found no threshold with two
+  orders of magnitude on each side. On accepted inputs the excess of the
+  smoothed covariance over the filter covariance reaches 2.2e-16 at
+  `lag = Inf` and 4.7e-05 at finite lags (ENSO, three hidden components,
+  prior 0.01). On the faulty side the excess rises continuously from zero as
+  the prior variance falls below one step of hidden noise: 1.4e-08 on the
+  linear model at 1.0051 steps, 3.4e-03 on the dyad at 1.01 steps, 826 on
+  the reported dyad record. The fault is left unchanged.
