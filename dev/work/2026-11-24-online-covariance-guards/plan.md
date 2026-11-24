@@ -106,6 +106,10 @@ output and a sharp one in the input.
   eigenvalues are taken only on an interval the trace does not clear. The
   scalar helpers take the recorder as a last argument. The threshold is 1,
   the point where the factor changes sign, and is not tuned.
+- **A floored covariance is left out.** Under `regularize = "floor"` an
+  interval whose filter covariance the policy has just floored does not
+  enter the ratio: the ratio against a floor value says nothing about the
+  model, and the flooring is reported by `aci_warn_regularized`.
 - **Not changed.** Every returned value. The call does not stop: seven of
   the 79 cases return a variance the method allows. A lag table reused
   through `aci(table = )` forms no update and raises nothing.

@@ -23,13 +23,13 @@
   Gi <- .compiled_ginv(bundle, j)
   l <- bundle$l
   dt <- bundle$dt
+  floored <- rec$n
   Rfi <- chol_solve(Rf, diag(l), "Rf", rec, "onelag_filter_cov")
   gxy <- t(co$gyx)
-  ## Step ratio; see `.aci_step_ratio_warn()`. The trace bounds the largest
-  ## eigenvalue from above, and the eigenvalues are taken only on an interval
-  ## the trace does not clear.
+  ## Step ratio, see `.aci_step_ratio_warn()`: eigenvalues only where the
+  ## trace, an upper bound, passes 1; not on a covariance just floored.
   QR <- (co$gyy - co$gyx %*% Gi %*% gxy) %*% Rfi
-  if (isTRUE(sum(diag(QR)) * dt > 1)) {
+  if (rec$n == floored && isTRUE(sum(diag(QR)) * dt > 1)) {
     ratio <- max(Re(eigen(QR, only.values = TRUE)$values)) * dt
     if (ratio > 1) .aci_step_ratio_warn(rec, ratio, j)
   }

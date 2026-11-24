@@ -46,9 +46,8 @@
   aci_warn_riccati_stiff = function(w) invokeRestart("muffleWarning")
 )
 
-## On that record the filter variance also falls below one step of hidden
-## noise at the fourth interval, which the Theorem 3 routes report before they
-## stop; the tests of the stop muffle that warning, and only that one.
+## That record's filter variance also falls below one step of hidden noise at
+## the fourth interval; the tests of the stop muffle that warning by class.
 .ocg_quiet_range <- function(expr) withCallingHandlers(
   expr,
   aci_warn_leading_order = function(w) invokeRestart("muffleWarning")
@@ -377,4 +376,23 @@ test_that("the scalar and per-interval kernels report the same ratio once", {
   expect_no_warning(
     .thmD1_aux_compiled(b, 2L, f$cov[, , 2L], rec = .aci_reg_new("none", b$t))
   )
+})
+
+
+test_that("a floored filter covariance is left out of the step ratio", {
+  r <- .ocg_tight(0.1)
+  b <- .compile_cgns_run(r$model, as_obs(r$obs), NULL)
+  bad <- aci_filter(r$model, r$obs, init = r$init)
+  bad$cov[1L, 1L, 10L] <- -1e-9
+  ws <- character(0)
+  sm <- withCallingHandlers(
+    .smoother_thmD1_compiled(b, bad, validate = FALSE, warn_cost = FALSE,
+                             regularize = "floor"),
+    warning = function(w) {
+      ws <<- c(ws, class(w)[1L])
+      invokeRestart("muffleWarning")
+    }
+  )
+  expect_identical(ws, "aci_warn_regularized")
+  expect_identical(sm$meta$regularization$n_events, 1L)
 })
