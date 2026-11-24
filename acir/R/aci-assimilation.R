@@ -691,9 +691,8 @@ aci_online.stochastic_model <- function(model, obs, lag, ...)
 #' @param smoother Optional precomputed smoother path.
 #' @param conditional Optional `aci_conditional_spec`; see [aci_conditional()].
 #' @param init Optional list with the initial hidden `mean` and `cov`.
-#' @param stepper Must be `"explicit"`; any other value raises
-#'   `aci_error_stepper`.
-#' @param nsub Must be 1; any other value raises `aci_error_stepper`.
+#' @param stepper Either `"explicit"` or `"implicit"`.
+#' @param nsub Positive whole number of sub-steps taken per observation.
 #' @param regularize Covariance policy for this call; see [aci_filter()]. One
 #'   record covers the filter, the Theorem 3 reference smoother and every
 #'   relative-entropy denominator the table forms, and is returned in

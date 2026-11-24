@@ -66,3 +66,5 @@ Empty at approval.
   the same corrections: the fixtures come from MATLAB harnesses adapted from
   the authors' scripts, six source-derived rows are graded against `aci`
   0.0.30, and a table row starts at lag 0.
+- The `stepper` and `nsub` entries of `lag_table()` are not corrected here.
+  They sit next to its `init` entry and are corrected with it.
