@@ -131,3 +131,92 @@ test_that("a valid or stored prior gives the same numbers as before", {
       quietly_ii(aci_filter(m, ob))$mean)
   }
 })
+
+
+# Assignment into a model: the behaviour ?aci_model describes -----------------
+
+ii_coef_model <- function(l, Lx = 1, fx = -0.5, Ly = -0.5, fy = 0,
+                          Sx1 = 0.5, Sx2 = 0.1, Sy1 = 0.2, Sy2 = 1) aci_model(
+  Lx = function(t, x) matrix(Lx, 1, l),
+  fx = function(t, x) fx * x,
+  Ly = function(t, x) diag(Ly, l),
+  fy = function(t, x) rep(fy, l),
+  Sx1 = function(t, x) matrix(Sx1, 1, 1),
+  Sx2 = function(t, x) matrix(Sx2, 1, l),
+  Sy1 = function(t, x) matrix(Sy1, l, 1),
+  Sy2 = function(t, x) diag(Sy2, l), k = 1, l = l)
+
+ii_sim <- function(m) simulate(m, seed = 2, t_end = 0.5, dt = 0.01)$obs$x
+
+ii_closed <- function(m, ob, ini) list(
+  aci_filter(m, ob, init = ini)$mean,
+  aci_smoother(m, ob, init = ini)$mean,
+  aci_online(m, ob, lag = 5, init = ini)$mean,
+  lt_diag(lag_table(m, ob, init = ini)),
+  aci(m, ob, init = ini)$aci)
+
+
+test_that("an assigned drift moves the closed forms and not simulate()", {
+  new <- list(Lx = 1.2, fx = -0.8, Ly = -0.9, fy = 0.3)
+  for (l in c(1L, 2L)) {
+    original <- ii_coef_model(l)
+    ob <- as_obs(simulate(original, seed = 1, t_end = 1, dt = 0.01))
+    ini <- list(mean = rep(0, l), cov = diag(l))
+    for (f in names(new)) {
+      rebuilt <- do.call(ii_coef_model, c(list(l = l), new[f]))
+      altered <- ii_coef_model(l)
+      expect_no_condition(altered[[f]] <- rebuilt[[f]])
+      expect_identical(ii_closed(altered, ob, ini), ii_closed(rebuilt, ob, ini),
+                       info = paste(f, l))
+      expect_false(any(mapply(identical, ii_closed(altered, ob, ini),
+                              ii_closed(original, ob, ini))),
+                   info = paste(f, l))
+      expect_identical(ii_sim(altered), ii_sim(original), info = paste(f, l))
+      expect_false(identical(ii_sim(rebuilt), ii_sim(original)),
+                   info = paste(f, l))
+    }
+    expect_no_warning(ii_closed(altered, ob, ini))
+  }
+})
+
+
+test_that("an assigned diffusion moves the closed forms and simulate()", {
+  new <- list(Sx1 = 0.7, Sx2 = 0.3, Sy1 = 0.4, Sy2 = 1.4)
+  for (l in c(1L, 2L)) {
+    original <- ii_coef_model(l)
+    ob <- as_obs(simulate(original, seed = 1, t_end = 1, dt = 0.01))
+    ini <- list(mean = rep(0, l), cov = diag(l))
+    for (f in names(new)) {
+      rebuilt <- do.call(ii_coef_model, c(list(l = l), new[f]))
+      altered <- ii_coef_model(l)
+      altered[[f]] <- rebuilt[[f]]
+      expect_identical(ii_closed(altered, ob, ini), ii_closed(rebuilt, ob, ini),
+                       info = paste(f, l))
+      expect_false(any(mapply(identical, ii_closed(altered, ob, ini),
+                              ii_closed(original, ob, ini))),
+                   info = paste(f, l))
+      expect_identical(ii_sim(altered), ii_sim(rebuilt), info = paste(f, l))
+      expect_false(identical(ii_sim(rebuilt), ii_sim(original)),
+                   info = paste(f, l))
+    }
+  }
+})
+
+
+test_that("assignment into a library model behaves the same way", {
+  s <- ii_setup()
+  dyad <- s$dyad; ob <- s$dyad_obs; ini <- s$dyad_init
+  drift <- dyad
+  drift$Lx <- function(t, x) matrix(1.2, 1, 1)
+  expect_identical(ii_sim(drift), ii_sim(dyad))
+  expect_false(any(mapply(identical, ii_closed(drift, ob, ini),
+                          ii_closed(dyad, ob, ini))))
+  p <- dyad$meta$params
+  p$s_y <- 1.2
+  rebuilt <- aci_dyad_model(params = p)
+  diffusion <- dyad
+  diffusion$Sy2 <- rebuilt$Sy2
+  expect_identical(ii_sim(diffusion), ii_sim(rebuilt))
+  expect_identical(ii_closed(diffusion, ob, ini), ii_closed(rebuilt, ob, ini))
+  expect_false(identical(ii_sim(rebuilt), ii_sim(dyad)))
+})

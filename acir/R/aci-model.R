@@ -257,12 +257,13 @@ print.stochastic_model <- function(x, ...) {
 #'   Closed-form execution may realise each coefficient once on the observation
 #'   grid and reuse that realised path.
 #'
-#'   A model is fixed once constructed. Its derived drifts capture the
-#'   coefficient functions supplied to the constructor, so assigning a new
-#'   coefficient into an existing model changes only the field assigned and
-#'   leaves simulation, filtering and every realised path on the original
-#'   coefficients. Change a parameter by rebuilding the model with
-#'   [aci_model()], not by modifying one.
+#'   Do not assign into an existing model, as in `m$Lx <- ...`. No warning or
+#'   error is given, and an assigned drift coefficient (`Lx`, `fx`, `Ly` or
+#'   `fy`) changes the results of [aci_filter()], [aci_smoother()],
+#'   [aci_online()], [lag_table()] and [aci()] but not those of `simulate()`.
+#'   An assigned diffusion coefficient (`Sx1`, `Sx2`, `Sy1` or `Sy2`) changes
+#'   all of them. To change a parameter, build a new model with
+#'   [aci_model()].
 #'
 #' @seealso [aci_model_from_affine()], [aci_filter()], [aci()]
 #'
@@ -276,8 +277,7 @@ print.stochastic_model <- function(x, ...) {
 #'   Sy2 = function(t, x) matrix(1, 1, 1),
 #'   k = 1, l = 1)
 #'
-#' # Coefficients are fixed for the model's lifetime: change a parameter by
-#' # rebuilding, not by assigning into an existing model.
+#' # Two models that differ in one parameter.
 #' make_dyadish <- function(lambda)
 #'   aci_model(Lx = function(t, x) matrix(1, 1, 1),
 #'             fx = function(t, x) lambda * x,

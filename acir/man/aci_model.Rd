@@ -69,12 +69,13 @@ mutable state inside a coefficient function is outside the model contract.
 Closed-form execution may realise each coefficient once on the observation
 grid and reuse that realised path.
 
-A model is fixed once constructed. Its derived drifts capture the
-coefficient functions supplied to the constructor, so assigning a new
-coefficient into an existing model changes only the field assigned and
-leaves simulation, filtering and every realised path on the original
-coefficients. Change a parameter by rebuilding the model with
-\code{\link[=aci_model]{aci_model()}}, not by modifying one.
+Do not assign into an existing model, as in \code{m$Lx <- ...}. No warning or
+error is given, and an assigned drift coefficient (\code{Lx}, \code{fx}, \code{Ly} or
+\code{fy}) changes the results of \code{\link[=aci_filter]{aci_filter()}}, \code{\link[=aci_smoother]{aci_smoother()}},
+\code{\link[=aci_online]{aci_online()}}, \code{\link[=lag_table]{lag_table()}} and \code{\link[=aci]{aci()}} but not those of \code{simulate()}.
+An assigned diffusion coefficient (\code{Sx1}, \code{Sx2}, \code{Sy1} or \code{Sy2}) changes
+all of them. To change a parameter, build a new model with
+\code{\link[=aci_model]{aci_model()}}.
 }
 \examples{
 aci_model(
@@ -86,8 +87,7 @@ aci_model(
   Sy2 = function(t, x) matrix(1, 1, 1),
   k = 1, l = 1)
 
-# Coefficients are fixed for the model's lifetime: change a parameter by
-# rebuilding, not by assigning into an existing model.
+# Two models that differ in one parameter.
 make_dyadish <- function(lambda)
   aci_model(Lx = function(t, x) matrix(1, 1, 1),
             fx = function(t, x) lambda * x,

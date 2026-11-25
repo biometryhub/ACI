@@ -12,6 +12,11 @@
   in `covariance =`, used to set the prior covariance and is refused as
   well. The `source` entry of a stored `meta$init` is accepted, so a stored
   prior can be passed back.
+* `?aci_model` now says what assigning into an existing model does. An
+  assigned drift coefficient (`Lx`, `fx`, `Ly` or `fy`) changes the results
+  of `aci_filter()`, `aci_smoother()`, `aci_online()`, `lag_table()` and
+  `aci()` but not those of `simulate()`. The help used to say that both stay
+  on the original coefficients. No behaviour changed.
 * Plot methods for ACI results, Gaussian paths and ranges pass extra
   arguments to `plot()` as 0.2.0 did, including unnamed arguments,
   `panel.first` and `panel.last`, and named labels such as `main` still

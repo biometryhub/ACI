@@ -62,3 +62,19 @@ Empty at approval.
   any positive whole number. It refuses both with `aci_error_stepper`. The
   two entries now say so, because the new error from `aci(table = )` sends
   the reader to `lag_table()` for these settings.
+
+### 2026-11-25, assignment into a model
+
+- The open question in `intent.md` is settled by correcting the help of
+  `aci_model()`. Assignment is still accepted, and the six existing tests
+  that assign `fx` or `g` are unchanged.
+- The help said that assignment leaves simulation and filtering on the
+  original coefficients. Measured on closure models with one and two hidden
+  components and on the library dyad: an assigned drift coefficient is used
+  by `aci_filter()`, `aci_smoother()`, `aci_online()`, `lag_table()` and
+  `aci()`, with results bit-identical to a model rebuilt with that
+  coefficient, and `simulate()` keeps the original. An assigned diffusion
+  coefficient is used by all of them.
+- Three tests in `test-49-ignored-inputs.R` pin this. They pass on
+  `ba3559b` as well, because no behaviour changed.
+- A third NEWS bullet follows the two already planned.
