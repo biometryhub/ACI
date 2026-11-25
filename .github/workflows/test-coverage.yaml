@@ -23,8 +23,6 @@ jobs:
   test-coverage:
     runs-on: ubuntu-latest
     env:
-      # Run the tests that skip_on_cran() keeps off CRAN's machines.
-      NOT_CRAN: 'true'
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
 
     defaults:

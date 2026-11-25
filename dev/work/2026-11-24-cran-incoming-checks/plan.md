@@ -62,3 +62,10 @@ Status: draft, not yet approved.
   `acir/man/acir-package.Rd`, `acir/CITATION.cff`, `acir/codemeta.json` and
   `acir/inst/CITATION`. The Description still names the closed-form engine
   and the nonlinear systems.
+
+### 2026-11-25, workflows
+
+- The two workflow files are left as they were. `r-lib/actions/setup-r`
+  exports `NOT_CRAN=true` when the variable is unset, and all five workflows
+  use it. Every CI job already runs the tests that `skip_on_cran()` keeps off
+  CRAN's machines, and the second risk above does not arise.

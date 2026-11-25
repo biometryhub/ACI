@@ -33,8 +33,6 @@ jobs:
       R_KEEP_PKG_SOURCE: yes
       # Keep measured per-series gaps and R/BLAS details in the test output.
       ACI_ROUNDOFF_REPORT: 'true'
-      # Run the tests that skip_on_cran() keeps off CRAN's machines.
-      NOT_CRAN: 'true'
 
     steps:
       - uses: actions/checkout@v4
