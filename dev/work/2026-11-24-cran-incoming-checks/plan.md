@@ -53,4 +53,12 @@ Status: draft, not yet approved.
 
 ## Departures
 
-None.
+### 2026-11-25, Title
+
+- The Title was 84 characters on two lines. *Writing R Extensions* asks for
+  a Title with no continuation line, and package listings cut it at 65
+  characters. It is now "Assimilative Causal Inference for Conditional
+  Gaussian Systems", 62 characters, in `acir/DESCRIPTION`,
+  `acir/man/acir-package.Rd`, `acir/CITATION.cff`, `acir/codemeta.json` and
+  `acir/inst/CITATION`. The Description still names the closed-form engine
+  and the nonlinear systems.
