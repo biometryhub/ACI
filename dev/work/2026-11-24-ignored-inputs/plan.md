@@ -78,3 +78,9 @@ Empty at approval.
 - Three tests in `test-49-ignored-inputs.R` pin this. They pass on
   `ba3559b` as well, because no behaviour changed.
 - A third NEWS bullet follows the two already planned.
+
+### 2026-11-25, check time
+
+- The two assignment tests on closure models take about three seconds
+  each and are skipped on CRAN. The library-model test of the same
+  behaviour still runs there, and all three run with `NOT_CRAN=true`.

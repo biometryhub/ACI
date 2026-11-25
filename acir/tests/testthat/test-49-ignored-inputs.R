@@ -157,6 +157,7 @@ ii_closed <- function(m, ob, ini) list(
 
 
 test_that("an assigned drift moves the closed forms and not simulate()", {
+  skip_on_cran()
   new <- list(Lx = 1.2, fx = -0.8, Ly = -0.9, fy = 0.3)
   for (l in c(1L, 2L)) {
     original <- ii_coef_model(l)
@@ -181,6 +182,7 @@ test_that("an assigned drift moves the closed forms and not simulate()", {
 
 
 test_that("an assigned diffusion moves the closed forms and simulate()", {
+  skip_on_cran()
   new <- list(Sx1 = 0.7, Sx2 = 0.3, Sy1 = 0.4, Sy2 = 1.4)
   for (l in c(1L, 2L)) {
     original <- ii_coef_model(l)
