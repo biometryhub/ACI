@@ -42,3 +42,14 @@ comparisons of step 3.
 ## Departures
 
 Empty at approval.
+
+### 2026-11-25, build
+
+- `aci(keep = "table")` builds its table with the same kernel and stopped
+  as well. The tests cover it and the NEWS entry names it.
+- The test file has one more row: five floored cells, each between two kept
+  ones, take eleven passes. The count that matters is passes, and a row
+  reaches it with fewer floored cells when they are not consecutive.
+- The NEWS entry follows a blank line at the end of the Bug fixes list.
+  Other open pull requests add entries to that list, and the blank line
+  keeps this one from touching the lines they change.

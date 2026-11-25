@@ -16,6 +16,12 @@
 * `aci()` accepts a lag table that `lag_table()` built for a model that
   declares its own estimand, such as `aci_enso_model(hidden = "tau")`.
 
+* Under `regularize = "floor"`, `lag_table()`, `aci(keep = "table")` and
+  `aci_range()` on an `aci()` result no longer stop with a base R error when
+  the floor fires at several lags of one anchor, and no longer raise a base
+  R warning about integer overflow. This affected models with one hidden
+  component. Tables and ranges that were returned before are unchanged.
+
 ## Documentation
 
 * The plot help says which arguments replace the defaults, and when a range
