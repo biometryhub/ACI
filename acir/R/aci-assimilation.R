@@ -131,7 +131,13 @@ aci_smoother <- function(model, obs, ...) UseMethod("aci_smoother")
 #' one `aci_warn_leading_order` per call when a ratio is above 1. The
 #' condition carries `ratio`, `index` and `time` for the interval it reports.
 #' The returned values are those the scheme gives. A smaller `dt` lowers the
-#' ratio, and at the first interval a wider prior does too. A table already
+#' ratio, and at the first interval a wider prior does too; the message names
+#' the prior only when it reports the first interval. Under
+#' `regularize = "floor"` the intervals from the first floored filter
+#' covariance on are left out: a floored value, and every filter covariance
+#' propagated from it, says nothing about the model, and
+#' `aci_warn_regularized` reports the floor. This holds for a filter formed
+#' in the call and for a supplied `filter` that took a floor. A table already
 #' built forms no update when it is passed to [aci()] or [aci_range()], and
 #' raises nothing more.
 #'

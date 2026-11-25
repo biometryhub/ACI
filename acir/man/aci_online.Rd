@@ -134,7 +134,13 @@ and on a record whose filter variance falls that low. \code{aci_online()} and
 one \code{aci_warn_leading_order} per call when a ratio is above 1. The
 condition carries \code{ratio}, \code{index} and \code{time} for the interval it reports.
 The returned values are those the scheme gives. A smaller \code{dt} lowers the
-ratio, and at the first interval a wider prior does too. A table already
+ratio, and at the first interval a wider prior does too; the message names
+the prior only when it reports the first interval. Under
+\code{regularize = "floor"} the intervals from the first floored filter
+covariance on are left out: a floored value, and every filter covariance
+propagated from it, says nothing about the model, and
+\code{aci_warn_regularized} reports the floor. This holds for a filter formed
+in the call and for a supplied \code{filter} that took a floor. A table already
 built forms no update when it is passed to \code{\link[=aci]{aci()}} or \code{\link[=aci_range]{aci_range()}}, and
 raises nothing more.
 }

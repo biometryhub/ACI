@@ -366,7 +366,8 @@ spd_floor <- function(R, eps = 1e-12) {
 #' positive; above a ratio of 1 the leading-order one changes sign in that
 #' direction, and the smoothed covariance can exceed the filter covariance.
 #' The latch lives on the recorder, as for `.aci_reg_report()`, and one public
-#' call warns once, for the first interval a kernel reports.
+#' call warns once, for the first interval a kernel reports. Only at index 1 is
+#' the filter covariance the prior, and only there does the message name it.
 #'
 #' @param rec A recorder from `.aci_reg_new()`.
 #' @param ratio Step ratio at the interval, above 1.
@@ -377,17 +378,41 @@ spd_floor <- function(R, eps = 1e-12) {
   if (isTRUE(rec$step_warned)) return(invisible(NULL))
   rec$step_warned <- TRUE
   time <- rec$tgrid[index]
+  advice <- if (index == 1L) paste(
+    "Reduce dt, or use a prior variance of at least one step of hidden",
+    "noise.") else "Reduce dt."
   aci_warn(
     "aci_warn_leading_order",
     sprintf(paste(
       "The Theorem 3 update is outside its range at index %d (time %g): one",
       "step of hidden noise is %.3g times the filter variance there, and the",
       "leading-order update holds only below 1. The smoothed covariance at",
-      "and before that index can exceed the filter covariance. Reduce dt, or",
-      "at index 1 use a prior variance of at least one step of hidden noise."),
-      index, time, ratio),
+      "and before that index can exceed the filter covariance. %s"),
+      index, time, ratio, advice),
     ratio = ratio, index = index, time = time)
   invisible(NULL)
+}
+
+
+#' First interval left out of the step ratio (internal)
+#'
+#' A floored filter covariance holds the floor's value, and every later one is
+#' propagated from it, so from that interval on the step ratio describes the
+#' floor and not the model; `aci_warn_regularized` reports the floor. The
+#' index is the earliest event at a filter site, read from the recorder for a
+#' filter formed in this call and from the record on a filter formed earlier.
+#'
+#' @param rec A recorder from `.aci_reg_new()`.
+#' @param filt The filter path the Theorem 3 updates are formed from.
+#' @returns The first interval index left out, or `Inf`.
+#' @noRd
+.aci_ratio_end <- function(rec, filt) {
+  own <- vapply(rec$sites, function(s) as.numeric(s$first_index), 0)
+  own <- own[startsWith(names(own) %||% character(0), "filter_")]
+  reg <- filt$meta$regularization$sites
+  old <- if (is.null(reg)) numeric(0) else
+    reg$first_index[startsWith(reg$site, "filter_")]
+  min(own, old, Inf, na.rm = TRUE)
 }
 
 

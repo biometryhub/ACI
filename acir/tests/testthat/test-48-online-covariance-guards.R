@@ -396,3 +396,119 @@ test_that("a floored filter covariance is left out of the step ratio", {
   expect_identical(ws, "aci_warn_regularized")
   expect_identical(sm$meta$regularization$n_events, 1L)
 })
+
+
+## The dyad with a wide prior, whose explicit Riccati step overshoots at the
+## second point; the filter floors that variance and records one event there.
+.ocg_floored <- function() {
+  m <- aci_dyad_model()
+  s <- simulate(m, seed = 1, t_end = 1, dt = 0.01)
+  init <- list(mean = s$hidden[1, 1], cov = matrix(20))
+  f <- suppressWarnings(aci_filter(m, s$obs, init = init, regularize = "floor"))
+  list(model = m, obs = s$obs, init = init, filter = f)
+}
+
+## The first warning of a class, and the call's error if it stops after it.
+.ocg_first <- function(expr, class = "aci_warn_leading_order") {
+  got <- NULL
+  tryCatch(withCallingHandlers(expr, warning = function(w) {
+    if (is.null(got) && inherits(w, class)) got <<- w
+    invokeRestart("muffleWarning")
+  }), error = function(e) NULL)
+  got
+}
+
+
+test_that("a filter floor ends the step ratio on every route", {
+  r <- .ocg_floored()
+  sites <- r$filter$meta$regularization$sites
+  expect_identical(sites$site, "filter_explicit")
+  expect_identical(as.integer(sites$first_index), 2L)
+  rt <- unserialize(serialize(list(model = r$model, filter = r$filter), NULL))
+  ## a filter supplied after a floor
+  expect_identical(.ocg_n_range(
+    lag_table(r$model, r$obs, filter = r$filter)), 0L)
+  expect_identical(.ocg_n_range(
+    lag_table(rt$model, r$obs, filter = rt$filter)), 0L)
+  expect_identical(.ocg_n_range(
+    aci_online(r$model, r$obs, lag = Inf, filter = r$filter)), 0L)
+  expect_identical(.ocg_n_range(
+    aci_online(r$model, r$obs, lag = 5, filter = r$filter)), 0L)
+  ## a filter floored inside the call
+  expect_identical(.ocg_n_range(
+    lag_table(r$model, r$obs, init = r$init, regularize = "floor")), 0L)
+  expect_identical(.ocg_n_range(
+    aci(r$model, r$obs, init = r$init, regularize = "floor", keep = "table")),
+    0L)
+  expect_identical(.ocg_n_range(
+    aci_online(r$model, r$obs, lag = Inf, init = r$init,
+               regularize = "floor")), 0L)
+})
+
+
+test_that("both kernels leave out the intervals from a filter floor on", {
+  r <- .ocg_floored()
+  b <- .compile_cgns_run(r$model, as_obs(r$obs), NULL)
+  rec <- .aci_reg_new("none", b$t)
+  expect_identical(.aci_ratio_end(rec, r$filter), 2)
+  expect_identical(.aci_ratio_end(rec, list(meta = list())), Inf)
+  ## the per-interval kernel: the floored interval is far above 1
+  w <- tryCatch(
+    .thmD1_aux_compiled(b, 2L, r$filter$cov[, , 2L],
+                        rec = .aci_reg_new("none", b$t)),
+    warning = function(w) w
+  )
+  expect_s3_class(w, "aci_warn_leading_order")
+  expect_gt(w$ratio, 1e8)
+  expect_no_warning(
+    .thmD1_aux_compiled(b, 2L, r$filter$cov[, , 2L],
+                        rec = .aci_reg_new("none", b$t), ratio_end = 2)
+  )
+  ## the scalar kernel reads the same index off the filter
+  expect_no_warning(
+    .online_aux_scalar(b, r$filter, rec = .aci_reg_new("none", b$t))
+  )
+  ## a filter floor formed in the same call is read off the recorder
+  rec <- .aci_reg_new("floor", b$t)
+  rec$j <- 3L
+  .aci_reg_note(rec, "filter_explicit", 3L, b$t[3L], -1)
+  expect_identical(.aci_ratio_end(rec, list(meta = list())), 3)
+  ## a floor at a smoother site does not end the ratio
+  rec <- .aci_reg_new("floor", b$t)
+  .aci_reg_note(rec, "smoother_onelag", 3L, b$t[3L], -1)
+  expect_identical(.aci_ratio_end(rec, list(meta = list())), Inf)
+})
+
+
+test_that("a ratio above 1 before the first floor still warns", {
+  m <- aci_dyad_model()
+  s <- simulate(m, seed = 7, t_end = 8, dt = 0.01, burn_in = 1)
+  ob <- observed_trajectory(s$obs$t, s$obs$x, names = "x")
+  idx <- seq.int(1L, length(ob$t), by = 20L)
+  ob <- observed_trajectory(ob$t[idx], ob$x[idx, , drop = FALSE], names = "x")
+  init <- list(mean = 0, cov = matrix(1, 1, 1))
+  f <- suppressWarnings(aci_filter(m, ob, init = init, regularize = "floor"))
+  expect_identical(as.integer(f$meta$regularization$sites$first_index), 37L)
+  expect_identical(.ocg_n_range(
+    lag_table(m, ob, filter = f, regularize = "floor")), 1L)
+  w <- .ocg_first(lag_table(m, ob, filter = f, regularize = "floor"))
+  expect_identical(w$index, 35L)
+  expect_gt(w$ratio, 1)
+})
+
+
+test_that("the message names the prior only at the first interval", {
+  w1 <- .ocg_first(with(.ocg_tight(10),
+                        aci_online(model, obs, lag = Inf, init = init)))
+  expect_identical(w1$index, 1L)
+  expect_match(conditionMessage(w1), "prior variance", fixed = TRUE)
+
+  ## the coarse dyad: its filter variance falls below one step of hidden
+  ## noise at the fourth interval, and the call stops after the warning
+  w4 <- .ocg_first(with(.ocg_dyad(),
+                        aci_online(model, obs, lag = Inf, init = init)))
+  expect_identical(w4$index, 4L)
+  expect_gt(w4$ratio, 1)
+  expect_match(conditionMessage(w4), "Reduce dt.", fixed = TRUE)
+  expect_no_match(conditionMessage(w4), "prior", fixed = TRUE)
+})

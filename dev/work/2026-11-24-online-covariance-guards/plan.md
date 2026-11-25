@@ -123,3 +123,35 @@ output and a sharp one in the input.
   ratio and index the condition carries; no warning just below 1; and the
   correlated-noise pair on each side of the boundary, which a ratio built
   from `gyy` alone gets wrong.
+
+### 2026-11-25, a stored floor and a later breach
+
+- **A floor the kernel did not take itself was not left out.** The rule above
+  covered a covariance floored by the Cholesky inside
+  `.thmD1_aux_compiled()`. A filter covariance floored by the filter is
+  positive, so the scalar kernel formed its ratio and the per-interval
+  kernel's Cholesky passed. On the dyad with prior variance 20 at `dt = 0.01`
+  the filter floors its variance at index 2 to 4.4e-11, and `lag_table()`
+  and `aci_online()` warned with a ratio of 2.26e8 there and advised a wider
+  prior. The same held for a filter floored earlier in the call and for a
+  supplied one.
+- **Change.** A new `.aci_ratio_end()` returns the first interval with an
+  event at a filter site, read from the recorder and from the record on the
+  filter path. Both kernels form no ratio from that interval on. Every later
+  filter covariance is propagated from the floored value, so the ratio there
+  describes the floor too. The record keeps the first index of each site
+  only, which is the index this rule needs.
+- **A breach later in the record.** The plan measured the ratio above 1 at
+  the first interval only. The coarse dyad in the tests passes 1 at the
+  fourth interval, ratio 1.198, and the vignette's coarse record at the
+  35th, two intervals before its floor. The message named the prior at any
+  index. It now names the prior at index 1 only and otherwise says to reduce
+  `dt`.
+- **Not changed.** Every returned value; the threshold.
+- **Proof added.** In `test-48-online-covariance-guards.R`: no warning on a
+  floored filter through `lag_table()`, `aci_online()` at `lag = Inf` and at
+  a finite lag, `aci()` and a saved copy, with the floor taken in the call or
+  earlier; each kernel with and without the cut; a smoother floor leaves the
+  ratio on; the vignette record warns at index 35 and not at its floor; the
+  message at index 1 and at index 4. These fail on the previous head of this
+  branch.

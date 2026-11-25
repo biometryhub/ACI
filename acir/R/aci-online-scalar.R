@@ -88,8 +88,10 @@
   ## .thmD1_aux_compiled(), interval by interval, as vectors
   ch <- sqrt(Rf)
   Rfi <- (1 / ch) / ch
-  ## Step ratio at every interval; see `.aci_step_ratio_warn()`.
+  ## Step ratio at every interval before a filter floor; see
+  ## `.aci_step_ratio_warn()` and `.aci_ratio_end()`.
   ratio <- (gyy - rowSums(.scalar_aux_vecmat(gyx, Gi) * gyx)) * Rfi * dt
+  ratio[idx >= .aci_ratio_end(rec, filt)] <- NA
   w <- which.max(ratio)
   if (isTRUE(ratio[w] > 1)) .aci_step_ratio_warn(rec, ratio[w], idx[w])
   Gx <- Lx + gyx * Rfi

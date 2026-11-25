@@ -15,10 +15,13 @@
 #' @param Rf Filtered covariance at the interval start.
 #' @param co Optional coefficient record already read with `.compiled_co()`.
 #' @param rec Covariance-policy recorder; its `j` names the interval index.
+#' @param ratio_end First interval left out of the step ratio, from
+#'   `.aci_ratio_end()`.
 #' @returns A list with the auxiliary matrices `E` and `F`.
 #' @noRd
 .thmD1_aux_compiled <- function(bundle, j, Rf, co = NULL,
-                                rec = .aci_reg_for(NULL, bundle$t)) {
+                                rec = .aci_reg_for(NULL, bundle$t),
+                                ratio_end = Inf) {
   co <- co %||% .compiled_co(bundle, j)
   Gi <- .compiled_ginv(bundle, j)
   l <- bundle$l
@@ -26,10 +29,11 @@
   floored <- rec$n
   Rfi <- chol_solve(Rf, diag(l), "Rf", rec, "onelag_filter_cov")
   gxy <- t(co$gyx)
-  ## Step ratio, see `.aci_step_ratio_warn()`: eigenvalues only where the
-  ## trace, an upper bound, passes 1; not on a covariance just floored.
+  ## Step ratio, see `.aci_step_ratio_warn()` and `.aci_ratio_end()`;
+  ## eigenvalues only where the trace, an upper bound, passes 1.
   QR <- (co$gyy - co$gyx %*% Gi %*% gxy) %*% Rfi
-  if (rec$n == floored && isTRUE(sum(diag(QR)) * dt > 1)) {
+  if (j < ratio_end && rec$n == floored &&
+      isTRUE(sum(diag(QR)) * dt > 1)) {
     ratio <- max(Re(eigen(QR, only.values = TRUE)$values)) * dt
     if (ratio > 1) .aci_step_ratio_warn(rec, ratio, j)
   }
@@ -92,13 +96,15 @@
   ## the case where the covariance policy has something to record.
   sc <- if (l == 1L) .smoother_thmD1_scalar_moments(bundle, filt, rec) else
     NULL
+  ratio_end <- .aci_ratio_end(rec, filt)
   if (!is.null(sc)) {
     MU[, 1L] <- sc$mu
     CV[1L, 1L, ] <- sc$cv
   } else for (j in (N1 - 1L):1L) {
     rec$j <- j
     co <- .compiled_co(bundle, j)
-    aux <- .thmD1_aux_compiled(bundle, j, filt$cov[, , j], co = co, rec = rec)
+    aux <- .thmD1_aux_compiled(bundle, j, filt$cov[, , j], co = co, rec = rec,
+                               ratio_end = ratio_end)
     st <- .onelag_stats(
       co, aux, filt$mean[j, ], filt$cov[, , j],
       MU[j + 1L, ], CV[, , j + 1L],
@@ -152,6 +158,7 @@
   dR <- array(NA_real_, c(l, l, N))
   sc <- if (l == 1L) .forward_primitives_scalar(bundle, filt, rec = rec) else
     NULL
+  ratio_end <- .aci_ratio_end(rec, filt)
   if (!is.null(sc)) {
     E[1L, 1L, ] <- sc$E_v
     dmu[, 1L] <- sc$dmu[, 1L]
@@ -159,7 +166,8 @@
   } else for (n in seq_len(N)) {
     rec$j <- n
     co <- .compiled_co(bundle, n)
-    aux <- .thmD1_aux_compiled(bundle, n, CVf[, , n], co = co, rec = rec)
+    aux <- .thmD1_aux_compiled(bundle, n, CVf[, , n], co = co, rec = rec,
+                               ratio_end = ratio_end)
     ol <- .onelag_stats(
       co, aux, MUf[n, ], CVf[, , n], MUf[n + 1L, ], CVf[, , n + 1L],
       bundle$x[n + 1L, ] - bundle$x[n, ], dt, l, rec
@@ -447,6 +455,7 @@
   s_n <- r_n <- e_n <- numeric(N)
   sc <- if (l == 1L) .forward_primitives_scalar(bundle, filt, rec = rec) else
     NULL
+  ratio_end <- .aci_ratio_end(rec, filt)
   if (!is.null(sc)) {
     Ehist <- sc$E
     OLmu <- sc$one_mu
@@ -459,7 +468,8 @@
   } else for (n in seq_len(N)) {
     rec$j <- n
     co <- .compiled_co(bundle, n)
-    aux <- .thmD1_aux_compiled(bundle, n, CVf[, , n], co = co, rec = rec)
+    aux <- .thmD1_aux_compiled(bundle, n, CVf[, , n], co = co, rec = rec,
+                               ratio_end = ratio_end)
     Ehist[[n]] <- aux$E
     ol <- .onelag_stats(
       co, aux, MUf[n, ], CVf[, , n], MUf[n + 1L, ], CVf[, , n + 1L],
