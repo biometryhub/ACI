@@ -41,12 +41,12 @@
 #' `R_q = 1`, `R_p = 1 + delta`, its relative error is 4.5e-05 at
 #' `delta = 1e-06`, 1.2e-02 at 1e-07 and a factor of two from 1e-08 down.
 #' [aci_metric()] instead evaluates the scalar dispersion directly from the
-#' variance ratio, avoiding the Cholesky-based trace calculation, so the two routes can disagree on
-#' identical one-dimensional inputs in that regime. The absolute error stays
-#' below 3e-17 nats across that sweep, because the quantity itself is quadratic
-#' in `delta`, so this is a precision boundary and not a demonstrated accuracy
-#' failure on ordinary inputs. Positivity is imposed by `max(., 0)` on each
-#' part; that is a guard, not an accuracy proof.
+#' variance ratio, avoiding the Cholesky-based trace calculation, so the two
+#' routes can disagree on identical one-dimensional inputs in that regime. The
+#' absolute error stays below 3e-17 nats across that sweep, because the quantity
+#' itself is quadratic in `delta`, so this is a precision boundary and not a
+#' demonstrated accuracy failure on ordinary inputs. Positivity is imposed by
+#' `max(., 0)` on each part. That is a guard, not an accuracy proof.
 #'
 #' @param mu_p Numeric vector, mean of the first distribution.
 #' @param R_p Covariance matrix of the first distribution.
@@ -133,9 +133,9 @@ aci_metric_pair <- function(mu_p, R_p, mu_q, R_q, decompose = TRUE) {
 #' the ratio overflows, its half is computed as `(0.5 * R_p) / R_q`, with the
 #' logarithm again obtained from the separate variance logs. This retains finite
 #' dispersion when it is representable, even if the ratio is not.
-#' Two or more hidden components use the trace and log-difference form, whose relative
-#' precision on the dispersion degrades as the two covariances approach each
-#' other. [aci_metric_pair()] documents that boundary with the measured
+#' Two or more hidden components use the trace and log-difference form, whose
+#' relative precision on the dispersion degrades as the two covariances approach
+#' each other. [aci_metric_pair()] documents that boundary with the measured
 #' figures, and uses the trace form at every dimension, so it and this function
 #' need not agree in the last digits on one-dimensional inputs.
 #'
