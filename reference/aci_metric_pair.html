@@ -9,7 +9,7 @@ into its signal and dispersion parts."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">acir</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -98,12 +98,12 @@ two covariances approach each other: measured against the exact series at
 <code>R_q = 1</code>, <code>R_p = 1 + delta</code>, its relative error is 4.5e-05 at
 <code>delta = 1e-06</code>, 1.2e-02 at 1e-07 and a factor of two from 1e-08 down.
 <code><a href="aci_metric.html">aci_metric()</a></code> instead evaluates the scalar dispersion directly from the
-variance ratio, avoiding the Cholesky-based trace calculation, so the two routes can disagree on
-identical one-dimensional inputs in that regime. The absolute error stays
-below 3e-17 nats across that sweep, because the quantity itself is quadratic
-in <code>delta</code>, so this is a precision boundary and not a demonstrated accuracy
-failure on ordinary inputs. Positivity is imposed by <code>max(., 0)</code> on each
-part; that is a guard, not an accuracy proof.</p>
+variance ratio, avoiding the Cholesky-based trace calculation, so the two
+routes can disagree on identical one-dimensional inputs in that regime. The
+absolute error stays below 3e-17 nats across that sweep, because the quantity
+itself is quadratic in <code>delta</code>, so this is a precision boundary and not a
+demonstrated accuracy failure on ordinary inputs. Positivity is imposed by
+<code>max(., 0)</code> on each part. That is a guard, not an accuracy proof.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

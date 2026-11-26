@@ -63,7 +63,7 @@ can disagree on identical one-dimensional inputs in that regime. The
 absolute error stays below 3e-17 nats across that sweep, because the
 quantity itself is quadratic in `delta`, so this is a precision boundary
 and not a demonstrated accuracy failure on ordinary inputs. Positivity
-is imposed by `max(., 0)` on each part; that is a guard, not an accuracy
+is imposed by `max(., 0)` on each part. That is a guard, not an accuracy
 proof.
 
 ## See also

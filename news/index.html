@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">acir</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,6 +38,22 @@
       <small>Source: <a href="https://github.com/biometryhub/ACI/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.2" id="acir-022">acir 0.2.2<a class="anchor" aria-label="anchor" href="#acir-022"></a></h2>
+<div class="section level3">
+<h3 id="bug-fixes-0-2-2">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-0-2-2"></a></h3>
+<ul><li>Plot methods for ACI results, Gaussian paths and ranges pass extra arguments to <code><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot()</a></code> as 0.2.0 did, including unnamed arguments, <code>panel.first</code> and <code>panel.last</code>, and named labels such as <code>main</code> still replace the defaults. Plots of long series are fast again.</li>
+<li>A range with one anchor, drawn as a title only, no longer stops on graphical settings such as <code>lwd = 0</code>. Plotting a range with more than one anchor whose values are all <code>NA</code> stops with an <code>aci_error_dims</code> condition that asks for <code>ylim</code>.</li>
+<li>
+<code><a href="../reference/aci.html">aci()</a></code> and <code><a href="../reference/aci_metric.html">aci_metric()</a></code> no longer return <code>Inf</code> for some KL signals just below the overflow limit, for models and paths with one hidden component. Results for ordinary inputs are unchanged.</li>
+<li>
+<code><a href="../reference/aci.html">aci()</a></code> accepts a lag table that <code><a href="../reference/lag_table.html">lag_table()</a></code> built for a model that declares its own estimand, such as <code>aci_enso_model(hidden = "tau")</code>.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-0-2-2">Documentation<a class="anchor" aria-label="anchor" href="#documentation-0-2-2"></a></h3>
+<ul><li>The plot help says which arguments replace the defaults, and when a range plot needs <code>ylim</code>.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.1" id="acir-021">acir 0.2.1<a class="anchor" aria-label="anchor" href="#acir-021"></a></h2>
 <div class="section level3">

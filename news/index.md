@@ -1,5 +1,34 @@
 # Changelog
 
+## acir 0.2.2
+
+### Bug fixes
+
+- Plot methods for ACI results, Gaussian paths and ranges pass extra
+  arguments to [`plot()`](https://rdrr.io/r/graphics/plot.default.html)
+  as 0.2.0 did, including unnamed arguments, `panel.first` and
+  `panel.last`, and named labels such as `main` still replace the
+  defaults. Plots of long series are fast again.
+- A range with one anchor, drawn as a title only, no longer stops on
+  graphical settings such as `lwd = 0`. Plotting a range with more than
+  one anchor whose values are all `NA` stops with an `aci_error_dims`
+  condition that asks for `ylim`.
+- [`aci()`](https://biometryhub.github.io/ACI/reference/aci.md) and
+  [`aci_metric()`](https://biometryhub.github.io/ACI/reference/aci_metric.md)
+  no longer return `Inf` for some KL signals just below the overflow
+  limit, for models and paths with one hidden component. Results for
+  ordinary inputs are unchanged.
+- [`aci()`](https://biometryhub.github.io/ACI/reference/aci.md) accepts
+  a lag table that
+  [`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md)
+  built for a model that declares its own estimand, such as
+  `aci_enso_model(hidden = "tau")`.
+
+### Documentation
+
+- The plot help says which arguments replace the defaults, and when a
+  range plot needs `ylim`.
+
 ## acir 0.2.1
 
 ### Bug fixes

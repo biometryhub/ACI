@@ -25,7 +25,10 @@ plot(x, component = 1, truth = NULL, ...)
 
 - ...:
 
-  Passed to the underlying base-graphics calls.
+  Further arguments to
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html), which draws
+  the mean. A `type`, `xlab`, `ylab`, `ylim` or `main` given here
+  replaces the default.
 
 ## Value
 

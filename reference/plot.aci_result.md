@@ -21,7 +21,10 @@ plot(x, decompose = TRUE, ...)
 
 - ...:
 
-  Passed to the underlying base-graphics calls.
+  Further arguments to
+  [`plot()`](https://rdrr.io/r/graphics/plot.default.html), which draws
+  the total. A `type`, `xlab`, `ylab` or `main` given here replaces the
+  default.
 
 ## Value
 

@@ -710,7 +710,7 @@ t_w15 <- system.time(f_w15 <- aci_range(a_w, anchors = w15))[["elapsed"]]
 
 c(all_401_anchors = t_all, fifteen_anchors = t_w15, ratio = t_all / t_w15)
 #> all_401_anchors fifteen_anchors           ratio 
-#>           0.044           0.004          11.000
+#>           0.058           0.005          11.600
 identical(f_all$tau[w15], f_w15$tau)    # the same values, not a resample
 #> [1] TRUE
 ```
@@ -1027,9 +1027,10 @@ consecutive steps and no maximum lag. For a retained table in
 `mode = "forward"`,
 [`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md)
 accepts `tol`, `window` and `max_lag`. `max_lag` caps the number of
-future steps, while `window` sets the consecutive-steps-below-`tol`
-freeze rule described above. `mode = "full"` keeps every lag, ignores
-`tol` and `window`, and requires `max_lag = Inf`.
+future steps, and `window` is the number of consecutive steps a row must
+stay below `tol` before it is frozen, as described above.
+`mode = "full"` keeps every lag, ignores `tol` and `window`, and
+requires `max_lag = Inf`.
 
 ## 4. Conditional ACI
 
@@ -1339,7 +1340,7 @@ setNames(sapply(lags, function(L)
   system.time(aci_online(m, ob, lag = L, init = init))[["elapsed"]]),
   paste0("lag_", lags))
 #>   lag_1  lag_20 lag_400 lag_800 
-#>   0.008   0.014   0.014   0.002
+#>   0.010   0.019   0.018   0.001
 ```
 
 An online path carries `kind = "online"`, and that is what keeps it out
