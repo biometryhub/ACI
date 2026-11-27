@@ -68,3 +68,21 @@ Empty at approval.
   0.0.30, and a table row starts at lag 0.
 - The `stepper` and `nsub` entries of `lag_table()` are not corrected here.
   They sit next to its `init` entry and are corrected with it.
+
+## Review amendment, 27 November 2026
+
+The MATLAB vignette's evidence section still describes author-shipped fixtures,
+despite the corrected README and manifest identifying locally executed adapted
+MATLAB harnesses. Align that section with the evidence actually recorded.
+
+Apply vignette review item V15 to vignette-3-matlab.Rmd: distinguish adapted
+MATLAB harness outputs, source-derived predecessor-package references and
+independent transcriptions. Preserve the remaining evidence categories.
+Update the existing NEWS description to include the MATLAB vignette.
+
+Verify the paragraph against the corrected README/register and manifest,
+compare all vignette chunks and inline R unchanged, and check patch application
+at the exact PR head. No tests, fixtures, evidence classifications, algorithms
+or other vignette proposals change. Recorded development results above are
+retained, not rerun. CI on the amended head and the other author's review remain
+necessary before merge.

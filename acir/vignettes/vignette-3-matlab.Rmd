@@ -323,18 +323,22 @@ off the object before comparing anything against a figure.
 Fidelity claims in this package are graded by the kind of evidence behind
 them, and the kinds are not interchangeable.
 
-* An **authors-source fixture** is numerical output produced by the reference
-  MATLAB itself. It is the strongest evidence available and the package has
-  it only where the source distribution shipped it.
-* A **source-derived harness** drives the package with inputs read out of the
-  reference scripts and compares against quantities the scripts define. It
-  tests the translation, not the original execution.
-* An **independent transcription** re-implements a script's numerics from the
-  source text in R, separately from the package, and compares the two. The
+* A **MATLAB harness adapted from the authors' scripts** supplies the dyad
+  and predator-prey reference outputs. These fixture files were generated
+  locally by executing the harnesses, rather than shipped by the authors.
+  Their provenance and the quantities they grade are recorded in the fixture
+  manifests and `inst/evidence/register.csv`.
+* A **source-derived reference** uses inputs and calculations drawn from the
+  reference scripts. Six registered comparisons use saved outputs from the
+  predecessor package `aci` 0.0.30. Those establish agreement with that
+  implementation, without an independent MATLAB execution.
+* An **independent transcription** re-implements published equations or a
+  script's numerics separately from the package, in R or MATLAB, and compares
+  the two. The
   $T_C$ partition's fixtures are of this kind: their oracle is the script
   `make-tc-fixtures.R` under the repository's `tools/fixtures/`, and no
-  MATLAB was executed to make them. Stronger than package-to-package agreement, weaker than an
-  authors-source fixture.
+  MATLAB was executed to make them. These fixtures compare two transcriptions,
+  without an execution of the authors' MATLAB script.
 * **Analytic identities** are checks that must hold by construction, such as
   the two covariance sequences of section 3 being bit-identical because the
   omitted term enters only the mean equations. These are asserted as

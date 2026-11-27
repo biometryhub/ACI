@@ -20,7 +20,7 @@
 
 * The plot help says which arguments replace the defaults, and when a range
   plot needs `ylim`.
-* Help, the advanced vignette and the README now match the code: the
+* Help, the advanced and MATLAB vignettes and the README now match the code: the
   data-frame columns of lag tables and Gaussian paths, `tol = 0` in
   `lag_table()`, constant drifts in `aci_linear_model()`,
   the scales at which the `aci_metric_pair()` precision figures hold, the
