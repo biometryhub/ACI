@@ -81,3 +81,28 @@ Empty at approval.
   that settles near 1.813, and the list of remedies after a refusal. Each
   now says that more sub-steps do not bring the smoothed result closer to
   the exact posterior. No code chunk changes.
+
+## Review amendment, 27 November 2026
+
+The numerical examples and tests remain intact. They establish residual
+frozen-filter error, not that increasing nsub can never improve accuracy.
+The null example itself improves substantially before reaching a nonzero error.
+
+Correct the Sub-steps and steppers section and smoother pointer in
+aci-assimilation.R, the ENSO example comment in aci-model-library.R and the
+matching aci_filter.Rd, aci_smoother.Rd and aci_enso_model.Rd. Clarify that the
+filter refinement holds the observed rate and coefficient values fixed.
+Remove general error-rate claims that the selected exact-reference cases do
+not establish. Update NEWS consistently.
+
+Apply only vignette review items V01-V04: retain the recorded null values,
+explain the backward pass under Steppers, and remove the unsupported ENSO-limit
+and categorical no-improvement insertions. No other vignette proposal belongs
+in this amendment.
+
+Validate exact prose/help correspondence, unchanged executable R/example/chunk
+content and patch application at the PR head. Preserve all existing tests,
+fixtures and expectations. Their recorded execution above is not repeated.
+No package tests/checks, benchmarks or vignette execution are run at the author's
+direction. CI on the amended head and the other author's review remain necessary
+before merge.

@@ -65,8 +65,8 @@ closed-form method is used for a \code{cgns_model}; a general \code{stochastic_m
 is out of scope in this release.
 }
 \details{
-The backward pass is explicit and does not become more accurate with a
-larger \code{nsub}; see the section "Sub-steps and steppers" in \code{\link[=aci_filter]{aci_filter()}}.
+The backward pass is explicit under either \code{stepper}. See the section
+"Sub-steps and steppers" in \code{\link[=aci_filter]{aci_filter()}} for the limits of increasing \code{nsub}.
 }
 \section{Methods (by class)}{
 \itemize{

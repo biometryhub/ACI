@@ -22,8 +22,9 @@
 ## Documentation
 
 * `?aci_filter` has a new section on `nsub` and `stepper`. A larger `nsub`
-  brings the forward filter closer to its exact value, but not the smoother
-  or the ACI. A smaller `dt` brings all three closer. `stepper` applies to the
+  refines the filter integration on the fixed observation grid. It can also
+  improve the smoother and ACI, but does not in general remove the error from
+  holding filter moments fixed within each interval. `stepper` applies to the
   forward filter only. `?aci`, `?aci_smoother` and `?aci_online` point to the
   section, and the advanced vignette says the same of its sub-stepped
   examples.

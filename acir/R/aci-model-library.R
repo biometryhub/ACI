@@ -280,11 +280,11 @@ aci_dyad_model <- function(variant = "p1", observe = "x", params = NULL) {
 #'
 #' \donttest{
 #' # Checks on the configuration above, not alternatives to it. Sub-steps
-#' # under the stated prior stay event-free and give about 1.81. A larger nsub
-#' # does not bring the smoother closer to the exact posterior (see
-#' # ?aci_filter), and the explicit and implicit schemes are not required to
-#' # agree at a finite step; this is a self-consistency check on one record,
-#' # not an accuracy guarantee.
+#' # under the stated prior stay event-free and give about 1.81. Increasing
+#' # nsub alone does not establish convergence to the exact posterior (see
+#' # ?aci_filter). The explicit and implicit schemes are not required to agree
+#' # at a finite step. This is a self-consistency check on one record, not an
+#' # accuracy guarantee.
 #' max(aci(m, ob, init = ini, nsub = 20)$aci)                    # 1.813052
 #' max(aci(m, ob, init = ini, stepper = "implicit", nsub = 20)$aci)
 #'
