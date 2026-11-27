@@ -155,3 +155,23 @@ output and a sharp one in the input.
   ratio on; the vignette record warns at index 35 and not at its floor; the
   message at index 1 and at index 4. These fail on the previous head of this
   branch.
+
+## Review amendment, 27 November 2026
+
+The step-ratio diagnostic is retained. Its explanation must include the drift
+term in the full factor E = I - (A + Q Rf^-1) dt. A noise ratio of one is not
+the general sign-change or accuracy boundary for that factor.
+
+Update the internal explanation and warning text in aci-utils.R, the public
+section in aci-assimilation.R and aci_online.Rd, and the existing NEWS entry.
+Preserve the trigger, warning class/fields, recorder latch, numerical expressions
+and all tests. The only executable change is the warning's displayed wording.
+
+Read the existing warning assertions and check the new literal against them.
+Compare the remaining source as text, synchronise the roxygen/Rd paragraphs,
+and verify patch application to the exact PR head. The contributor's recorded
+numerical results above are retained, not rerun. No R/package checks or benchmarks
+are run for this amendment at the author's direction. CI on the amended head
+and the other author's review remain necessary before merge. This is a correction
+within the existing PR, not a new numerical method or a claim to cover the
+recorded finite-lag covariance excess at ratio 0.57.

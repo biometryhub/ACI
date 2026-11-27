@@ -357,14 +357,15 @@ spd_floor <- function(R, eps = 1e-12) {
 }
 
 
-#' Warn once when a Theorem 3 update is outside its range (internal)
+#' Warn once when the hidden-noise step ratio exceeds one (internal)
 #'
-#' To leading order the Theorem 3 update factor is the identity minus
-#' `Q Rf^-1 dt`, with `Rf` the filter covariance at the start of the interval
-#' and `Q` the hidden noise covariance given the observed increment. The step
-#' ratio is the largest eigenvalue of `Q Rf^-1 dt`. The exact factor stays
-#' positive; above a ratio of 1 the leading-order one changes sign in that
-#' direction, and the smoothed covariance can exceed the filter covariance.
+#' The step ratio is the largest eigenvalue of `Q Rf^-1 dt`, with `Rf` the
+#' filter covariance at the interval start and `Q` the hidden noise covariance
+#' given the observed increment. The full leading-order Theorem 3 factor is
+#' `I - (A + Q Rf^-1) dt`, where `A = Ly - gyx Gi Lx` includes the drift.
+#' The noise ratio alone therefore does not locate the factor's sign change.
+#' A ratio above 1 warns of a step that can make the smoothed covariance exceed
+#' the filter covariance. A ratio at or below 1 does not rule that out.
 #' The latch lives on the recorder, as for `.aci_reg_report()`, and one public
 #' call warns once, for the first interval a kernel reports. Only at index 1 is
 #' the filter covariance the prior, and only there does the message name it.
@@ -384,10 +385,10 @@ spd_floor <- function(R, eps = 1e-12) {
   aci_warn(
     "aci_warn_leading_order",
     sprintf(paste(
-      "The Theorem 3 update is outside its range at index %d (time %g): one",
-      "step of hidden noise is %.3g times the filter variance there, and the",
-      "leading-order update holds only below 1. The smoothed covariance at",
-      "and before that index can exceed the filter covariance. %s"),
+      "The Theorem 3 step ratio exceeds 1 at index %d (time %g): one",
+      "step of hidden noise is %.3g times the filter variance there.",
+      "The smoothed covariance at and before that index can exceed the",
+      "filter covariance. %s"),
       index, time, ratio, advice),
     ratio = ratio, index = index, time = time)
   invisible(NULL)

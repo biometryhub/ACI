@@ -20,7 +20,7 @@
   the covariance and records the event in `meta$regularization`. Results
   that were positive definite are unchanged.
 * `aci_online()`, `lag_table()` and the ranges built on them warn with
-  `aci_warn_leading_order` when the Theorem 3 update is outside its range:
+  `aci_warn_leading_order` when the hidden-noise step ratio exceeds 1:
   one step of hidden noise exceeds the filter variance at the start of an
   interval. A prior variance below one step of hidden noise does this at the
   first interval, and a filter variance that falls that low does it later in
@@ -29,7 +29,8 @@
   `dt = 0.01`. Returned values are unchanged, and the condition carries the
   ratio, index and time. Intervals from the first floored filter covariance
   on are left out, since `aci_warn_regularized` reports the floor.
-  `?aci_online` has a new section on the range of the scheme.
+  `?aci_online` explains this diagnostic and its limits. The update also
+  depends on drift, and a ratio at or below 1 does not establish accuracy.
 * `aci()` accepts a lag table that `lag_table()` built for a model that
   declares its own estimand, such as `aci_enso_model(hidden = "tau")`.
 

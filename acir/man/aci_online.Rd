@@ -121,15 +121,14 @@ are the filter moments, unchanged value for value.
 
 \section{Range of the scheme}{
 
-The leading-order update depends on the ratio of one step of hidden noise
-to the filter variance at the start of each interval: the largest
-eigenvalue of \verb{Q Rf^-1 dt}, with \code{Rf} the filter covariance and \code{Q} the
-hidden noise covariance given the observed increment. The exact update
-factor stays positive for every ratio. The leading-order factor changes
-sign once the ratio passes 1, and the smoothed covariance at and before
-that interval can then exceed the filter covariance, which no smoother
-allows. This happens with a prior variance below one step of hidden noise,
-and on a record whose filter variance falls that low. \code{aci_online()} and
+One diagnostic compares one step of hidden noise with the filter variance
+at the start of each interval: the largest eigenvalue of \verb{Q Rf^-1 dt},
+with \code{Rf} the filter covariance and \code{Q} the hidden noise covariance given
+the observed increment. The update factor also depends on the hidden drift,
+so this ratio is not a general stability or accuracy criterion. A ratio
+above 1 warns of a step that can make the smoothed covariance exceed the
+filter covariance. A ratio at or below 1 does not rule that out.
+\code{aci_online()} and
 \code{\link[=lag_table]{lag_table()}}, and \code{\link[=aci]{aci()}} and \code{\link[=aci_range]{aci_range()}} when they build a table, raise
 one \code{aci_warn_leading_order} per call when a ratio is above 1. The
 condition carries \code{ratio}, \code{index} and \code{time} for the interval it reports.
