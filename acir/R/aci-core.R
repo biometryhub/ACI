@@ -281,11 +281,15 @@ aci_metric <- function(p, q, decompose = TRUE) {
 #'   engine for a conditional-Gaussian model.
 #' @param conditional Optional `aci_conditional_spec`; see [aci_conditional()].
 #' @param table Optional precomputed `lag_table`, whose online diagonal is used
-#'   in place of the headline smoother.
+#'   in place of the headline smoother. The table fixes `stepper`, `nsub` and
+#'   `regularize` when [lag_table()] builds it, so supplying any of them with
+#'   `table` is an error; give them to [lag_table()].
 #' @param keep One of `"paths"`, `"table"` or `"none"`, selecting which objects
 #'   are retained on the result. It does not select a smoother.
 #' @param decompose `TRUE` to retain the signal and dispersion parts.
-#' @param init Optional list with the initial hidden `mean` and `cov`.
+#' @param init Optional list with the initial hidden `mean` and `cov`. Any
+#'   other entry is an error, except `source`, which a stored `meta$init`
+#'   carries.
 #' @param stepper Either `"explicit"` or `"implicit"`.
 #' @param nsub Positive whole number of sub-steps taken per observation.
 #' @param regularize Covariance policy for this call; see [aci_filter()]. One
@@ -333,6 +337,8 @@ aci <- function(model, obs, engine = c("auto", "cgns"),
       "aci() has no argument m in this release; the ensemble engine and",
       "its ensemble size m are out of scope. R would partial-match m to",
       "model, silently shifting the other arguments."))
+  table_fixed <- c(stepper = !missing(stepper), nsub = !missing(nsub),
+                   regularize = !missing(regularize))
   dots <- list(...)
   stepper <- match.arg(stepper); keep <- match.arg(keep)
   policy <- .aci_regularize(regularize)
@@ -349,6 +355,12 @@ aci <- function(model, obs, engine = c("auto", "cgns"),
   if (!is.null(table)) {
     if (length(dots))
       aci_abort("aci_error_dims", "Unused arguments were supplied with a reused lag table.")
+    if (any(table_fixed))
+      aci_abort("aci_error_dims", paste0(
+        "Supplied with a reused lag table: ",
+        paste(names(table_fixed)[table_fixed], collapse = ", "),
+        ". The table fixes stepper, nsub and regularize when it is built; ",
+        "give them to lag_table()."))
     .validate_lag_table_source(table, model, obs, conditional, init)
     table_init <- table$meta$init %||% init
     return(structure(list(t = table$t, aci = table$diag,

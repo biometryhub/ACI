@@ -42,7 +42,9 @@ Theorem 3 recursions are derived for.}
 conditional ACI
 reduction; see \code{\link[=aci_conditional]{aci_conditional()}}.}
 
-\item{init}{Optional list with the initial hidden \code{mean} and \code{cov}.}
+\item{init}{Optional list with the initial hidden \code{mean} and \code{cov}. Any
+other entry is an error, except \code{source}, which a stored \code{meta$init}
+carries.}
 
 \item{regularize}{Covariance policy for this call; see \code{\link[=aci_filter]{aci_filter()}}. One
 record covers the whole call, and is returned in \code{meta$regularization}; a

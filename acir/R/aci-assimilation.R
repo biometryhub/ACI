@@ -310,6 +310,25 @@ as.data.frame.da_path_gaussian <- function(x, ...) {
 }
 
 
+#' Refuse unknown entries in a supplied prior (internal)
+#'
+#' @param init `NULL` or a list. A list may carry `mean`, `cov` and the
+#'   `source` entry that a stored `meta$init` holds.
+#' @returns `init`, invisibly; called for its error condition.
+#' @noRd
+.check_init_names <- function(init) {
+  if (!is.list(init)) return(invisible(init))
+  nm <- names(init) %||% rep("", length(init))
+  bad <- nm[!nm %in% c("mean", "cov", "source")]
+  if (length(bad))
+    aci_abort("aci_error_dims", sprintf(paste(
+      "init has unknown entries: %s. The accepted entries are mean and cov,",
+      "and the source entry of a stored meta$init."),
+      paste(ifelse(nzchar(bad), bad, "(unnamed)"), collapse = ", ")))
+  invisible(init)
+}
+
+
 #' Compare two hidden-state priors for equality (internal)
 #'
 #' @param a First prior, a list with `mean` and `cov`.
@@ -318,6 +337,7 @@ as.data.frame.da_path_gaussian <- function(x, ...) {
 #' @returns 1-length logical, `TRUE` when the two priors agree.
 #' @noRd
 .same_gaussian_init <- function(a, b, l) {
+  .check_init_names(a)
   if (is.null(a) || is.null(b) || is.null(a$cov) || is.null(b$cov)) return(FALSE)
   am <- as.numeric(a$mean %||% rep(0, l)); bm <- as.numeric(b$mean %||% rep(0, l))
   ac <- as.matrix(a$cov); bc <- as.matrix(b$cov)
@@ -421,7 +441,8 @@ as.data.frame.da_path_gaussian <- function(x, ...) {
 
 #' @describeIn aci_filter Closed-form filter for a conditional-Gaussian model.
 #' @param init Optional list with the initial hidden `mean` and `cov`; `NULL`
-#'   uses a diffuse prior and warns.
+#'   uses a diffuse prior and warns. Any other entry is an error, except
+#'   `source`, which a stored `meta$init` carries.
 #' @param conditional Optional `aci_conditional_spec` selecting a
 #'   conditional ACI
 #'   reduction; see [aci_conditional()].
@@ -494,7 +515,9 @@ aci_filter.cgns_model <- function(model, obs, init = NULL, conditional = NULL,
 #' @param conditional Optional `aci_conditional_spec` selecting a
 #'   conditional ACI
 #'   reduction; see [aci_conditional()].
-#' @param init Optional list with the initial hidden `mean` and `cov`.
+#' @param init Optional list with the initial hidden `mean` and `cov`. Any
+#'   other entry is an error, except `source`, which a stored `meta$init`
+#'   carries.
 #' @param stepper Either `"explicit"` or `"implicit"`.
 #' @param nsub Positive whole number of sub-steps taken per observation.
 #' @param force_validate `FALSE` (the default) lets a `filter` that
@@ -571,7 +594,9 @@ aci_smoother.cgns_model <- function(model, obs, filter = NULL,
 #' @param conditional Optional `aci_conditional_spec` selecting a
 #'   conditional ACI
 #'   reduction; see [aci_conditional()].
-#' @param init Optional list with the initial hidden `mean` and `cov`.
+#' @param init Optional list with the initial hidden `mean` and `cov`. Any
+#'   other entry is an error, except `source`, which a stored `meta$init`
+#'   carries.
 #' @param regularize Covariance policy for this call; see [aci_filter()]. One
 #'   record covers the whole call, and is returned in `meta$regularization`; a
 #'   call in which a floor fires also raises one `aci_warn_regularized`. A
@@ -725,9 +750,12 @@ aci_online.stochastic_model <- function(model, obs, lag, ...)
 #' @param filter Optional precomputed filter path.
 #' @param smoother Optional precomputed smoother path.
 #' @param conditional Optional `aci_conditional_spec`; see [aci_conditional()].
-#' @param init Optional list with the initial hidden `mean` and `cov`.
-#' @param stepper Either `"explicit"` or `"implicit"`.
-#' @param nsub Positive whole number of sub-steps taken per observation.
+#' @param init Optional list with the initial hidden `mean` and `cov`. Any
+#'   other entry is an error, except `source`, which a stored `meta$init`
+#'   carries.
+#' @param stepper Must be `"explicit"`; any other value raises
+#'   `aci_error_stepper`.
+#' @param nsub Must be 1; any other value raises `aci_error_stepper`.
 #' @param regularize Covariance policy for this call; see [aci_filter()]. One
 #'   record covers the filter, the Theorem 3 reference smoother and every
 #'   relative-entropy denominator the table forms, and is returned in

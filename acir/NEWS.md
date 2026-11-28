@@ -2,6 +2,21 @@
 
 ## Bug fixes
 
+* `aci(table = )` stops with `aci_error_dims` when `stepper`, `nsub` or
+  `regularize` is also supplied. The table already fixes these settings, and
+  the call used to ignore them; give them to `lag_table()`. `?lag_table` now
+  says that it takes only `stepper = "explicit"` and `nsub = 1`.
+* An `init` list with an entry other than `mean` and `cov` stops with
+  `aci_error_dims` naming the unknown entries. `init = list(m = 5, cov = 1)`
+  used to run with prior mean 0. A longer name that R matched to `cov`, as
+  in `covariance =`, used to set the prior covariance and is refused as
+  well. The `source` entry of a stored `meta$init` is accepted, so a stored
+  prior can be passed back.
+* `?aci_model` now says what assigning into an existing model does. An
+  assigned drift coefficient (`Lx`, `fx`, `Ly` or `fy`) changes the results
+  of `aci_filter()`, `aci_smoother()`, `aci_online()`, `lag_table()` and
+  `aci()` but not those of `simulate()`. The help used to say that both stay
+  on the original coefficients. No behaviour changed.
 * Plot methods for ACI results, Gaussian paths and ranges pass extra
   arguments to `plot()` as 0.2.0 did, including unnamed arguments,
   `panel.first` and `panel.last`, and named labels such as `main` still
