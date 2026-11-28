@@ -75,6 +75,17 @@
   examples.
 * The plot help says which arguments replace the defaults, and when a range
   plot needs `ylim`.
+* Help, the advanced and MATLAB vignettes and the README now match the code: the
+  data-frame columns of lag tables and Gaussian paths, `tol = 0` in
+  `lag_table()`, constant drifts in `aci_linear_model()`,
+  the scales at which the `aci_metric_pair()` precision figures hold, the
+  contents of a `mode = "full"` table, and what the MATLAB reference
+  fixtures are. The backward-range help and error no longer cite files
+  outside the package.
+* The evidence register no longer counts `aci(table = )` returning a lag
+  table's own diagonal as an independent check of `lag_table()`, `lt_diag()`
+  and `aci_metric()`, and the oracle manifest says which tests hold its
+  analytic oracles.
 
 # acir 0.2.1
 

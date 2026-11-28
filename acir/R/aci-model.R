@@ -467,8 +467,10 @@ validate_cgns <- function(m, n_probe = 5) {
 #' @param lambda_x Coupling of the hidden state into the observed drift; a
 #'   finite scalar or a `k` by `l` matrix.
 #' @param lambda_y Hidden self-drift; a finite scalar or an `l` by `l` matrix.
-#' @param fx Function of `(t, x)` giving the remaining observed drift.
-#' @param fy Function of `(t, x)` giving the remaining hidden drift.
+#' @param fx Function of `(t, x)` giving the remaining observed drift, or a
+#'   finite constant of length 1 or `k`.
+#' @param fy Function of `(t, x)` giving the remaining hidden drift, or a
+#'   finite constant of length 1 or `l`.
 #' @param sigma_x Observed noise amplitude.
 #' @param sigma_y Hidden noise amplitude.
 #' @param k Observed dimension; a positive whole number.

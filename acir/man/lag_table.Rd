@@ -29,8 +29,8 @@ lag_table(
 \item{mode}{Either \code{"forward"} or \code{"full"}, selecting which cells are
 retained.}
 
-\item{tol}{Positive tolerance below which a row is frozen by the adaptive
-storage rule.}
+\item{tol}{Non-negative tolerance below which a row is frozen by the
+adaptive storage rule; 0 turns freezing off.}
 
 \item{window}{Number of consecutive steps a row must stay below \code{tol} before
 it is frozen.}

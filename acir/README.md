@@ -9,13 +9,16 @@ Gaussian nonlinear systems, consolidating the `aci` and `aciR` packages into a
 single implementation.
 
 Its outputs are graded against hash-pinned reference records. The filter, the
-smoother and the total ACI metric are compared with the authors' published
-MATLAB outputs for the dyad and predator-prey systems, and the fixed-lag
+smoother and the total ACI metric are compared with the outputs of MATLAB
+harnesses adapted from the authors' published scripts for the dyad and
+predator-prey systems, and the fixed-lag
 online smoother and the causal influence range with those outputs for the dyad
 record only; the paths those scripts do not exercise (the noise
 cross-covariance terms, the matrix online smoother, the general auxiliary
 matrices) are compared with independent MATLAB or R transcriptions of the
-published equations, with analytic identities, or with a source-derived run.
+published equations, with analytic identities, or with a source-derived run,
+which for six rows is the output of `aci` 0.0.30, one of the two packages
+consolidated here.
 `inst/evidence/register.csv` names the comparator, the source class and the
 tolerance for each checked feature.
 
@@ -25,10 +28,10 @@ Version 0.1.0 is the parity milestone for the graded surface. The evidence
 register carries 72 rows: 28 are graded against a hash-pinned fixture and 44
 record an exact relation, a behavioural check or an in-test independent
 transcription with no fixture behind them. Ten of the fixture-backed rows cite
-a fixture the method authors produced: nine compare a computed output against
-it, and the tenth records that `observed_trajectory()` ingests the authors'
-pinned input signal and carries it onto the seven dyad grades; the two
-predator-prey grades run on the authors' pinned predator-prey record, which has
+a fixture written by those MATLAB harnesses: nine compare a computed output
+against it, and the tenth records that `observed_trajectory()` ingests the
+pinned dyad input signal and carries it onto the seven dyad grades; the two
+predator-prey grades run on the pinned predator-prey record, which has
 no register row of its own. The remaining fixture-backed rows compare against
 source-derived, independently transcribed or analytic references, each named in
 `inst/evidence/register.csv` with its tolerance. The stages of the
