@@ -15,6 +15,13 @@
   Results for ordinary inputs are unchanged.
 * `aci()` accepts a lag table that `lag_table()` built for a model that
   declares its own estimand, such as `aci_enso_model(hidden = "tau")`.
+* `lag_table()`, `aci_online()` and `aci_smoother()` given a filter that
+  `regularize = "floor"` floored, and `aci_range()` on a floored `aci()`
+  result that kept its paths, now record the filter's floor events and
+  policy `"floor"` in `meta$regularization` and raise one
+  `aci_warn_regularized`. Before, they started an empty record, so a table
+  built on a floored filter, and `aci(table = )` on it, reported no floor.
+  The record survives `saveRDS()`. Results are unchanged.
 
 ## Documentation
 

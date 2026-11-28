@@ -658,6 +658,8 @@
     filt <- NULL
     smoo <- NULL
   }
+  if (!is.null(filt) && !is.environment(regularize))
+    .aci_reg_carry(rec, filt$meta$regularization)
   filt <- filt %||% .cgns_filter_compiled(
     bundle, init = init, stepper = "explicit", nsub = 1L, validate = FALSE,
     regularize = rec
