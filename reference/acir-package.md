@@ -1,12 +1,12 @@
-# acir: Closed-Form Assimilative Causal Inference for Conditional Gaussian Nonlinear Systems
+# acir: Assimilative Causal Inference for Conditional Gaussian Systems
 
 Causal inference as a Bayesian inverse problem via data assimilation,
-restricted to the closed-form conditional-Gaussian (CGNS) engine.
-Implements the assimilative causal inference (ACI) metric, closed-form
-CGNS filtering and smoothing, the Theorem 3 lagged-divergence table with
-its online smoother, conditional ACI masking, the forward causal
-influence range, and the benchmark models of the reference MATLAB
-codebase. Based on Andreou, Chen & Bollt (2026)
+restricted to the closed-form engine for conditional Gaussian nonlinear
+systems (CGNS). Implements the assimilative causal inference (ACI)
+metric, closed-form CGNS filtering and smoothing, the Theorem 3
+lagged-divergence table with its online smoother, conditional ACI
+masking, the forward causal influence range, and the benchmark models of
+the reference 'MATLAB' codebase. Based on Andreou, Chen & Bollt (2026)
 [doi:10.1038/s41467-026-68568-0](https://doi.org/10.1038/s41467-026-68568-0)
 , with the causal influence range of Andreou & Chen (2026)
 [doi:10.48550/arXiv.2510.21889](https://doi.org/10.48550/arXiv.2510.21889)

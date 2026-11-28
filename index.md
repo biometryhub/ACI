@@ -2,9 +2,9 @@
 
 [![R-CMD-check](https://github.com/biometryhub/ACI/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/biometryhub/ACI/actions/workflows/R-CMD-check.yaml)
 [![Lifecycle:
-experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://biometryhub.github.io/ACI/API_STABILITY.md)
+experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://github.com/biometryhub/ACI/blob/main/acir/API_STABILITY.md)
 [![Licence:
-MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](https://biometryhub.github.io/ACI/LICENSE.md)
+MIT](https://img.shields.io/badge/licence-MIT-blue.svg)](https://github.com/biometryhub/ACI/blob/main/acir/LICENSE.md)
 
 acir is a closed-form assimilative causal inference engine for
 conditional Gaussian nonlinear systems, consolidating the `aci` and

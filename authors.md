@@ -17,12 +17,12 @@
 Source:
 [`inst/CITATION`](https://github.com/biometryhub/ACI/blob/main/inst/CITATION)
 
-Moller, A. and Moldovan, M. (2026). acir: Closed-Form Assimilative
-Causal Inference for Conditional Gaussian Nonlinear Systems. R package
-version 0.2.2. https://github.com/biometryhub/ACI
+Moller, A. and Moldovan, M. (2026). acir: Assimilative Causal Inference
+for Conditional Gaussian Systems. R package version 0.2.2.
+https://github.com/biometryhub/ACI
 
     @Manual{,
-      title = {acir: Closed-Form Assimilative Causal Inference for Conditional Gaussian Nonlinear Systems},
+      title = {acir: Assimilative Causal Inference for Conditional Gaussian Systems},
       author = {Aidan Moller and Max Moldovan},
       year = {2026},
       note = {R package version 0.2.2},
