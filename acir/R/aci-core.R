@@ -731,7 +731,9 @@ as.data.frame.aci_result <- function(x, ...) {
 #' Masking is applied separately by the caller.
 #'
 #' `"censored"`: the last divergence above the strength floor lies in the
-#' second half of the available row. This flags possible horizon sensitivity.
+#' second half of the available row, or the row was cut by `max_lag` and its
+#' last kept divergence is above the floor. This flags possible horizon
+#' sensitivity.
 #' It does not establish a lower bound for a longer record, which also changes
 #' the reference smoother used in each divergence. No margin or horizon is
 #' taken from the caller. The check uses only the available row.
@@ -741,12 +743,15 @@ as.data.frame.aci_result <- function(x, ...) {
 #' @param p Numeric vector, one zero-padded forward row.
 #' @param M Peak divergence of that row.
 #' @param floor_M Strength floor.
+#' @param kept Number of cells kept in a row cut by `max_lag`, or 0 for a row
+#'   that was not cut by it.
 #' @returns 1-length character.
 #' @noRd
-.cir_status <- function(p, M, floor_M) {
+.cir_status <- function(p, M, floor_M, kept = 0L) {
   n <- length(p)
   if (n < 3L) return("insufficient")
   if (M < floor_M) return("below_threshold")
+  if (kept > 0L && p[kept] > floor_M) return("censored")
   above <- which(p > floor_M)
   settled <- if (length(above)) above[length(above)] else 0L
   if (2L * settled > n) return("censored")
@@ -1004,6 +1009,7 @@ aci_range.lag_table <- function(x, direction = c("forward", "backward"),
   floor_M <- .cir_min_strength(if (is.null(min_M)) "auto" else min_M)
   structurally_truncated <- any(vapply(idx, function(j)
     length(x$rows[[j]]) < (N1 - j + 1L), logical(1)))
+  max_lag <- x$meta$max_lag %||% Inf
   tau <- M <- rep(NA_real_, n)
   status <- character(n)
   subj <- if (is.null(epsilon)) NULL else
@@ -1018,7 +1024,9 @@ aci_range.lag_table <- function(x, direction = c("forward", "backward"),
     p <- lt_row(x, idx[i], pad = "zero")
     r <- .fwd_lengths(p, x$dt, method, quadrature, simpson_close, grid)
     tau[i] <- r[["tau"]]; M[i] <- r[["M"]]
-    status[i] <- .cir_status(p, M[i], floor_M)
+    kept <- length(x$rows[[idx[i]]])
+    cut <- kept < length(p) && kept > max_lag
+    status[i] <- .cir_status(p, M[i], floor_M, if (cut) kept else 0L)
     if (!is.null(subj)) for (q in seq_along(epsilon)) {
       hit <- which(p > epsilon[q])
       subj[i, q] <- if (!length(hit)) 0 else x$dt * (max(hit) - off)

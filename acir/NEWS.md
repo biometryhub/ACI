@@ -10,6 +10,11 @@
   graphical settings such as `lwd = 0`. Plotting a range with more than one
   anchor whose values are all `NA` stops with an `aci_error_dims` condition
   that asks for `ylim`.
+* `aci_range()` on a table built with a finite `max_lag` labels a row
+  `"censored"` when the row was cut at `max_lag` and its last kept divergence
+  is above the strength floor. Such rows were labelled `"resolved"`. Ranges
+  and every other value are unchanged, and so is the status of rows the cut
+  did not reach.
 * `aci()` and `aci_metric()` no longer return `Inf` for some KL signals just
   below the overflow limit, for models and paths with one hidden component.
   Results for ordinary inputs are unchanged.
