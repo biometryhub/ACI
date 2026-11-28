@@ -2,15 +2,15 @@ citHeader("To cite acir in publications, please cite both the package and the me
 
 bibentry(
   bibtype = "Manual",
-  title = paste("acir: Closed-Form Assimilative Causal Inference for",
-                "Conditional Gaussian Nonlinear Systems"),
+  title = paste("acir: Assimilative Causal Inference for Conditional",
+                "Gaussian Systems"),
   author = c(person("Aidan", "Moller"), person("Max", "Moldovan")),
   year = "2026",
   note = paste("R package version", meta$Version),
   url = "https://github.com/biometryhub/ACI",
   textVersion = paste0(
-    "Moller, A. and Moldovan, M. (2026). acir: Closed-Form Assimilative ",
-    "Causal Inference for Conditional Gaussian Nonlinear Systems. ",
+    "Moller, A. and Moldovan, M. (2026). acir: Assimilative Causal ",
+    "Inference for Conditional Gaussian Systems. ",
     "R package version ", meta$Version, ". https://github.com/biometryhub/ACI"
   )
 )

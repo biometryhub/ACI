@@ -8,8 +8,7 @@ cff-version: 1.2.0
 message: 'To cite package "acir" in publications use:'
 type: software
 license: MIT
-title: 'acir: Closed-Form Assimilative Causal Inference for Conditional Gaussian Nonlinear
-  Systems'
+title: 'acir: Assimilative Causal Inference for Conditional Gaussian Systems'
 version: 0.2.2
 abstract: Causal inference as a Bayesian inverse problem via data assimilation, restricted
   to the closed-form conditional-Gaussian (CGNS) engine. Implements the assimilative
@@ -28,8 +27,7 @@ authors:
   orcid: https://orcid.org/0000-0001-9680-8474
 preferred-citation:
   type: manual
-  title: 'acir: Closed-Form Assimilative Causal Inference for Conditional Gaussian
-    Nonlinear Systems'
+  title: 'acir: Assimilative Causal Inference for Conditional Gaussian Systems'
   authors:
   - family-names: Moller
     given-names: Aidan
