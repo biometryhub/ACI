@@ -315,7 +315,9 @@ The backward smoother returns 1.4660115 nats against a true value of zero.
 Nothing was floored: the run is under `regularize = "none"`, every
 covariance stayed positive definite, every quantity is finite and the event
 count is zero. The step alone produced it, and `nsub = 20` on the same
-record leaves 0.0140779. Positive-definite, finite output with no floor
+record leaves 0.0140779. The recorded check at `nsub = 10000` still gives
+0.0121. The "Steppers" section below explains why sub-stepping alone does
+not remove this error. Positive-definite, finite output with no floor
 event does not certify that the step resolved the problem; it certifies
 only that the recursion did not have to be repaired to continue.
 
@@ -352,6 +354,13 @@ c(filter_mean_gap = max(abs(filt$mean - filt_i$mean)),
 The two steppers are different discretisations, so they give different
 numbers, and the difference here is not negligible against the size of the
 metric itself. Pick one deliberately and record which.
+
+Increasing `nsub` refines the filter integration within each observed
+interval. The backward pass also takes smaller steps, but holds the filter
+mean and covariance at their values at the start of the interval.
+Sub-stepping can therefore reduce error without removing the error from
+those fixed values. Agreement as `nsub` increases does not establish an
+exact smoother or ACI value.
 
 `lag_table()` refuses anything else outright, because the Theorem 3
 recursions it accumulates are derived for the explicit single-step

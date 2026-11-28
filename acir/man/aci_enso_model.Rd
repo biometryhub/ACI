@@ -170,15 +170,16 @@ class(e)[1]
 c(index = e$index, time = e$time, value = e$value)
 
 \donttest{
-# Checks on the configuration above, not alternatives to it. Refining the
-# step under the stated prior stays event-free and settles near 1.81. The
-# explicit and implicit schemes are not required to agree at a finite
-# step; this is a self-consistency check on one record, not an accuracy
-# guarantee.
+# Checks on the configuration above, not alternatives to it. Sub-steps
+# under the stated prior stay event-free and give about 1.81. Increasing
+# nsub alone does not establish convergence to the exact posterior (see
+# ?aci_filter). The explicit and implicit schemes are not required to agree
+# at a finite step. This is a self-consistency check on one record, not an
+# accuracy guarantee.
 max(aci(m, ob, init = ini, nsub = 20)$aci)                    # 1.813052
 max(aci(m, ob, init = ini, stepper = "implicit", nsub = 20)$aci)
 
-# Refining enough to make the automatic-prior record run at all does not
+# Sub-stepping enough to make the automatic-prior record run at all does not
 # recover the same number, which is why the prior is stated rather than
 # worked around.
 max(suppressWarnings(aci(m, ob, nsub = 20))$aci)              # 4.821106

@@ -21,6 +21,9 @@
   arguments to `plot()` as 0.2.0 did, including unnamed arguments,
   `panel.first` and `panel.last`, and named labels such as `main` still
   replace the defaults. Plots of long series are fast again.
+* The covariance error raised in the smoother's backward pass no longer
+  advises `stepper = "implicit"`, which applies to the forward filter only.
+  The condition class is unchanged.
 * A range with one anchor, drawn as a title only, no longer stops on
   graphical settings such as `lwd = 0`. Plotting a range with more than one
   anchor whose values are all `NA` stops with an `aci_error_dims` condition
@@ -63,6 +66,13 @@
 
 ## Documentation
 
+* `?aci_filter` has a new section on `nsub` and `stepper`. A larger `nsub`
+  refines the filter integration on the fixed observation grid. It can also
+  improve the smoother and ACI, but does not in general remove the error from
+  holding filter moments fixed within each interval. `stepper` applies to the
+  forward filter only. `?aci`, `?aci_smoother` and `?aci_online` point to the
+  section, and the advanced vignette says the same of its sub-stepped
+  examples.
 * The plot help says which arguments replace the defaults, and when a range
   plot needs `ylim`.
 

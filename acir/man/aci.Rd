@@ -98,6 +98,9 @@ and \code{dt = 0.07} it returns 1.4660115 nats, which \code{nsub = 20} reduces t
 0.0140779. Every one of those runs is positive definite and finite and
 records zero floor events, so positive-definite, finite output with no
 floor event does not certify that the step resolved the problem.
+
+A larger \code{nsub} does not take that null's value to 0; see the section
+"Sub-steps and steppers" in \code{\link[=aci_filter]{aci_filter()}}.
 }
 \examples{
 m <- aci_dyad_model()

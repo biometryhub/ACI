@@ -22,7 +22,7 @@ tolerance for each checked feature.
 ## Status
 
 Version 0.1.0 is the parity milestone for the graded surface. The evidence
-register carries 68 rows: 28 are graded against a hash-pinned fixture and 40
+register carries 72 rows: 28 are graded against a hash-pinned fixture and 44
 record an exact relation, a behavioural check or an in-test independent
 transcription with no fixture behind them. Ten of the fixture-backed rows cite
 a fixture the method authors produced: nine compare a computed output against

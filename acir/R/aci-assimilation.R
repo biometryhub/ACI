@@ -34,6 +34,25 @@
 #' @param model A `cgns_model` or `stochastic_model` object.
 #' @param obs An observed trajectory, or anything [as_obs()] accepts.
 #' @param ... Arguments passed to methods.
+#' @section Sub-steps and steppers:
+#' `nsub` splits each observation interval into `nsub` equal steps for the
+#' forward filter. The observed rate and the model coefficients are held at
+#' their values at the start of the interval. Increasing `nsub` refines this
+#' interval integration, while the observation grid and coefficient values
+#' remain fixed.
+#'
+#' The smoother's backward pass takes the same `nsub` steps, but holds the
+#' filter mean and covariance at their values at the start of each interval.
+#' More sub-steps can improve the smoothed moments and ACI without removing
+#' the error from those fixed values. In the uncoupled example in [aci()],
+#' where the exact ACI is 0, the largest ACI falls from 1.4660 at `nsub = 1`
+#' to 0.0141 at `nsub = 20` and 0.0121 at `nsub = 10000`. Agreement as
+#' `nsub` increases does not establish an exact smoother or ACI value.
+#'
+#' `stepper` applies to the forward filter only. `"implicit"` keeps the filter
+#' covariance positive definite. The smoother's backward pass is explicit
+#' under either stepper, and it can still fail with `aci_error_covariance_not_spd`.
+#'
 #' @returns An assimilation path: `da_path_gaussian` for the closed-form engine.
 #'   Its `meta$loglik` holds the predictive log-likelihood of the observed
 #'   record, or `NULL` when the method was called with `loglik = FALSE`.
@@ -56,6 +75,9 @@ aci_filter <- function(model, obs, ...) UseMethod("aci_filter")
 #' Generic reconstructing the hidden state from the whole observed record. The
 #' closed-form method is used for a `cgns_model`; a general `stochastic_model`
 #' is out of scope in this release.
+#'
+#' The backward pass is explicit under either `stepper`. See the section
+#' "Sub-steps and steppers" in [aci_filter()] for the limits of increasing `nsub`.
 #'
 #' @param model A `cgns_model` or `stochastic_model` object.
 #' @param obs An observed trajectory, or anything [as_obs()] accepts.
@@ -87,6 +109,9 @@ aci_smoother <- function(model, obs, ...) UseMethod("aci_smoother")
 #' and saturates at the end of the record. `lag = 0` returns the filter
 #' moments unchanged. `lag = Inf` composes the Theorem 3 updates over the whole
 #' record.
+#'
+#' It always uses the explicit filter with `nsub = 1`. The section "Sub-steps
+#' and steppers" in [aci_filter()] says what `nsub` and `stepper` do.
 #'
 #' @section Scheme:
 #' `aci_online()` composes the published **discrete** Theorem 3 updates, which
