@@ -51,7 +51,10 @@ supplied \code{filter} that took a floor adds its events to that record, which
 then reads policy \code{"floor"}, and the call warns.
 Flooring changes the numerical covariance so that the recursion can
 continue; it establishes nothing about the accuracy of the resulting
-reconstruction.}
+reconstruction.
+At a finite lag the policy also applies to each anchor's fixed-lag
+covariance, the sum of the updates within its window, which can fail to
+be positive definite when every update passes.}
 
 \item{force_validate}{\code{FALSE} (the default) lets a \code{filter} that
 \code{\link[=aci_filter]{aci_filter()}} produced for this same run, unaltered since, skip per-step
@@ -116,6 +119,31 @@ path: \code{"theorem3_discrete"} here and on the lag table's reference smoother,
 
 The one exact boundary is the other end: at \code{lag = 0} the returned moments
 are the filter moments, unchanged value for value.
+}
+
+\section{Range of the scheme}{
+
+One diagnostic compares one step of hidden noise with the filter variance
+at the start of each interval: the largest eigenvalue of \verb{Q Rf^-1 dt},
+with \code{Rf} the filter covariance and \code{Q} the hidden noise covariance given
+the observed increment. The update factor also depends on the hidden drift,
+so this ratio is not a general stability or accuracy criterion. A ratio
+above 1 warns of a step that can make the smoothed covariance exceed the
+filter covariance. A ratio at or below 1 does not rule that out.
+\code{aci_online()} and
+\code{\link[=lag_table]{lag_table()}}, and \code{\link[=aci]{aci()}} and \code{\link[=aci_range]{aci_range()}} when they build a table, raise
+one \code{aci_warn_leading_order} per call when a ratio is above 1. The
+condition carries \code{ratio}, \code{index} and \code{time} for the interval it reports.
+The returned values are those the scheme gives. A smaller \code{dt} lowers the
+ratio, and at the first interval a wider prior does too; the message names
+the prior only when it reports the first interval. Under
+\code{regularize = "floor"} the intervals from the first floored filter
+covariance on are left out: a floored value, and every filter covariance
+propagated from it, says nothing about the model, and
+\code{aci_warn_regularized} reports the floor. This holds for a filter formed
+in the call and for a supplied \code{filter} that took a floor. A table already
+built forms no update when it is passed to \code{\link[=aci]{aci()}} or \code{\link[=aci_range]{aci_range()}}, and
+raises nothing more.
 }
 
 \examples{

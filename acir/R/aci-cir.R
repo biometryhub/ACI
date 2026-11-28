@@ -25,7 +25,9 @@
   one_R <- vector("list", N)
   s_n <- r_n <- e_n <- numeric(N)
 
-  sc <- if (l == 1L) .forward_primitives_scalar(bundle, filter, from) else NULL
+  sc <- if (l == 1L) .forward_primitives_scalar(bundle, filter, from, rec) else
+    NULL
+  ratio_end <- .aci_ratio_end(rec, filter)
   if (!is.null(sc)) {
     E <- sc$E
     dmu <- sc$dmu
@@ -39,7 +41,8 @@
     rec$j <- n
     co <- .compiled_co(bundle, n)
     aux <- .thmD1_aux_compiled(
-      bundle, n, filter$cov[, , n], co = co, rec = rec
+      bundle, n, filter$cov[, , n], co = co, rec = rec,
+      ratio_end = ratio_end
     )
     one <- .onelag_stats(
       co, aux, filter$mean[n, ], filter$cov[, , n],

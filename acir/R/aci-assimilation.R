@@ -117,6 +117,29 @@ aci_smoother <- function(model, obs, ...) UseMethod("aci_smoother")
 #' The one exact boundary is the other end: at `lag = 0` the returned moments
 #' are the filter moments, unchanged value for value.
 #'
+#' @section Range of the scheme:
+#' One diagnostic compares one step of hidden noise with the filter variance
+#' at the start of each interval: the largest eigenvalue of `Q Rf^-1 dt`,
+#' with `Rf` the filter covariance and `Q` the hidden noise covariance given
+#' the observed increment. The update factor also depends on the hidden drift,
+#' so this ratio is not a general stability or accuracy criterion. A ratio
+#' above 1 warns of a step that can make the smoothed covariance exceed the
+#' filter covariance. A ratio at or below 1 does not rule that out.
+#' `aci_online()` and
+#' [lag_table()], and [aci()] and [aci_range()] when they build a table, raise
+#' one `aci_warn_leading_order` per call when a ratio is above 1. The
+#' condition carries `ratio`, `index` and `time` for the interval it reports.
+#' The returned values are those the scheme gives. A smaller `dt` lowers the
+#' ratio, and at the first interval a wider prior does too; the message names
+#' the prior only when it reports the first interval. Under
+#' `regularize = "floor"` the intervals from the first floored filter
+#' covariance on are left out: a floored value, and every filter covariance
+#' propagated from it, says nothing about the model, and
+#' `aci_warn_regularized` reports the floor. This holds for a filter formed
+#' in the call and for a supplied `filter` that took a floor. A table already
+#' built forms no update when it is passed to [aci()] or [aci_range()], and
+#' raises nothing more.
+#'
 #' @param model A `cgns_model` or `stochastic_model` object.
 #' @param obs An observed trajectory, or anything [as_obs()] accepts.
 #' @param lag Number of future steps each estimate may condition on. A
@@ -557,6 +580,9 @@ aci_smoother.cgns_model <- function(model, obs, filter = NULL,
 #'   Flooring changes the numerical covariance so that the recursion can
 #'   continue; it establishes nothing about the accuracy of the resulting
 #'   reconstruction.
+#'   At a finite lag the policy also applies to each anchor's fixed-lag
+#'   covariance, the sum of the updates within its window, which can fail to
+#'   be positive definite when every update passes.
 #' @param force_validate `FALSE` (the default) lets a `filter` that
 #'   [aci_filter()] produced for this same run, unaltered since, skip per-step
 #'   re-validation, as in [aci_smoother()].
@@ -683,6 +709,9 @@ aci_online.stochastic_model <- function(model, obs, lag, ...)
 #' smoother as its reference. That reference costs O(N) time-point work; table
 #' construction then costs work proportional to the retained lag cells, with
 #' O(N^2) cells for a full table in the worst case.
+#'
+#' The reference inherits the range of that scheme. The section on it in
+#' [aci_online()] describes the `aci_warn_leading_order` warning.
 #'
 #' @param model A `cgns_model` object.
 #' @param obs An observed trajectory, or anything [as_obs()] accepts.

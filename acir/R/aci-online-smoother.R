@@ -15,16 +15,28 @@
 #' @param Rf Filtered covariance at the interval start.
 #' @param co Optional coefficient record already read with `.compiled_co()`.
 #' @param rec Covariance-policy recorder; its `j` names the interval index.
+#' @param ratio_end First interval left out of the step ratio, from
+#'   `.aci_ratio_end()`.
 #' @returns A list with the auxiliary matrices `E` and `F`.
 #' @noRd
 .thmD1_aux_compiled <- function(bundle, j, Rf, co = NULL,
-                                rec = .aci_reg_for(NULL, bundle$t)) {
+                                rec = .aci_reg_for(NULL, bundle$t),
+                                ratio_end = Inf) {
   co <- co %||% .compiled_co(bundle, j)
   Gi <- .compiled_ginv(bundle, j)
   l <- bundle$l
   dt <- bundle$dt
+  floored <- rec$n
   Rfi <- chol_solve(Rf, diag(l), "Rf", rec, "onelag_filter_cov")
   gxy <- t(co$gyx)
+  ## Step ratio, see `.aci_step_ratio_warn()` and `.aci_ratio_end()`;
+  ## eigenvalues only where the trace, an upper bound, passes 1.
+  QR <- (co$gyy - co$gyx %*% Gi %*% gxy) %*% Rfi
+  if (j < ratio_end && rec$n == floored &&
+      isTRUE(sum(diag(QR)) * dt > 1)) {
+    ratio <- max(Re(eigen(QR, only.values = TRUE)$values)) * dt
+    if (ratio > 1) .aci_step_ratio_warn(rec, ratio, j)
+  }
   Gx <- co$Lx + gxy %*% Rfi
   Gy <- co$Ly + co$gyy %*% Rfi
   K <- Gi %*% Gx
@@ -82,14 +94,17 @@
   ## A scalar hidden state takes the auxiliaries as vectors and runs the
   ## backward recursion on them; the per-interval route below is kept for
   ## the case where the covariance policy has something to record.
-  sc <- if (l == 1L) .smoother_thmD1_scalar_moments(bundle, filt) else NULL
+  sc <- if (l == 1L) .smoother_thmD1_scalar_moments(bundle, filt, rec) else
+    NULL
+  ratio_end <- .aci_ratio_end(rec, filt)
   if (!is.null(sc)) {
     MU[, 1L] <- sc$mu
     CV[1L, 1L, ] <- sc$cv
   } else for (j in (N1 - 1L):1L) {
     rec$j <- j
     co <- .compiled_co(bundle, j)
-    aux <- .thmD1_aux_compiled(bundle, j, filt$cov[, , j], co = co, rec = rec)
+    aux <- .thmD1_aux_compiled(bundle, j, filt$cov[, , j], co = co, rec = rec,
+                               ratio_end = ratio_end)
     st <- .onelag_stats(
       co, aux, filt$mean[j, ], filt$cov[, , j],
       MU[j + 1L, ], CV[, , j + 1L],
@@ -141,7 +156,9 @@
   E <- array(NA_real_, c(l, l, N))
   dmu <- matrix(NA_real_, N, l)
   dR <- array(NA_real_, c(l, l, N))
-  sc <- if (l == 1L) .forward_primitives_scalar(bundle, filt) else NULL
+  sc <- if (l == 1L) .forward_primitives_scalar(bundle, filt, rec = rec) else
+    NULL
+  ratio_end <- .aci_ratio_end(rec, filt)
   if (!is.null(sc)) {
     E[1L, 1L, ] <- sc$E_v
     dmu[, 1L] <- sc$dmu[, 1L]
@@ -149,7 +166,8 @@
   } else for (n in seq_len(N)) {
     rec$j <- n
     co <- .compiled_co(bundle, n)
-    aux <- .thmD1_aux_compiled(bundle, n, CVf[, , n], co = co, rec = rec)
+    aux <- .thmD1_aux_compiled(bundle, n, CVf[, , n], co = co, rec = rec,
+                               ratio_end = ratio_end)
     ol <- .onelag_stats(
       co, aux, MUf[n, ], CVf[, , n], MUf[n + 1L, ], CVf[, , n + 1L],
       bundle$x[n + 1L, ] - bundle$x[n, ], dt, l, rec
@@ -188,18 +206,19 @@
 #' Slides a window of exactly `L` intervals across the record with a two-stack
 #' aggregation queue, so the cost is O(N) range compositions whatever the lag.
 #'
-#' The accumulated covariance is symmetrized and not otherwise regularised, the
-#' convention `.lagtable_core_compiled()` already uses for the same affine
-#' accumulation. Every increment it sums has been through the covariance policy
-#' inside `.onelag_stats()`.
+#' Each anchor's accumulated covariance goes through the covariance policy:
+#' it stops, or is floored and recorded, when it is not positive definite.
+#' A sum of increments that each passed the policy can still fail it.
 #'
 #' @param bundle A compiled CGNS bundle.
 #' @param filt The forward filter path.
 #' @param aux Auxiliaries from `.online_aux_compiled()`; unused when `L <= 0`.
 #' @param L Whole lag, already capped at `bundle$N`.
+#' @param rec Covariance-policy recorder; its `j` names the anchor index.
 #' @returns A list with `mean`, `cov` and the per-anchor `lag_effective`.
 #' @noRd
-.online_window_compiled <- function(bundle, filt, aux, L) {
+.online_window_compiled <- function(bundle, filt, aux, L,
+                                    rec = .aci_reg_for(NULL, bundle$t)) {
   N <- bundle$N
   l <- bundle$l
   MU <- filt$mean
@@ -237,7 +256,11 @@
       back_agg
     }
     MU[j, ] <- MU[j, ] + agg$s
-    CV[, , j] <- sym(CV[, , j] + agg$S)
+    rec$j <- j
+    S <- CV[, , j] + agg$S
+    ## One hidden component: a finite positive variance needs no factorisation.
+    CV[, , j] <- if (l == 1L && is.finite(S) && S > 0) S else
+      .cov_guard(S, rec, "smoother_window")
     eff[j] <- hi - j + 1L
     if (nf == 0L) {
       suffix <- NULL
@@ -268,10 +291,12 @@
 #' @param aux Auxiliaries from `.online_aux_compiled()`.
 #' @param j Integer vector of anchor indices.
 #' @param lag Numeric vector of requested lags, recycled from length one.
+#' @param rec Covariance-policy recorder; its `j` names the anchor index.
 #' @returns A list with `mean` (one row per pair), `cov` (one slice per pair)
 #'   and the realised `lag_effective`.
 #' @noRd
-.online_at_compiled <- function(bundle, filt, aux, j, lag) {
+.online_at_compiled <- function(bundle, filt, aux, j, lag,
+                                rec = .aci_reg_for(NULL, bundle$t)) {
   N1 <- bundle$N1
   l <- bundle$l
   j <- as.integer(j)
@@ -286,6 +311,7 @@
   i <- 1L
   while (i <= np) {
     jj <- j[ord[i]]
+    rec$j <- jj
     grp <- i
     while (grp < np && j[ord[grp + 1L]] == jj) grp <- grp + 1L
     idx <- ord[i:grp]
@@ -305,7 +331,7 @@
       cnt <- cnt + 1L
       for (h in which(want == cnt)) {
         mu_out[idx[h], ] <- mu
-        cov_out[, , idx[h]] <- R
+        cov_out[, , idx[h]] <- .cov_guard(R, rec, "smoother_window")
         eff[idx[h]] <- cnt
       }
       D <- D %*% matrix(aux$E[, , n], l, l)
@@ -355,7 +381,7 @@
     ## A lag of zero is the filter itself, and the window route returns its
     ## moments untouched, so the O(N) auxiliary pass is not run for it.
     if (L > 0L) aux <- aux %||% .online_aux_compiled(bundle, filt, rec)
-    res <- .online_window_compiled(bundle, filt, aux, L)
+    res <- .online_window_compiled(bundle, filt, aux, L, rec)
     MU <- res$mean
     CV <- res$cov
     eff <- res$lag_effective
@@ -427,7 +453,9 @@
   OLmu <- matrix(NA_real_, N, l)
   OLR <- vector("list", N)
   s_n <- r_n <- e_n <- numeric(N)
-  sc <- if (l == 1L) .forward_primitives_scalar(bundle, filt) else NULL
+  sc <- if (l == 1L) .forward_primitives_scalar(bundle, filt, rec = rec) else
+    NULL
+  ratio_end <- .aci_ratio_end(rec, filt)
   if (!is.null(sc)) {
     Ehist <- sc$E
     OLmu <- sc$one_mu
@@ -440,7 +468,8 @@
   } else for (n in seq_len(N)) {
     rec$j <- n
     co <- .compiled_co(bundle, n)
-    aux <- .thmD1_aux_compiled(bundle, n, CVf[, , n], co = co, rec = rec)
+    aux <- .thmD1_aux_compiled(bundle, n, CVf[, , n], co = co, rec = rec,
+                               ratio_end = ratio_end)
     Ehist[[n]] <- aux$E
     ol <- .onelag_stats(
       co, aux, MUf[n, ], CVf[, , n], MUf[n + 1L, ], CVf[, , n + 1L],
