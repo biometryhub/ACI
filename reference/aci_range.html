@@ -165,8 +165,9 @@ quadrature of the subjective read-out over the threshold grid
 <dd><p>Closing rule for the leftover interval when a grid has
 an even number of points: <code>"quadratic"</code> (the default) fits a quadratic
 through the last three points, following <code>simps.m</code> in the ACI reference
-code; <code>"trapezoid"</code> is the package's pre-0.0.21 rule and reproduces
-results reported by earlier versions. Odd-length grids are unaffected.</p></dd>
+code; <code>"trapezoid"</code> is the rule <code>aci</code>, the predecessor of <code>acir</code>, used up to
+version 0.0.20, and reproduces the results it reported. Odd-length grids
+are unaffected.</p></dd>
 
 
 <dt id="arg-anchors">anchors<a class="anchor" aria-label="anchor" href="#arg-anchors"></a></dt>
@@ -204,10 +205,10 @@ be taken from one vector.</p></dd>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p>Only <code>direction = "forward"</code> is in this release. The backward range is a
-<code>FBCIR_code-main</code> feature: it appears in no ACI_code script, and it is held
-in the development reserve (<code>reserve/fbcir/</code>) for the release that brings
-that family in. <code>direction = "backward"</code> raises <code>aci_error_not_implemented</code>
-rather than returning a forward answer under a backward label.</p>
+<code>FBCIR_code-main</code> feature: it appears in no ACI_code script, and <code>acir</code> does
+not implement it. <code>direction = "backward"</code> raises
+<code>aci_error_not_implemented</code>, and never returns a forward answer under a
+backward label.</p>
     </div>
     <div class="section level2">
     <h2 id="methods-by-class-">Methods (by class)<a class="anchor" aria-label="anchor" href="#methods-by-class-"></a></h2>
@@ -216,7 +217,9 @@ rather than returning a forward answer under a backward label.</p>
 <li><p><code>aci_range(aci_result)</code>: Forward range from an ACI result, building the table
 when it was not retained. The covariance policy is not re-resolved here:
 it is read off the result's own <code>meta$regularization</code>, so re-analysing a
-saved result in a new session cannot silently change it. The integration
+saved result in a new session cannot silently change it. A retained
+filter that took a floor adds its events to the range's record, and the
+call raises one <code>aci_warn_regularized</code>. The integration
 settings are read off the retained filter or the result's own
 <code>meta$stepper</code> and <code>meta$nsub</code>; see the section above.</p></li>
 </ul></div>

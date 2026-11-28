@@ -96,12 +96,18 @@ mutable state inside a coefficient function is outside the model
 contract. Closed-form execution may realise each coefficient once on the
 observation grid and reuse that realised path.
 
-A model is fixed once constructed. Its derived drifts capture the
-coefficient functions supplied to the constructor, so assigning a new
-coefficient into an existing model changes only the field assigned and
-leaves simulation, filtering and every realised path on the original
-coefficients. Change a parameter by rebuilding the model with
-`aci_model()`, not by modifying one.
+Do not assign into an existing model, as in `m$Lx <- ...`. No warning or
+error is given, and an assigned drift coefficient (`Lx`, `fx`, `Ly` or
+`fy`) changes the results of
+[`aci_filter()`](https://biometryhub.github.io/ACI/reference/aci_filter.md),
+[`aci_smoother()`](https://biometryhub.github.io/ACI/reference/aci_smoother.md),
+[`aci_online()`](https://biometryhub.github.io/ACI/reference/aci_online.md),
+[`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md)
+and [`aci()`](https://biometryhub.github.io/ACI/reference/aci.md) but
+not those of [`simulate()`](https://rdrr.io/r/stats/simulate.html). An
+assigned diffusion coefficient (`Sx1`, `Sx2`, `Sy1` or `Sy2`) changes
+all of them. To change a parameter, build a new model with
+`aci_model()`.
 
 ## See also
 
@@ -122,8 +128,7 @@ aci_model(
   k = 1, l = 1)
 #> <cgns_model> 'cgns_model': k = 1 observed, l = 1 hidden
 
-# Coefficients are fixed for the model's lifetime: change a parameter by
-# rebuilding, not by assigning into an existing model.
+# Two models that differ in one parameter.
 make_dyadish <- function(lambda)
   aci_model(Lx = function(t, x) matrix(1, 1, 1),
             fx = function(t, x) lambda * x,

@@ -88,7 +88,8 @@ time. The closed-form method is used for a <code>cgns_model</code>; a general
 
 <dt id="arg-init">init<a class="anchor" aria-label="anchor" href="#arg-init"></a></dt>
 <dd><p>Optional list with the initial hidden <code>mean</code> and <code>cov</code>; <code>NULL</code>
-uses a diffuse prior and warns.</p></dd>
+uses a diffuse prior and warns. Any other entry is an error, except
+<code>source</code>, which a stored <code>meta$init</code> carries.</p></dd>
 
 
 <dt id="arg-conditional">conditional<a class="anchor" aria-label="anchor" href="#arg-conditional"></a></dt>
@@ -163,6 +164,26 @@ record, or <code>NULL</code> when the method was called with <code>loglik = FALS
 <li><p><code>aci_filter(stochastic_model)</code>: Classed not-implemented condition for a general
 (non-CGNS) stochastic model.</p></li>
 </ul></div>
+    <div class="section level2">
+    <h2 id="sub-steps-and-steppers">Sub-steps and steppers<a class="anchor" aria-label="anchor" href="#sub-steps-and-steppers"></a></h2>
+
+
+<p><code>nsub</code> splits each observation interval into <code>nsub</code> equal steps for the
+forward filter. The observed rate and the model coefficients are held at
+their values at the start of the interval. Increasing <code>nsub</code> refines this
+interval integration, while the observation grid and coefficient values
+remain fixed.</p>
+<p>The smoother's backward pass takes the same <code>nsub</code> steps, but holds the
+filter mean and covariance at their values at the start of each interval.
+More sub-steps can improve the smoothed moments and ACI without removing
+the error from those fixed values. In the uncoupled example in <code><a href="aci.html">aci()</a></code>,
+where the exact ACI is 0, the largest ACI falls from 1.4660 at <code>nsub = 1</code>
+to 0.0141 at <code>nsub = 20</code> and 0.0121 at <code>nsub = 10000</code>. Agreement as
+<code>nsub</code> increases does not establish an exact smoother or ACI value.</p>
+<p><code>stepper</code> applies to the forward filter only. <code>"implicit"</code> keeps the filter
+covariance positive definite. The smoother's backward pass is explicit
+under either stepper, and it can still fail with <code>aci_error_covariance_not_spd</code>.</p>
+    </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
     <div class="dont-index"><p><code><a href="aci_smoother.html">aci_smoother()</a></code>, <code><a href="aci.html">aci()</a></code>, <code><a href="lag_table.html">lag_table()</a></code></p></div>

@@ -22,4 +22,5 @@ as.data.frame(x, ...)
 ## Value
 
 A data frame in long form with one row per retained cell, carrying the
-anchor time, the lag and the divergence.
+anchor index `j`, the index `n` of the later time (`n - j` is the lag in
+steps) and the divergence `P`.

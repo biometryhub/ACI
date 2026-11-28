@@ -22,4 +22,4 @@ as.data.frame(x, ...)
 ## Value
 
 A data frame in long form with one row per time and hidden component,
-carrying the mean and its marginal variance.
+carrying the mean and its marginal standard deviation `sd`.

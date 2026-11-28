@@ -144,12 +144,13 @@ diffusion-channel counts. Random-number generation or result-changing
 mutable state inside a coefficient function is outside the model contract.
 Closed-form execution may realise each coefficient once on the observation
 grid and reuse that realised path.</p>
-<p>A model is fixed once constructed. Its derived drifts capture the
-coefficient functions supplied to the constructor, so assigning a new
-coefficient into an existing model changes only the field assigned and
-leaves simulation, filtering and every realised path on the original
-coefficients. Change a parameter by rebuilding the model with
-<code>aci_model()</code>, not by modifying one.</p>
+<p>Do not assign into an existing model, as in <code>m$Lx &lt;- ...</code>. No warning or
+error is given, and an assigned drift coefficient (<code>Lx</code>, <code>fx</code>, <code>Ly</code> or
+<code>fy</code>) changes the results of <code><a href="aci_filter.html">aci_filter()</a></code>, <code><a href="aci_smoother.html">aci_smoother()</a></code>,
+<code><a href="aci_online.html">aci_online()</a></code>, <code><a href="lag_table.html">lag_table()</a></code> and <code><a href="aci.html">aci()</a></code> but not those of <code><a href="https://rdrr.io/r/stats/simulate.html" class="external-link">simulate()</a></code>.
+An assigned diffusion coefficient (<code>Sx1</code>, <code>Sx2</code>, <code>Sy1</code> or <code>Sy2</code>) changes
+all of them. To change a parameter, build a new model with
+<code>aci_model()</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>
@@ -168,8 +169,7 @@ coefficients. Change a parameter by rebuilding the model with
 <span class="r-in"><span>  k <span class="op">=</span> <span class="fl">1</span>, l <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> &lt;cgns_model&gt; 'cgns_model': k = 1 observed, l = 1 hidden</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Coefficients are fixed for the model's lifetime: change a parameter by</span></span></span>
-<span class="r-in"><span><span class="co"># rebuilding, not by assigning into an existing model.</span></span></span>
+<span class="r-in"><span><span class="co"># Two models that differ in one parameter.</span></span></span>
 <span class="r-in"><span><span class="va">make_dyadish</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">lambda</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="fu">aci_model</span><span class="op">(</span>Lx <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>            fx <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">t</span>, <span class="va">x</span><span class="op">)</span> <span class="va">lambda</span> <span class="op">*</span> <span class="va">x</span>,</span></span>

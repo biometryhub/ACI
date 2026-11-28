@@ -55,7 +55,12 @@ aci(
 - table:
 
   Optional precomputed `lag_table`, whose online diagonal is used in
-  place of the headline smoother.
+  place of the headline smoother. The table fixes `stepper`, `nsub` and
+  `regularize` when
+  [`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md)
+  builds it, so supplying any of them with `table` is an error; give
+  them to
+  [`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md).
 
 - keep:
 
@@ -68,7 +73,9 @@ aci(
 
 - init:
 
-  Optional list with the initial hidden `mean` and `cov`.
+  Optional list with the initial hidden `mean` and `cov`. Any other
+  entry is an error, except `source`, which a stored `meta$init`
+  carries.
 
 - stepper:
 
@@ -134,6 +141,10 @@ variance 0.1 and `dt = 0.07` it returns 1.4660115 nats, which
 definite and finite and records zero floor events, so positive-definite,
 finite output with no floor event does not certify that the step
 resolved the problem.
+
+A larger `nsub` does not take that null's value to 0; see the section
+"Sub-steps and steppers" in
+[`aci_filter()`](https://biometryhub.github.io/ACI/reference/aci_filter.md).
 
 ## See also
 

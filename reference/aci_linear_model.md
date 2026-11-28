@@ -23,11 +23,13 @@ aci_linear_model(lambda_x, lambda_y, fx, fy, sigma_x, sigma_y, k = 1, l = 1)
 
 - fx:
 
-  Function of `(t, x)` giving the remaining observed drift.
+  Function of `(t, x)` giving the remaining observed drift, or a finite
+  constant of length 1 or `k`.
 
 - fy:
 
-  Function of `(t, x)` giving the remaining hidden drift.
+  Function of `(t, x)` giving the remaining hidden drift, or a finite
+  constant of length 1 or `l`.
 
 - sigma_x:
 

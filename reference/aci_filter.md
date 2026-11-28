@@ -45,7 +45,8 @@ aci_filter(model, obs, ...)
 - init:
 
   Optional list with the initial hidden `mean` and `cov`; `NULL` uses a
-  diffuse prior and warns.
+  diffuse prior and warns. Any other entry is an error, except `source`,
+  which a stored `meta$init` carries.
 
 - conditional:
 
@@ -123,6 +124,29 @@ record, or `NULL` when the method was called with `loglik = FALSE`.
 
 - `aci_filter(stochastic_model)`: Classed not-implemented condition for
   a general (non-CGNS) stochastic model.
+
+## Sub-steps and steppers
+
+`nsub` splits each observation interval into `nsub` equal steps for the
+forward filter. The observed rate and the model coefficients are held at
+their values at the start of the interval. Increasing `nsub` refines
+this interval integration, while the observation grid and coefficient
+values remain fixed.
+
+The smoother's backward pass takes the same `nsub` steps, but holds the
+filter mean and covariance at their values at the start of each
+interval. More sub-steps can improve the smoothed moments and ACI
+without removing the error from those fixed values. In the uncoupled
+example in
+[`aci()`](https://biometryhub.github.io/ACI/reference/aci.md), where the
+exact ACI is 0, the largest ACI falls from 1.4660 at `nsub = 1` to
+0.0141 at `nsub = 20` and 0.0121 at `nsub = 10000`. Agreement as `nsub`
+increases does not establish an exact smoother or ACI value.
+
+`stepper` applies to the forward filter only. `"implicit"` keeps the
+filter covariance positive definite. The smoother's backward pass is
+explicit under either stepper, and it can still fail with
+`aci_error_covariance_not_spd`.
 
 ## See also
 

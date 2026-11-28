@@ -98,7 +98,9 @@ reduction; see <code><a href="aci_conditional.html">aci_conditional()</a></code>
 
 
 <dt id="arg-init">init<a class="anchor" aria-label="anchor" href="#arg-init"></a></dt>
-<dd><p>Optional list with the initial hidden <code>mean</code> and <code>cov</code>.</p></dd>
+<dd><p>Optional list with the initial hidden <code>mean</code> and <code>cov</code>. Any
+other entry is an error, except <code>source</code>, which a stored <code>meta$init</code>
+carries.</p></dd>
 
 
 <dt id="arg-stepper">stepper<a class="anchor" aria-label="anchor" href="#arg-stepper"></a></dt>
@@ -113,7 +115,9 @@ reduction; see <code><a href="aci_conditional.html">aci_conditional()</a></code>
 <dd><p>Covariance policy for this call; see <code><a href="aci_filter.html">aci_filter()</a></code>. One
 record covers the whole call, so a filter recomputed here and the backward
 recursion that consumes it share the <code>meta$regularization</code> on the returned
-smoother, and one <code>aci_warn_regularized</code> covers both. Flooring changes the
+smoother, and one <code>aci_warn_regularized</code> covers both. A supplied <code>filter</code>
+that took a floor adds its events to that record, which then reads policy
+<code>"floor"</code>. Flooring changes the
 numerical covariance so that the recursion can continue; it establishes
 nothing about the accuracy of the resulting reconstruction.</p></dd>
 
@@ -130,6 +134,11 @@ validates unconditionally. The smoother result is the same either way.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An assimilation path: <code>da_path_gaussian</code> for the closed-form engine.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>The backward pass is explicit under either <code>stepper</code>. See the section
+"Sub-steps and steppers" in <code><a href="aci_filter.html">aci_filter()</a></code> for the limits of increasing <code>nsub</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="methods-by-class-">Methods (by class)<a class="anchor" aria-label="anchor" href="#methods-by-class-"></a></h2>

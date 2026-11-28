@@ -3,12 +3,12 @@
 acir is at version 0.x. What that means for a user:
 
 - The numerical core is fixed. Every graded quantity reproduces the
-  comparator its row names in `inst/evidence/register.csv` (the method
-  authors’ MATLAB outputs where such outputs exist, and otherwise a
-  source-derived run, an independent transcription of the published
-  equations, or an analytic identity) to that row’s tolerance, and a
-  change that moved a number beyond round-off would be a change of
-  method, not a release.
+  comparator its row names in `inst/evidence/register.csv` (the outputs
+  of MATLAB harnesses adapted from the method authors’ scripts where
+  such outputs exist, and otherwise a source-derived run, an independent
+  transcription of the published equations, or an analytic identity) to
+  that row’s tolerance, and a change that moved a number beyond
+  round-off would be a change of method, not a release.
 - The public interface may still change before 1.0: argument names, the
   shape of returned objects, and the names of the model coefficient
   functions. Every such change is announced in `NEWS.md` under a

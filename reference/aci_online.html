@@ -109,16 +109,23 @@ reduction; see <code><a href="aci_conditional.html">aci_conditional()</a></code>
 
 
 <dt id="arg-init">init<a class="anchor" aria-label="anchor" href="#arg-init"></a></dt>
-<dd><p>Optional list with the initial hidden <code>mean</code> and <code>cov</code>.</p></dd>
+<dd><p>Optional list with the initial hidden <code>mean</code> and <code>cov</code>. Any
+other entry is an error, except <code>source</code>, which a stored <code>meta$init</code>
+carries.</p></dd>
 
 
 <dt id="arg-regularize">regularize<a class="anchor" aria-label="anchor" href="#arg-regularize"></a></dt>
 <dd><p>Covariance policy for this call; see <code><a href="aci_filter.html">aci_filter()</a></code>. One
 record covers the whole call, and is returned in <code>meta$regularization</code>; a
-call in which a floor fires also raises one <code>aci_warn_regularized</code>.
+call in which a floor fires also raises one <code>aci_warn_regularized</code>. A
+supplied <code>filter</code> that took a floor adds its events to that record, which
+then reads policy <code>"floor"</code>, and the call warns.
 Flooring changes the numerical covariance so that the recursion can
 continue; it establishes nothing about the accuracy of the resulting
-reconstruction.</p></dd>
+reconstruction.
+At a finite lag the policy also applies to each anchor's fixed-lag
+covariance, the sum of the updates within its window, which can fail to
+be positive definite when every update passes.</p></dd>
 
 
 <dt id="arg-force-validate">force_validate<a class="anchor" aria-label="anchor" href="#arg-force-validate"></a></dt>
@@ -143,6 +150,8 @@ the estimate at index <code>j</code> uses the observed record through index <cod
 and saturates at the end of the record. <code>lag = 0</code> returns the filter
 moments unchanged. <code>lag = Inf</code> composes the Theorem 3 updates over the whole
 record.</p>
+<p>It always uses the explicit filter with <code>nsub = 1</code>. The section "Sub-steps
+and steppers" in <code><a href="aci_filter.html">aci_filter()</a></code> says what <code>nsub</code> and <code>stepper</code> do.</p>
     </div>
     <div class="section level2">
     <h2 id="methods-by-class-">Methods (by class)<a class="anchor" aria-label="anchor" href="#methods-by-class-"></a></h2>
@@ -182,6 +191,32 @@ path: <code>"theorem3_discrete"</code> here and on the lag table's reference smo
 <code>"backward_ode_euler"</code> on <code><a href="aci_smoother.html">aci_smoother()</a></code>.</p>
 <p>The one exact boundary is the other end: at <code>lag = 0</code> the returned moments
 are the filter moments, unchanged value for value.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="range-of-the-scheme">Range of the scheme<a class="anchor" aria-label="anchor" href="#range-of-the-scheme"></a></h2>
+
+
+<p>One diagnostic compares one step of hidden noise with the filter variance
+at the start of each interval: the largest eigenvalue of <code>Q Rf^-1 dt</code>,
+with <code>Rf</code> the filter covariance and <code>Q</code> the hidden noise covariance given
+the observed increment. The update factor also depends on the hidden drift,
+so this ratio is not a general stability or accuracy criterion. A ratio
+above 1 warns of a step that can make the smoothed covariance exceed the
+filter covariance. A ratio at or below 1 does not rule that out.
+<code>aci_online()</code> and
+<code><a href="lag_table.html">lag_table()</a></code>, and <code><a href="aci.html">aci()</a></code> and <code><a href="aci_range.html">aci_range()</a></code> when they build a table, raise
+one <code>aci_warn_leading_order</code> per call when a ratio is above 1. The
+condition carries <code>ratio</code>, <code>index</code> and <code>time</code> for the interval it reports.
+The returned values are those the scheme gives. A smaller <code>dt</code> lowers the
+ratio, and at the first interval a wider prior does too; the message names
+the prior only when it reports the first interval. Under
+<code>regularize = "floor"</code> the intervals from the first floored filter
+covariance on are left out: a floored value, and every filter covariance
+propagated from it, says nothing about the model, and
+<code>aci_warn_regularized</code> reports the floor. This holds for a filter formed
+in the call and for a supplied <code>filter</code> that took a floor. A table already
+built forms no update when it is passed to <code><a href="aci.html">aci()</a></code> or <code><a href="aci_range.html">aci_range()</a></code>, and
+raises nothing more.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

@@ -100,7 +100,9 @@ engine for a conditional-Gaussian model.</p></dd>
 
 <dt id="arg-table">table<a class="anchor" aria-label="anchor" href="#arg-table"></a></dt>
 <dd><p>Optional precomputed <code>lag_table</code>, whose online diagonal is used
-in place of the headline smoother.</p></dd>
+in place of the headline smoother. The table fixes <code>stepper</code>, <code>nsub</code> and
+<code>regularize</code> when <code><a href="lag_table.html">lag_table()</a></code> builds it, so supplying any of them with
+<code>table</code> is an error; give them to <code><a href="lag_table.html">lag_table()</a></code>.</p></dd>
 
 
 <dt id="arg-keep">keep<a class="anchor" aria-label="anchor" href="#arg-keep"></a></dt>
@@ -113,7 +115,9 @@ are retained on the result. It does not select a smoother.</p></dd>
 
 
 <dt id="arg-init">init<a class="anchor" aria-label="anchor" href="#arg-init"></a></dt>
-<dd><p>Optional list with the initial hidden <code>mean</code> and <code>cov</code>.</p></dd>
+<dd><p>Optional list with the initial hidden <code>mean</code> and <code>cov</code>. Any
+other entry is an error, except <code>source</code>, which a stored <code>meta$init</code>
+carries.</p></dd>
 
 
 <dt id="arg-stepper">stepper<a class="anchor" aria-label="anchor" href="#arg-stepper"></a></dt>
@@ -174,6 +178,8 @@ and <code>dt = 0.07</code> it returns 1.4660115 nats, which <code>nsub = 20</cod
 0.0140779. Every one of those runs is positive definite and finite and
 records zero floor events, so positive-definite, finite output with no
 floor event does not certify that the step resolved the problem.</p>
+<p>A larger <code>nsub</code> does not take that null's value to 0; see the section
+"Sub-steps and steppers" in <code><a href="aci_filter.html">aci_filter()</a></code>.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

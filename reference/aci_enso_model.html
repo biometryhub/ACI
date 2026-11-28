@@ -264,17 +264,18 @@ complexity. <em>npj Climate and Atmospheric Science</em> <strong>5</strong>, 16.
 <span class="r-out co"><span class="r-pr">#&gt;</span>  2.00000  0.00500 -7.14936 </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># \donttest{</span></span></span>
-<span class="r-in"><span><span class="co"># Checks on the configuration above, not alternatives to it. Refining the</span></span></span>
-<span class="r-in"><span><span class="co"># step under the stated prior stays event-free and settles near 1.81. The</span></span></span>
-<span class="r-in"><span><span class="co"># explicit and implicit schemes are not required to agree at a finite</span></span></span>
-<span class="r-in"><span><span class="co"># step; this is a self-consistency check on one record, not an accuracy</span></span></span>
-<span class="r-in"><span><span class="co"># guarantee.</span></span></span>
+<span class="r-in"><span><span class="co"># Checks on the configuration above, not alternatives to it. Sub-steps</span></span></span>
+<span class="r-in"><span><span class="co"># under the stated prior stay event-free and give about 1.81. Increasing</span></span></span>
+<span class="r-in"><span><span class="co"># nsub alone does not establish convergence to the exact posterior (see</span></span></span>
+<span class="r-in"><span><span class="co"># ?aci_filter). The explicit and implicit schemes are not required to agree</span></span></span>
+<span class="r-in"><span><span class="co"># at a finite step. This is a self-consistency check on one record, not an</span></span></span>
+<span class="r-in"><span><span class="co"># accuracy guarantee.</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="aci.html">aci</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, init <span class="op">=</span> <span class="va">ini</span>, nsub <span class="op">=</span> <span class="fl">20</span><span class="op">)</span><span class="op">$</span><span class="va">aci</span><span class="op">)</span>                    <span class="co"># 1.813052</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.813052</span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="aci.html">aci</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, init <span class="op">=</span> <span class="va">ini</span>, stepper <span class="op">=</span> <span class="st">"implicit"</span>, nsub <span class="op">=</span> <span class="fl">20</span><span class="op">)</span><span class="op">$</span><span class="va">aci</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 1.803244</span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Refining enough to make the automatic-prior record run at all does not</span></span></span>
+<span class="r-in"><span><span class="co"># Sub-stepping enough to make the automatic-prior record run at all does not</span></span></span>
 <span class="r-in"><span><span class="co"># recover the same number, which is why the prior is stated rather than</span></span></span>
 <span class="r-in"><span><span class="co"># worked around.</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Extremes.html" class="external-link">max</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/warning.html" class="external-link">suppressWarnings</a></span><span class="op">(</span><span class="fu"><a href="aci.html">aci</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, nsub <span class="op">=</span> <span class="fl">20</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="va">aci</span><span class="op">)</span>              <span class="co"># 4.821106</span></span></span>

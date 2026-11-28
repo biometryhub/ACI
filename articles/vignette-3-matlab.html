@@ -409,22 +409,24 @@ them off the object before comparing anything against a figure.</p>
 <p>Fidelity claims in this package are graded by the kind of evidence
 behind them, and the kinds are not interchangeable.</p>
 <ul>
-<li>An <strong>authors-source fixture</strong> is numerical output
-produced by the reference MATLAB itself. It is the strongest evidence
-available and the package has it only where the source distribution
-shipped it.</li>
-<li>A <strong>source-derived harness</strong> drives the package with
-inputs read out of the reference scripts and compares against quantities
-the scripts define. It tests the translation, not the original
-execution.</li>
-<li>An <strong>independent transcription</strong> re-implements a
-script’s numerics from the source text in R, separately from the
-package, and compares the two. The <span class="math inline">T_C</span>
-partition’s fixtures are of this kind: their oracle is the script
-<code>make-tc-fixtures.R</code> under the repository’s
-<code>tools/fixtures/</code>, and no MATLAB was executed to make them.
-Stronger than package-to-package agreement, weaker than an
-authors-source fixture.</li>
+<li>A <strong>MATLAB harness adapted from the authors’ scripts</strong>
+supplies the dyad and predator-prey reference outputs. These fixture
+files were generated locally by executing the harnesses, rather than
+shipped by the authors. Their provenance and the quantities they grade
+are recorded in the fixture manifests and
+<code>inst/evidence/register.csv</code>.</li>
+<li>A <strong>source-derived reference</strong> uses inputs and
+calculations drawn from the reference scripts. Six registered
+comparisons use saved outputs from the predecessor package
+<code>aci</code> 0.0.30. Those establish agreement with that
+implementation, without an independent MATLAB execution.</li>
+<li>An <strong>independent transcription</strong> re-implements
+published equations or a script’s numerics separately from the package,
+in R or MATLAB, and compares the two. The <span class="math inline">T_C</span> partition’s fixtures are of this kind:
+their oracle is the script <code>make-tc-fixtures.R</code> under the
+repository’s <code>tools/fixtures/</code>, and no MATLAB was executed to
+make them. These fixtures compare two transcriptions, without an
+execution of the authors’ MATLAB script.</li>
 <li>
 <strong>Analytic identities</strong> are checks that must hold by
 construction, such as the two covariance sequences of section 3 being

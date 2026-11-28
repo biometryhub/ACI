@@ -253,7 +253,7 @@ explicit Riccati step overshoots:</p>
 <span><span class="va">ob_bad</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/observed_trajectory.html">observed_trajectory</a></span><span class="op">(</span><span class="va">ob</span><span class="op">$</span><span class="va">t</span><span class="op">[</span><span class="va">idx</span><span class="op">]</span>, <span class="va">ob</span><span class="op">$</span><span class="va">x</span><span class="op">[</span><span class="va">idx</span>, , drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">]</span>,</span>
 <span>                              names <span class="op">=</span> <span class="st">"x"</span><span class="op">)</span></span>
 <span><span class="fu">refused</span><span class="op">(</span><span class="fu"><a href="../reference/aci_filter.html">aci_filter</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob_bad</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; aci_error_covariance_not_spd: The filter covariance must stay finite and positive definite; it reached -0.1336333 at index 37 (time 7.2), in the explicit Riccati step. The realised observation-noise Gram was accepted against the constructor's relative-conditioning contract at every step of this record, so this is integration instability on a valid observation model: reduce dt, raise nsub, or use stepper = "implicit", which preserves positivity. To keep the previous behaviour, call with regularize = "floor"; every floored step is then recorded in the result's meta$regularization. Flooring changes the numerical covariance; it does not establish that the step resolves the dynamics.</span></span></code></pre></div>
+<span><span class="co">#&gt; aci_error_covariance_not_spd: The filter covariance must stay finite and positive definite; it reached -0.1336333 at index 37 (time 7.2), in the explicit Riccati step. The realised observation-noise Gram was accepted against the constructor's relative-conditioning contract at every step of this record, so this is integration instability on a valid observation model: reduce dt or raise nsub. stepper = "implicit" preserves positivity in the forward filter only; the smoother's backward pass is explicit under either stepper. To keep the previous behaviour, call with regularize = "floor"; every floored step is then recorded in the result's meta$regularization. Flooring changes the numerical covariance; it does not establish that the step resolves the dynamics.</span></span></code></pre></div>
 <p><code>regularize = "floor"</code> is the previous behaviour,
 available on <code><a href="../reference/aci.html">aci()</a></code>, <code><a href="../reference/aci_filter.html">aci_filter()</a></code>,
 <code><a href="../reference/aci_smoother.html">aci_smoother()</a></code> and <code><a href="../reference/lag_table.html">lag_table()</a></code>, and
@@ -401,9 +401,12 @@ zero. Nothing was floored: the run is under
 <code>regularize = "none"</code>, every covariance stayed positive
 definite, every quantity is finite and the event count is zero. The step
 alone produced it, and <code>nsub = 20</code> on the same record leaves
-0.0140779. Positive-definite, finite output with no floor event does not
-certify that the step resolved the problem; it certifies only that the
-recursion did not have to be repaired to continue.</p>
+0.0140779. The recorded check at <code>nsub = 10000</code> still gives
+0.0121. The “Steppers” section below explains why sub-stepping alone
+does not remove this error. Positive-definite, finite output with no
+floor event does not certify that the step resolved the problem; it
+certifies only that the recursion did not have to be repaired to
+continue.</p>
 <p><code><a href="../reference/aci_range.html">aci_range()</a></code> on an <code>aci_result</code> reads the
 policy off the result rather than off the option, so re-analysing a
 saved result in a later session cannot silently change it.
@@ -444,6 +447,12 @@ with <code>nsub</code> sub-steps per observation:</p>
 <p>The two steppers are different discretisations, so they give
 different numbers, and the difference here is not negligible against the
 size of the metric itself. Pick one deliberately and record which.</p>
+<p>Increasing <code>nsub</code> refines the filter integration within
+each observed interval. The backward pass also takes smaller steps, but
+holds the filter mean and covariance at their values at the start of the
+interval. Sub-stepping can therefore reduce error without removing the
+error from those fixed values. Agreement as <code>nsub</code> increases
+does not establish an exact smoother or ACI value.</p>
 <p><code><a href="../reference/lag_table.html">lag_table()</a></code> refuses anything else outright, because the
 Theorem 3 recursions it accumulates are derived for the explicit
 single-step discretisation and for no other:</p>
@@ -472,7 +481,7 @@ first update:</p>
 <span><span class="co">#&gt; diffuse prior. Its opening steps are prior-dominated; a prior far wider than</span></span>
 <span><span class="co">#&gt; the hidden state's own scale can also destabilise the explicit step, which is a</span></span>
 <span><span class="co">#&gt; refusal rather than a window to discard.</span></span>
-<span><span class="co">#&gt; aci_error_covariance_not_spd: The filter covariance must stay finite and positive definite; it reached -7.14936 at index 2 (time 0.005), in the explicit Riccati step. The realised observation-noise Gram was accepted against the constructor's relative-conditioning contract at every step of this record, so this is integration instability on a valid observation model: reduce dt, raise nsub, or use stepper = "implicit", which preserves positivity. To keep the previous behaviour, call with regularize = "floor"; every floored step is then recorded in the result's meta$regularization. Flooring changes the numerical covariance; it does not establish that the step resolves the dynamics.</span></span></code></pre></div>
+<span><span class="co">#&gt; aci_error_covariance_not_spd: The filter covariance must stay finite and positive definite; it reached -7.14936 at index 2 (time 0.005), in the explicit Riccati step. The realised observation-noise Gram was accepted against the constructor's relative-conditioning contract at every step of this record, so this is integration instability on a valid observation model: reduce dt or raise nsub. stepper = "implicit" preserves positivity in the forward filter only; the smoother's backward pass is explicit under either stepper. To keep the previous behaviour, call with regularize = "floor"; every floored step is then recorded in the result's meta$regularization. Flooring changes the numerical covariance; it does not establish that the step resolves the dynamics.</span></span></code></pre></div>
 <p>There is no opening window to discard here; the run ends at the first
 update. The remedy is to state the prior. The componentwise
 Ornstein-Uhlenbeck stationary scale <code>gyy_ii / (2 |Ly_ii|)</code> is
@@ -532,7 +541,7 @@ far away. Scaling the stated prior:</p>
 <span><span class="co">#&gt;     0.5x       1x       2x       4x </span></span>
 <span><span class="co">#&gt; 1.814876 1.830865 1.851048 1.971858</span></span>
 <span><span class="fu">refused</span><span class="op">(</span><span class="fu"><a href="../reference/aci.html">aci</a></span><span class="op">(</span><span class="va">m_e</span>, <span class="va">ob_e</span>, init <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mean <span class="op">=</span> <span class="va">ini_e</span><span class="op">$</span><span class="va">mean</span>, cov <span class="op">=</span> <span class="fl">8</span> <span class="op">*</span> <span class="va">ini_e</span><span class="op">$</span><span class="va">cov</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; aci_error_covariance_not_spd: The filter covariance must stay finite and positive definite; it reached -1.710848 at index 2 (time 0.005), in the explicit Riccati step. The realised observation-noise Gram was accepted against the constructor's relative-conditioning contract at every step of this record, so this is integration instability on a valid observation model: reduce dt, raise nsub, or use stepper = "implicit", which preserves positivity. To keep the previous behaviour, call with regularize = "floor"; every floored step is then recorded in the result's meta$regularization. Flooring changes the numerical covariance; it does not establish that the step resolves the dynamics.</span></span></code></pre></div>
+<span><span class="co">#&gt; aci_error_covariance_not_spd: The filter covariance must stay finite and positive definite; it reached -1.710848 at index 2 (time 0.005), in the explicit Riccati step. The realised observation-noise Gram was accepted against the constructor's relative-conditioning contract at every step of this record, so this is integration instability on a valid observation model: reduce dt or raise nsub. stepper = "implicit" preserves positivity in the forward filter only; the smoother's backward pass is explicit under either stepper. To keep the previous behaviour, call with regularize = "floor"; every floored step is then recorded in the result's meta$regularization. Flooring changes the numerical covariance; it does not establish that the step resolves the dynamics.</span></span></code></pre></div>
 <p>Somewhere between four and eight times the stationary scale the
 explicit step stops being stable at all, and the automatic prior is
 about 380 times it. A peak reported on this partition is a statement
@@ -660,7 +669,7 @@ afterwards, and the values it returns are the same ones to the bit:</p>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>all_401_anchors <span class="op">=</span> <span class="va">t_all</span>, fifteen_anchors <span class="op">=</span> <span class="va">t_w15</span>, ratio <span class="op">=</span> <span class="va">t_all</span> <span class="op">/</span> <span class="va">t_w15</span><span class="op">)</span></span>
 <span><span class="co">#&gt; all_401_anchors fifteen_anchors           ratio </span></span>
-<span><span class="co">#&gt;         0.08000         0.00700        11.42857</span></span>
+<span><span class="co">#&gt;         0.08100         0.00700        11.57143</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">f_all</span><span class="op">$</span><span class="va">tau</span><span class="op">[</span><span class="va">w15</span><span class="op">]</span>, <span class="va">f_w15</span><span class="op">$</span><span class="va">tau</span><span class="op">)</span>    <span class="co"># the same values, not a resample</span></span>
 <span><span class="co">#&gt; [1] TRUE</span></span></code></pre></div>
 <p>The saving is on the streamed route only. <code><a href="../reference/lag_table.html">lag_table()</a></code>
@@ -750,14 +759,16 @@ contributed.</p>
 <span><span class="co">#&gt; [1] 9.342417e-09</span></span></code></pre></div>
 <p><code>tail_bound</code> is an estimate, not a certified error bound.
 In the table above it tracks the realised error to within an order of
-magnitude for the <code>tol</code> rule, and overstates it for the hard
+magnitude for the <code>tol</code> rule, and understates it for the hard
 <code>max_lag</code> cap. Setting
 <code>options(aci.default_tol = 0)</code> disables truncation and
 reproduces the untruncated convention of the published figures. Note
 that the streamed route reads <code>tol</code> from that option rather
 than from an argument.</p>
-<p><code>mode = "full"</code> retains the negative-lag cells as well, at
-correspondingly more work, and requires <code>max_lag = Inf</code>.</p>
+<p><code>mode = "full"</code> stores the same rows as
+<code>mode = "forward"</code> with <code>tol = 0</code>, ignores
+<code>tol</code> and <code>window</code>, and requires
+<code>max_lag = Inf</code>.</p>
 </div>
 <div class="section level3">
 <h3 id="three-named-functionals">Three named functionals<a class="anchor" aria-label="anchor" href="#three-named-functionals"></a>
@@ -933,17 +944,22 @@ observation times, the peak divergence is below the strength floor. The
 range is <code>NA</code> by default.</li>
 <li>
 <code>censored</code>: the last divergence above the strength floor
-lies in the second half of the row.</li>
+lies in the second half of the row, or the row was cut by
+<code>max_lag</code> while its last kept divergence was still above the
+strength floor.</li>
 <li>
 <code>resolved</code>: none of the preceding conditions
 applies.</li>
 </ul>
-<p>Censoring is judged inside the row, not against a caller-supplied
-horizon. Testing only the last cell would not help: at the end of a
-complete row, the online estimate and the reference smoother use the
-same complete observation record, so their divergence is zero in exact
-arithmetic. The second-half check instead uses the location of the last
-exceedance.</p>
+<p>For a row that runs to the end of the record, censoring is judged
+inside the row, not against a caller-supplied horizon. Testing only the
+last cell would not help there: at the end of a complete row, the online
+estimate and the reference smoother use the same complete observation
+record, so their divergence is zero in exact arithmetic. The second-half
+check instead uses the location of the last exceedance. A row cut by
+<code>max_lag</code> stops before the record does, so its last kept cell
+is not zero by construction, and a value above the strength floor there
+shows that the divergence had not decayed when the row was cut.</p>
 <p>This check is a heuristic, not a numerical-accuracy test. Extending
 the record also changes the reference smoother used in each divergence.
 A <code>censored</code> range is therefore not guaranteed to be a lower
@@ -1238,7 +1254,7 @@ modelling decision and not a budget:</p>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/system.time.html" class="external-link">system.time</a></span><span class="op">(</span><span class="fu"><a href="../reference/aci_online.html">aci_online</a></span><span class="op">(</span><span class="va">m</span>, <span class="va">ob</span>, lag <span class="op">=</span> <span class="va">L</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span><span class="op">)</span><span class="op">[[</span><span class="st">"elapsed"</span><span class="op">]</span><span class="op">]</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"lag_"</span>, <span class="va">lags</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   lag_1  lag_20 lag_400 lag_800 </span></span>
-<span><span class="co">#&gt;   0.013   0.026   0.025   0.002</span></span></code></pre></div>
+<span><span class="co">#&gt;   0.013   0.024   0.023   0.002</span></span></code></pre></div>
 <p>An online path carries <code>kind = "online"</code>, and that is what
 keeps it out of the places a complete smoother is required:
 <code>lag_table(smoother = )</code> rejects it rather than treating a

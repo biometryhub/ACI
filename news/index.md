@@ -4,30 +4,153 @@
 
 ### Bug fixes
 
+- `aci(table = )` stops with `aci_error_dims` when `stepper`, `nsub` or
+  `regularize` is also supplied. The table already fixes these settings,
+  and the call used to ignore them; give them to
+  [`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md).
+  [`?lag_table`](https://biometryhub.github.io/ACI/reference/lag_table.md)
+  now says that it takes only `stepper = "explicit"` and `nsub = 1`.
+
+- An `init` list with an entry other than `mean` and `cov` stops with
+  `aci_error_dims` naming the unknown entries.
+  `init = list(m = 5, cov = 1)` used to run with prior mean 0. A longer
+  name that R matched to `cov`, as in `covariance =`, used to set the
+  prior covariance and is refused as well. The `source` entry of a
+  stored `meta$init` is accepted, so a stored prior can be passed back.
+
+- [`?aci_model`](https://biometryhub.github.io/ACI/reference/aci_model.md)
+  now says what assigning into an existing model does. An assigned drift
+  coefficient (`Lx`, `fx`, `Ly` or `fy`) changes the results of
+  [`aci_filter()`](https://biometryhub.github.io/ACI/reference/aci_filter.md),
+  [`aci_smoother()`](https://biometryhub.github.io/ACI/reference/aci_smoother.md),
+  [`aci_online()`](https://biometryhub.github.io/ACI/reference/aci_online.md),
+  [`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md)
+  and [`aci()`](https://biometryhub.github.io/ACI/reference/aci.md) but
+  not those of [`simulate()`](https://rdrr.io/r/stats/simulate.html).
+  The help used to say that both stay on the original coefficients. No
+  behaviour changed.
+
 - Plot methods for ACI results, Gaussian paths and ranges pass extra
   arguments to [`plot()`](https://rdrr.io/r/graphics/plot.default.html)
   as 0.2.0 did, including unnamed arguments, `panel.first` and
   `panel.last`, and named labels such as `main` still replace the
   defaults. Plots of long series are fast again.
+
+- The covariance error raised in the smoother’s backward pass no longer
+  advises `stepper = "implicit"`, which applies to the forward filter
+  only. The condition class is unchanged.
+
 - A range with one anchor, drawn as a title only, no longer stops on
   graphical settings such as `lwd = 0`. Plotting a range with more than
   one anchor whose values are all `NA` stops with an `aci_error_dims`
   condition that asks for `ylim`.
+
+- [`aci_range()`](https://biometryhub.github.io/ACI/reference/aci_range.md)
+  on a table built with a finite `max_lag` labels a row `"censored"`
+  when the row was cut at `max_lag` and its last kept divergence is
+  above the strength floor. Such rows were labelled `"resolved"`. Ranges
+  and every other value are unchanged, and so is the status of rows the
+  cut did not reach.
+
 - [`aci()`](https://biometryhub.github.io/ACI/reference/aci.md) and
   [`aci_metric()`](https://biometryhub.github.io/ACI/reference/aci_metric.md)
   no longer return `Inf` for some KL signals just below the overflow
   limit, for models and paths with one hidden component. Results for
   ordinary inputs are unchanged.
+
+- [`aci_online()`](https://biometryhub.github.io/ACI/reference/aci_online.md)
+  at a finite lag no longer returns a covariance that is not positive
+  definite. Under the default policy it stops with
+  `aci_error_covariance_not_spd` naming the anchor’s index and time, as
+  `lag = Inf` and
+  [`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md)
+  do; under `regularize = "floor"` it floors the covariance and records
+  the event in `meta$regularization`. Results that were positive
+  definite are unchanged.
+
+- [`aci_online()`](https://biometryhub.github.io/ACI/reference/aci_online.md),
+  [`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md)
+  and the ranges built on them warn with `aci_warn_leading_order` when
+  the hidden-noise step ratio exceeds 1: one step of hidden noise
+  exceeds the filter variance at the start of an interval. A prior
+  variance below one step of hidden noise does this at the first
+  interval, and a filter variance that falls that low does it later in
+  the record. The smoothed variance could then exceed the filter
+  variance with no condition, 0.826 against 0.001 on the packaged dyad
+  at `dt = 0.01`. Returned values are unchanged, and the condition
+  carries the ratio, index and time. Intervals from the first floored
+  filter covariance on are left out, since `aci_warn_regularized`
+  reports the floor.
+  [`?aci_online`](https://biometryhub.github.io/ACI/reference/aci_online.md)
+  explains this diagnostic and its limits. The update also depends on
+  drift, and a ratio at or below 1 does not establish accuracy.
+
 - [`aci()`](https://biometryhub.github.io/ACI/reference/aci.md) accepts
   a lag table that
   [`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md)
   built for a model that declares its own estimand, such as
   `aci_enso_model(hidden = "tau")`.
 
+- [`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md),
+  [`aci_online()`](https://biometryhub.github.io/ACI/reference/aci_online.md)
+  and
+  [`aci_smoother()`](https://biometryhub.github.io/ACI/reference/aci_smoother.md)
+  given a filter that `regularize = "floor"` floored, and
+  [`aci_range()`](https://biometryhub.github.io/ACI/reference/aci_range.md)
+  on a floored
+  [`aci()`](https://biometryhub.github.io/ACI/reference/aci.md) result
+  that kept its paths, now record the filter’s floor events and policy
+  `"floor"` in `meta$regularization` and raise one
+  `aci_warn_regularized`. Before, they started an empty record, so a
+  table built on a floored filter, and `aci(table = )` on it, reported
+  no floor. The record survives
+  [`saveRDS()`](https://rdrr.io/r/base/readRDS.html). Results are
+  unchanged.
+
+- Under `regularize = "floor"`,
+  [`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md),
+  `aci(keep = "table")` and
+  [`aci_range()`](https://biometryhub.github.io/ACI/reference/aci_range.md)
+  on an [`aci()`](https://biometryhub.github.io/ACI/reference/aci.md)
+  result no longer stop with a base R error when the floor fires at
+  several lags of one anchor, and no longer raise a base R warning about
+  integer overflow. This affected models with one hidden component.
+  Tables and ranges that were returned before are unchanged.
+
 ### Documentation
 
+- [`?aci_filter`](https://biometryhub.github.io/ACI/reference/aci_filter.md)
+  has a new section on `nsub` and `stepper`. A larger `nsub` refines the
+  filter integration on the fixed observation grid. It can also improve
+  the smoother and ACI, but does not in general remove the error from
+  holding filter moments fixed within each interval. `stepper` applies
+  to the forward filter only.
+  [`?aci`](https://biometryhub.github.io/ACI/reference/aci.md),
+  [`?aci_smoother`](https://biometryhub.github.io/ACI/reference/aci_smoother.md)
+  and
+  [`?aci_online`](https://biometryhub.github.io/ACI/reference/aci_online.md)
+  point to the section, and the advanced vignette says the same of its
+  sub-stepped examples.
 - The plot help says which arguments replace the defaults, and when a
   range plot needs `ylim`.
+- Help, the advanced and MATLAB vignettes and the README now match the
+  code: the data-frame columns of lag tables and Gaussian paths,
+  `tol = 0` in
+  [`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md),
+  constant drifts in
+  [`aci_linear_model()`](https://biometryhub.github.io/ACI/reference/aci_linear_model.md),
+  the scales at which the
+  [`aci_metric_pair()`](https://biometryhub.github.io/ACI/reference/aci_metric_pair.md)
+  precision figures hold, the contents of a `mode = "full"` table, and
+  what the MATLAB reference fixtures are. The backward-range help and
+  error no longer cite files outside the package.
+- The evidence register no longer counts `aci(table = )` returning a lag
+  table’s own diagonal as an independent check of
+  [`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md),
+  [`lt_diag()`](https://biometryhub.github.io/ACI/reference/lt_diag.md)
+  and
+  [`aci_metric()`](https://biometryhub.github.io/ACI/reference/aci_metric.md),
+  and the oracle manifest says which tests hold its analytic oracles.
 
 ## acir 0.2.1
 

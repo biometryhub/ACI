@@ -55,7 +55,9 @@ aci_smoother(model, obs, ...)
 
 - init:
 
-  Optional list with the initial hidden `mean` and `cov`.
+  Optional list with the initial hidden `mean` and `cov`. Any other
+  entry is an error, except `source`, which a stored `meta$init`
+  carries.
 
 - stepper:
 
@@ -71,10 +73,11 @@ aci_smoother(model, obs, ...)
   [`aci_filter()`](https://biometryhub.github.io/ACI/reference/aci_filter.md).
   One record covers the whole call, so a filter recomputed here and the
   backward recursion that consumes it share the `meta$regularization` on
-  the returned smoother, and one `aci_warn_regularized` covers both.
-  Flooring changes the numerical covariance so that the recursion can
-  continue; it establishes nothing about the accuracy of the resulting
-  reconstruction.
+  the returned smoother, and one `aci_warn_regularized` covers both. A
+  supplied `filter` that took a floor adds its events to that record,
+  which then reads policy `"floor"`. Flooring changes the numerical
+  covariance so that the recursion can continue; it establishes nothing
+  about the accuracy of the resulting reconstruction.
 
 - force_validate:
 
@@ -91,6 +94,13 @@ aci_smoother(model, obs, ...)
 ## Value
 
 An assimilation path: `da_path_gaussian` for the closed-form engine.
+
+## Details
+
+The backward pass is explicit under either `stepper`. See the section
+"Sub-steps and steppers" in
+[`aci_filter()`](https://biometryhub.github.io/ACI/reference/aci_filter.md)
+for the limits of increasing `nsub`.
 
 ## Methods (by class)
 

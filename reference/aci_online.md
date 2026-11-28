@@ -65,7 +65,9 @@ aci_online(model, obs, lag, ...)
 
 - init:
 
-  Optional list with the initial hidden `mean` and `cov`.
+  Optional list with the initial hidden `mean` and `cov`. Any other
+  entry is an error, except `source`, which a stored `meta$init`
+  carries.
 
 - regularize:
 
@@ -73,9 +75,14 @@ aci_online(model, obs, lag, ...)
   [`aci_filter()`](https://biometryhub.github.io/ACI/reference/aci_filter.md).
   One record covers the whole call, and is returned in
   `meta$regularization`; a call in which a floor fires also raises one
-  `aci_warn_regularized`. Flooring changes the numerical covariance so
-  that the recursion can continue; it establishes nothing about the
-  accuracy of the resulting reconstruction.
+  `aci_warn_regularized`. A supplied `filter` that took a floor adds its
+  events to that record, which then reads policy `"floor"`, and the call
+  warns. Flooring changes the numerical covariance so that the recursion
+  can continue; it establishes nothing about the accuracy of the
+  resulting reconstruction. At a finite lag the policy also applies to
+  each anchor's fixed-lag covariance, the sum of the updates within its
+  window, which can fail to be positive definite when every update
+  passes.
 
 - force_validate:
 
@@ -101,6 +108,11 @@ on: the estimate at index `j` uses the observed record through index
 `j + lag`, and saturates at the end of the record. `lag = 0` returns the
 filter moments unchanged. `lag = Inf` composes the Theorem 3 updates
 over the whole record.
+
+It always uses the explicit filter with `nsub = 1`. The section
+"Sub-steps and steppers" in
+[`aci_filter()`](https://biometryhub.github.io/ACI/reference/aci_filter.md)
+says what `nsub` and `stepper` do.
 
 ## Methods (by class)
 
@@ -144,6 +156,34 @@ table's reference smoother, `"backward_ode_euler"` on
 
 The one exact boundary is the other end: at `lag = 0` the returned
 moments are the filter moments, unchanged value for value.
+
+## Range of the scheme
+
+One diagnostic compares one step of hidden noise with the filter
+variance at the start of each interval: the largest eigenvalue of
+`Q Rf^-1 dt`, with `Rf` the filter covariance and `Q` the hidden noise
+covariance given the observed increment. The update factor also depends
+on the hidden drift, so this ratio is not a general stability or
+accuracy criterion. A ratio above 1 warns of a step that can make the
+smoothed covariance exceed the filter covariance. A ratio at or below 1
+does not rule that out. `aci_online()` and
+[`lag_table()`](https://biometryhub.github.io/ACI/reference/lag_table.md),
+and [`aci()`](https://biometryhub.github.io/ACI/reference/aci.md) and
+[`aci_range()`](https://biometryhub.github.io/ACI/reference/aci_range.md)
+when they build a table, raise one `aci_warn_leading_order` per call
+when a ratio is above 1. The condition carries `ratio`, `index` and
+`time` for the interval it reports. The returned values are those the
+scheme gives. A smaller `dt` lowers the ratio, and at the first interval
+a wider prior does too; the message names the prior only when it reports
+the first interval. Under `regularize = "floor"` the intervals from the
+first floored filter covariance on are left out: a floored value, and
+every filter covariance propagated from it, says nothing about the
+model, and `aci_warn_regularized` reports the floor. This holds for a
+filter formed in the call and for a supplied `filter` that took a floor.
+A table already built forms no update when it is passed to
+[`aci()`](https://biometryhub.github.io/ACI/reference/aci.md) or
+[`aci_range()`](https://biometryhub.github.io/ACI/reference/aci_range.md),
+and raises nothing more.
 
 ## References
 

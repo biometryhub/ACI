@@ -45,8 +45,8 @@ lag_table(
 
 - tol:
 
-  Positive tolerance below which a row is frozen by the adaptive storage
-  rule.
+  Non-negative tolerance below which a row is frozen by the adaptive
+  storage rule; 0 turns freezing off.
 
 - window:
 
@@ -72,15 +72,17 @@ lag_table(
 
 - init:
 
-  Optional list with the initial hidden `mean` and `cov`.
+  Optional list with the initial hidden `mean` and `cov`. Any other
+  entry is an error, except `source`, which a stored `meta$init`
+  carries.
 
 - stepper:
 
-  Either `"explicit"` or `"implicit"`.
+  Must be `"explicit"`; any other value raises `aci_error_stepper`.
 
 - nsub:
 
-  Positive whole number of sub-steps taken per observation.
+  Must be 1; any other value raises `aci_error_stepper`.
 
 - regularize:
 
@@ -89,10 +91,15 @@ lag_table(
   One record covers the filter, the Theorem 3 reference smoother and
   every relative-entropy denominator the table forms, and is returned in
   `meta$regularization`; a call in which a floor fires also raises one
-  `aci_warn_regularized`. Flooring changes the numerical covariance so
-  that the recursion can continue; it establishes nothing about the
-  accuracy of the divergences the table stores or of anything reduced
-  from them.
+  `aci_warn_regularized`. A supplied `filter` that took a floor adds its
+  events to that record, which then reads policy `"floor"`, and the call
+  warns. [`aci()`](https://biometryhub.github.io/ACI/reference/aci.md)
+  and
+  [`aci_range()`](https://biometryhub.github.io/ACI/reference/aci_range.md)
+  carry a table's record and do not warn again. Flooring changes the
+  numerical covariance so that the recursion can continue; it
+  establishes nothing about the accuracy of the divergences the table
+  stores or of anything reduced from them.
 
 - ...:
 
@@ -101,6 +108,12 @@ lag_table(
 ## Value
 
 An object of class `lag_table`.
+
+## Details
+
+The reference inherits the range of that scheme. The section on it in
+[`aci_online()`](https://biometryhub.github.io/ACI/reference/aci_online.md)
+describes the `aci_warn_leading_order` warning.
 
 ## References
 

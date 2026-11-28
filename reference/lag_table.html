@@ -93,8 +93,8 @@ retained.</p></dd>
 
 
 <dt id="arg-tol">tol<a class="anchor" aria-label="anchor" href="#arg-tol"></a></dt>
-<dd><p>Positive tolerance below which a row is frozen by the adaptive
-storage rule.</p></dd>
+<dd><p>Non-negative tolerance below which a row is frozen by the
+adaptive storage rule; 0 turns freezing off.</p></dd>
 
 
 <dt id="arg-window">window<a class="anchor" aria-label="anchor" href="#arg-window"></a></dt>
@@ -119,15 +119,18 @@ it is frozen.</p></dd>
 
 
 <dt id="arg-init">init<a class="anchor" aria-label="anchor" href="#arg-init"></a></dt>
-<dd><p>Optional list with the initial hidden <code>mean</code> and <code>cov</code>.</p></dd>
+<dd><p>Optional list with the initial hidden <code>mean</code> and <code>cov</code>. Any
+other entry is an error, except <code>source</code>, which a stored <code>meta$init</code>
+carries.</p></dd>
 
 
 <dt id="arg-stepper">stepper<a class="anchor" aria-label="anchor" href="#arg-stepper"></a></dt>
-<dd><p>Either <code>"explicit"</code> or <code>"implicit"</code>.</p></dd>
+<dd><p>Must be <code>"explicit"</code>; any other value raises
+<code>aci_error_stepper</code>.</p></dd>
 
 
 <dt id="arg-nsub">nsub<a class="anchor" aria-label="anchor" href="#arg-nsub"></a></dt>
-<dd><p>Positive whole number of sub-steps taken per observation.</p></dd>
+<dd><p>Must be 1; any other value raises <code>aci_error_stepper</code>.</p></dd>
 
 
 <dt id="arg-regularize">regularize<a class="anchor" aria-label="anchor" href="#arg-regularize"></a></dt>
@@ -135,7 +138,10 @@ it is frozen.</p></dd>
 record covers the filter, the Theorem 3 reference smoother and every
 relative-entropy denominator the table forms, and is returned in
 <code>meta$regularization</code>; a call in which a floor fires also raises one
-<code>aci_warn_regularized</code>. Flooring changes the numerical covariance so that
+<code>aci_warn_regularized</code>. A supplied <code>filter</code> that took a floor adds its
+events to that record, which then reads policy <code>"floor"</code>, and the call
+warns. <code><a href="aci.html">aci()</a></code> and <code><a href="aci_range.html">aci_range()</a></code> carry a table's record and do not warn
+again. Flooring changes the numerical covariance so that
 the recursion can continue; it establishes nothing about the accuracy of
 the divergences the table stores or of anything reduced from them.</p></dd>
 
@@ -147,6 +153,11 @@ the divergences the table stores or of anything reduced from them.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An object of class <code>lag_table</code>.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>The reference inherits the range of that scheme. The section on it in
+<code><a href="aci_online.html">aci_online()</a></code> describes the <code>aci_warn_leading_order</code> warning.</p>
     </div>
     <div class="section level2">
     <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a></h2>

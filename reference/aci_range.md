@@ -112,8 +112,9 @@ aci_range(x, direction = c("forward", "backward"), ...)
   Closing rule for the leftover interval when a grid has an even number
   of points: `"quadratic"` (the default) fits a quadratic through the
   last three points, following `simps.m` in the ACI reference code;
-  `"trapezoid"` is the package's pre-0.0.21 rule and reproduces results
-  reported by earlier versions. Odd-length grids are unaffected.
+  `"trapezoid"` is the rule `aci`, the predecessor of `acir`, used up to
+  version 0.0.20, and reproduces the results it reported. Odd-length
+  grids are unaffected.
 
 - anchors:
 
@@ -151,11 +152,10 @@ An object of class `cir_result` with `direction` `"forward"`.
 ## Details
 
 Only `direction = "forward"` is in this release. The backward range is a
-`FBCIR_code-main` feature: it appears in no ACI_code script, and it is
-held in the development reserve (`reserve/fbcir/`) for the release that
-brings that family in. `direction = "backward"` raises
-`aci_error_not_implemented` rather than returning a forward answer under
-a backward label.
+`FBCIR_code-main` feature: it appears in no ACI_code script, and `acir`
+does not implement it. `direction = "backward"` raises
+`aci_error_not_implemented`, and never returns a forward answer under a
+backward label.
 
 ## Methods (by class)
 
@@ -165,7 +165,9 @@ a backward label.
   the table when it was not retained. The covariance policy is not
   re-resolved here: it is read off the result's own
   `meta$regularization`, so re-analysing a saved result in a new session
-  cannot silently change it. The integration settings are read off the
+  cannot silently change it. A retained filter that took a floor adds
+  its events to the range's record, and the call raises one
+  `aci_warn_regularized`. The integration settings are read off the
   retained filter or the result's own `meta$stepper` and `meta$nsub`;
   see the section above.
 
