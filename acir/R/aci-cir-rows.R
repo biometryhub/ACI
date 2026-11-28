@@ -108,7 +108,7 @@
 #' @param rec Covariance-policy recorder, its `j` already set to the anchor.
 #' @param block Cells per numerical block of the cumulative logarithms.
 #' @param chunk Cells in the first evaluation chunk; later chunks grow
-#'   fourfold.
+#'   fourfold, up to the length of the row.
 #' @returns A list with `row` (cells `0` to the cut, no padding), `lag_kept`
 #'   (the index of the last cell kept), `tail` (the tail estimate at the cut,
 #'   `0` for an uncut row) and `frozen`.
@@ -216,7 +216,9 @@
     carry_log <- ch$lg[m] + sp$logE[k1]
     carry_sgn <- ch$sg[m] * sp$sgnE[k1]
     k <- k1 + 1L
-    size <- 4L * size
+    ## A chunk of `C` cells reaches the end of the row from any cell, so the
+    ## length stops growing there and stays inside the integer range.
+    size <- if (size > C %/% 4L) C else 4L * size
   }
 
   if (!frozen && is.finite(max_lag) && max_lag <= C) {

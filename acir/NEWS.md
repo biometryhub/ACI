@@ -64,6 +64,12 @@
   built on a floored filter, and `aci(table = )` on it, reported no floor.
   The record survives `saveRDS()`. Results are unchanged.
 
+* Under `regularize = "floor"`, `lag_table()`, `aci(keep = "table")` and
+  `aci_range()` on an `aci()` result no longer stop with a base R error when
+  the floor fires at several lags of one anchor, and no longer raise a base
+  R warning about integer overflow. This affected models with one hidden
+  component. Tables and ranges that were returned before are unchanged.
+
 ## Documentation
 
 * `?aci_filter` has a new section on `nsub` and `stepper`. A larger `nsub`
